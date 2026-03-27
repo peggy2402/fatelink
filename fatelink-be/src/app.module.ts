@@ -13,6 +13,8 @@ import { AuthModule } from './auth/auth.module';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         uri: configService.get<string>('MONGODB_URI'),
+        // Thêm tùy chọn để kết nối timeout sau 5 giây thay vì mặc định 30 giây
+        serverSelectionTimeoutMS: 5000,
       }),
       inject: [ConfigService],
     }),
