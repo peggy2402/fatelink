@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "name": "fatelink-be",
   "builds": [
     {
       "src": "api/index.ts",
@@ -9,7 +10,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "/api/index.ts"
     }
   ]
 }
