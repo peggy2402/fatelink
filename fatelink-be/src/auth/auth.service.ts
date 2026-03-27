@@ -1,0 +1,53 @@
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { OAuth2Client } from 'google-auth-library';
+import { UsersService } from '../users/users.service';
+
+@Injectable()
+export class AuthService {
+  private googleClient: OAuth2Client;
+
+  constructor(
+    private configService: ConfigService,
+    private usersService: UsersService,
+  ) {
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    // Khởi tạo Google Client với Client ID từ file .env
+    this.googleClient = new OAuth2Client(clientId);
+  }
+
+  async verifyGoogleToken(token: string) {
+    try {
+      // 1. Xác thực token với Google
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: token,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+      });
+
+      // 2. Lấy thông tin user từ token hợp lệ
+      const payload = ticket.getPayload();
+      
+      if (!payload || !payload.email) {
+        throw new UnauthorizedException('Không thể lấy thông tin từ Google Token hoặc thiếu Email');
+      }
+
+      console.log('Thông tin user từ Google:', payload);
+
+      // 3. Tìm hoặc tạo User mới trong MongoDB
+      const userProfile = {
+        email: payload.email,
+        name: payload.name || '',
+        avatar: payload.picture || '',
+        googleId: payload.sub,
+      };
+      
+      const user = await this.usersService.findOrCreate(userProfile);
+
+      return user;
+      
+    } catch (error) {
+      console.error('Lỗi xác thực Google Token:', error);
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    }
+  }
+}
