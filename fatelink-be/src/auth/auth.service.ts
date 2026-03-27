@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private configService: ConfigService,
     private usersService: UsersService,
+    private jwtService: JwtService,
   ) {
     const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
     // Khởi tạo Google Client với Client ID từ file .env
@@ -43,7 +45,14 @@ export class AuthService {
       
       const user = await this.usersService.findOrCreate(userProfile);
 
-      return user;
+      // 4. Tạo JWT Token cho user
+      const jwtPayload = { sub: user._id, email: user.email };
+      const accessToken = this.jwtService.sign(jwtPayload);
+
+      return {
+        user,
+        accessToken,
+      };
       
     } catch (error) {
       console.error('Lỗi xác thực Google Token:', error);

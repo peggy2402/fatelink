@@ -8,12 +8,13 @@ export class AuthController {
   @Post('google/login')
   async handleGoogleLogin(@Body('token') token: string) {
     // Gọi hàm xác thực từ Service
-    const googleUser = await this.authService.verifyGoogleToken(token);
+    const result = await this.authService.verifyGoogleToken(token);
     
     return {
       success: true,
       message: 'Xác thực Google thành công!',
-      data: googleUser
+      data: result.user,
+      accessToken: result.accessToken,
     };
   }
 }
