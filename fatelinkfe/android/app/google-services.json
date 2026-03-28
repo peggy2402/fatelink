@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "918573554808",
+    "project_id": "fatelink-5a62b",
+    "storage_bucket": "fatelink-5a62b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:918573554808:android:da9dbc0e381c84e018a18d",
+        "android_client_info": {
+          "package_name": "com.example.fatelinkfe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHAg9GTVhAw22RqvoabjFze1x7iEIFfO4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
