@@ -449,12 +449,25 @@ class _LoginScreenState extends State<LoginScreen>
                                   _agreedToTerms = !_agreedToTerms;
                                 });
                               },
-                              child: Icon(
-                                _agreedToTerms
-                                    ? Icons.check_circle_outline
-                                    : Icons.radio_button_unchecked,
-                                color: Colors.white,
-                                size: 20,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (child, animation) =>
+                                    ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    ),
+                                child: Icon(
+                                  _agreedToTerms
+                                      ? Icons
+                                            .check_circle // Fill đặc hình tròn
+                                      : Icons.radio_button_unchecked,
+                                  key: ValueKey<bool>(_agreedToTerms),
+                                  color: _agreedToTerms
+                                      ? Colors
+                                            .greenAccent // Màu xanh báo hiệu đã tích OK
+                                      : Colors.white70, // Hơi mờ khi chưa tích
+                                  size: 22, // Tăng size lên một chút cho dễ bấm
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),

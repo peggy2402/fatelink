@@ -6,59 +6,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Điều khoản Dịch vụ - FATELINK</title>
     <style>
+        :root {
+            --primary-color: #002B3D;
+            --accent-color: #d32f2f;
+            --text-color: #2c3e50;
+            --bg-light: #f8f9fa;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
+            font-family: 'Inter', -apple-system, sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f9f9f9;
+            background-color: var(--bg-light);
         }
 
         .container {
             background: #fff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 50px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
         }
 
         h1 {
-            color: #d32f2f;
+            color: var(--primary-color);
             text-align: center;
-            border-bottom: 2px solid #fce4ec;
-            padding-bottom: 10px;
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
         }
 
         h2 {
-            color: #002B3D;
-            margin-top: 25px;
-            border-left: 4px solid #d32f2f;
-            padding-left: 10px;
+            color: var(--primary-color);
+            font-size: 1.3em;
+            margin-top: 35px;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 15px;
         }
 
         p,
         li {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-align: justify;
         }
 
+        ul {
+            padding-left: 20px;
+        }
+
         .highlight {
-            font-weight: bold;
-            color: #d32f2f;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .alert-box {
+            background-color: #fff5f5;
+            border: 1px dashed var(--accent-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.95em;
         }
 
         .footer {
             text-align: center;
-            margin-top: 30px;
-            font-size: 0.9em;
-            color: #777;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #95a5a6;
+            font-size: 0.85em;
         }
 
-        .last-updated {
-            font-style: italic;
-            color: #555;
-            text-align: center;
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
         }
     </style>
 </head>
@@ -69,65 +107,85 @@
         <h1>ĐIỀU KHOẢN DỊCH VỤ FATELINK</h1>
         <p class="last-updated">Cập nhật lần cuối: Ngày 29 tháng 03 năm 2026</p>
 
-        <p>Chào mừng bạn đến với <strong>FATELINK</strong> – Ứng dụng hẹn hò kết nối bằng cảm xúc. Trước khi bắt đầu
-            hành trình tìm kiếm sự đồng điệu, vui lòng đọc kỹ các Điều khoản Dịch vụ này.</p>
+        <div class="alert-box">
+            <strong>Tóm tắt quan trọng:</strong> FATELINK là nền tảng kết nối dựa trên cảm xúc và hỗ trợ bởi AI. Chúng
+            tôi không phải là dịch vụ tư vấn tâm lý chuyên nghiệp. Bạn hoàn toàn chịu trách nhiệm về các tương tác thực
+            tế với người dùng khác.
+        </div>
 
         <h2>1. Chấp thuận Điều khoản</h2>
-        <p>Bằng cách tạo tài khoản hoặc sử dụng ứng dụng FATELINK, bạn đồng ý bị ràng buộc bởi các Điều khoản này. Nếu
-            bạn không đồng ý với bất kỳ phần nào, vui lòng không sử dụng dịch vụ của chúng tôi.</p>
+        <p>Bằng việc cài đặt, tạo tài khoản hoặc sử dụng bất kỳ tính năng nào của FATELINK, bạn xác nhận đã đọc, hiểu và
+            đồng ý với toàn bộ các điều khoản này, bao gồm cả Chính sách Quyền riêng tư và Quy tắc Cộng đồng của chúng
+            tôi.</p>
 
-        <h2>2. Đối tượng Sử dụng</h2>
+        <h2>2. Điều kiện tham gia</h2>
         <ul>
-            <li>Bạn phải ít nhất <strong>18 tuổi</strong> để tạo tài khoản.</li>
-            <li>Bạn cam kết cung cấp thông tin trung thực và chịu trách nhiệm về tính chính xác của dữ liệu cá nhân.
+            <li>Bạn phải từ <span class="highlight">18 tuổi trở lên</span> tại thời điểm đăng ký.</li>
+            <li>Bạn cam kết cung cấp thông tin định danh chính xác. Việc giả mạo thông tin là vi phạm nghiêm trọng.</li>
+            <li>Bạn xác nhận chưa từng bị kết án về các tội danh liên quan đến bạo lực, xâm hại tình dục hoặc lừa đảo.
             </li>
-            <li>Bạn chưa từng bị kết án về tội danh liên quan đến xâm hại tình dục hoặc bạo lực.</li>
+            <li>FATELINK có quyền sử dụng công nghệ nhận diện để xác minh tính chính xác của ảnh hồ sơ.</li>
         </ul>
 
-        <h2>3. Dịch vụ "Bà mối AI" và Kết nối Cảm xúc</h2>
-        <p>FATELINK sử dụng công nghệ Trí tuệ nhân tạo (AI) để phân tích các chỉ số cảm xúc, sở thích và hành vi nhằm
-            mục đích đề xuất ghép đôi (Matching).</p>
+        <h2>3. Cơ chế hoạt động của "Bà mối AI"</h2>
+        <p>FATELINK cung cấp thuật toán AI để phân tích sự tương đồng về cảm xúc và hành vi nhằm đề xuất kết nối:</p>
         <ul>
-            <li><span class="highlight">Vai trò của AI:</span> AI đóng vai trò là bên trung gian hỗ trợ kết nối. Các gợi
-                ý của AI mang tính chất tham khảo dựa trên thuật toán.</li>
-            <li><span class="highlight">Dữ liệu Cảm xúc:</span> Bạn cho phép FATELINK thu thập và xử lý các dữ liệu về
-                cảm xúc mà bạn cung cấp chủ động (qua chat, hình ảnh, trắc nghiệm tâm lý) để cải thiện độ chính xác của
-                việc ghép đôi.</li>
-            <li><span class="highlight">Giới hạn:</span> Chúng tôi không đảm bảo rằng mọi kết nối do AI đề xuất đều dẫn
-                đến một mối quan hệ thành công ngoài đời thực.</li>
+            <li><span class="highlight">Tính tham khảo:</span> Các đề xuất từ AI chỉ mang tính chất gợi ý, không đảm bảo
+                sự hòa hợp tuyệt đối.</li>
+            <li><span class="highlight">Không phải tư vấn:</span> AI không thay thế cho các lời khuyên tâm lý, y tế hoặc
+                pháp lý chuyên nghiệp.</li>
+            <li><span class="highlight">Dữ liệu đầu vào:</span> AI học từ cách bạn tương tác. Bạn chịu trách nhiệm về
+                tính trung thực của dữ liệu cung cấp cho AI.</li>
         </ul>
 
-        <h2>4. Quy tắc Ứng xử và An toàn</h2>
-        <p>Để duy trì môi trường hẹn hò văn minh, bạn cam kết:</p>
+        <h2>4. Quyền sở hữu Nội dung</h2>
+        <p>Bạn giữ quyền sở hữu đối với các nội dung (ảnh, tin nhắn, hồ sơ) mà bạn đăng tải. Tuy nhiên, bạn cấp cho
+            FATELINK quyền sử dụng, sao chép và hiển thị các nội dung đó trên nền tảng nhằm mục đích vận hành và cải
+            thiện chất lượng dịch vụ.</p>
+
+        <h2>5. Quy tắc Ứng xử Nghiêm ngặt</h2>
+        <p>Bạn đồng ý <span class="highlight">KHÔNG</span> thực hiện các hành vi sau:</p>
         <ul>
-            <li>Không gửi các nội dung khiêu dâm, quấy rối, đe dọa hoặc thù ghét.</li>
-            <li>Không mạo danh người khác hoặc sử dụng hình ảnh không phải của mình.</li>
-            <li>Không sử dụng ứng dụng cho mục đích thương mại, lừa đảo hoặc bán hàng đa cấp.</li>
-            <li>Mọi hành vi vi phạm sẽ dẫn đến việc <strong>khóa tài khoản vĩnh viễn</strong> mà không cần báo trước.
+            <li>Gửi tin nhắn rác (spam), nội dung quảng cáo hoặc lừa đảo tài chính.</li>
+            <li>Quấy rối, đe dọa, xúc phạm hoặc sử dụng ngôn từ thù ghét đối với người dùng khác và nhân viên hỗ trợ.
             </li>
+            <li>Sử dụng bot hoặc các công cụ tự động để thao túng thuật toán kết nối cảm xúc.</li>
+            <li>Đăng tải nội dung khiêu dâm hoặc bạo lực.</li>
         </ul>
 
-        <h2>5. Quyền Riêng tư và Bảo mật</h2>
-        <p>Quyền riêng tư của bạn là ưu tiên hàng đầu của chúng tôi. Việc xử lý dữ liệu cá nhân được thực hiện theo
-            <span class="highlight">Chính sách Bảo mật</span> của FATELINK. Chúng tôi cam kết không bán dữ liệu cá nhân
-            của bạn cho bên thứ ba vì mục đích quảng cáo trái phép.</p>
+        <h2>6. Quyền hạn của Nền tảng</h2>
+        <p>FATELINK có quyền (nhưng không có nghĩa vụ) thực hiện các hành động sau mà không cần báo trước:</p>
+        <ul>
+            <li>Xóa bỏ nội dung bị coi là vi phạm tiêu chuẩn cộng đồng.</li>
+            <li>Tạm khóa hoặc <span class="highlight">khóa vĩnh viễn</span> tài khoản vi phạm điều khoản.</li>
+            <li>Điều chỉnh tính năng ứng dụng để tối ưu hóa trải nghiệm người dùng.</li>
+        </ul>
 
-        <h2>6. Gói Dịch vụ và Thanh toán</h2>
-        <p>FATELINK có thể cung cấp các tính năng cao cấp thông qua các gói đăng ký trả phí. Mọi giao dịch thanh toán sẽ
-            được thực hiện qua các cổng thanh toán trung gian hợp pháp. Chính sách hoàn tiền sẽ tuân theo quy định của
-            từng nền tảng (App Store hoặc Google Play).</p>
+        <h2>7. Thanh toán và Gói dịch vụ</h2>
+        <p>Các giao dịch mua tính năng (như tăng lượt hiển thị, xem ai đã thích) được thực hiện qua các nền tảng trung
+            gian (Apple Pay, Google Pay, ZaloPay...). Mọi khiếu nại về hoàn tiền sẽ tuân theo chính sách của các nền
+            tảng thanh toán này.</p>
 
-        <h2>7. Giới hạn Trách nhiệm</h2>
-        <p>FATELINK không chịu trách nhiệm về hành vi của bất kỳ người dùng nào dù là trực tuyến hay ngoại tuyến. Bạn
-            nên thận trọng khi gặp gỡ trực tiếp những người bạn đã kết nối qua ứng dụng.</p>
+        <h2>8. Giới hạn Trách nhiệm pháp lý</h2>
+        <p>Trong phạm vi tối đa pháp luật cho phép, FATELINK không chịu trách nhiệm về bất kỳ tổn thất trực tiếp hoặc
+            gián tiếp nào phát sinh từ việc kết nối giữa các người dùng ngoài đời thực. Bạn được khuyến cáo nên thực
+            hiện các biện pháp an toàn khi gặp gỡ người lạ.</p>
 
-        <h2>8. Thay đổi Điều khoản</h2>
-        <p>Chúng tôi có quyền sửa đổi các điều khoản này bất kỳ lúc nào. Các thay đổi sẽ có hiệu lực ngay khi được đăng
-            tải trên ứng dụng. Việc bạn tiếp tục sử dụng FATELINK đồng nghĩa với việc bạn chấp nhận các thay đổi đó.</p>
+        <h2>9. Luật áp dụng và Giải quyết tranh chấp</h2>
+        <p>Các Điều khoản này được điều chỉnh bởi pháp luật nước Cộng hòa Xã hội Chủ nghĩa Việt Nam. Mọi tranh chấp phát
+            sinh sẽ được ưu tiên giải quyết thông qua thương lượng, trường hợp không đạt được thỏa thuận sẽ do Tòa án có
+            thẩm quyền tại Việt Nam phân xử.</p>
+
+        <h2>10. Liên hệ</h2>
+        <p>Mọi thắc mắc hoặc báo cáo vi phạm, vui lòng gửi về: <br>
+            <strong>Email:</strong> <a href="mailto:support@fatelink.vn"
+                style="color: var(--accent-color); text-decoration: none;">support@fatelink.vn</a><br>
+            <strong>Địa chỉ:</strong> Văn phòng FATELINK, TP. Hải Phòng, Việt Nam.
+        </p>
 
         <div class="footer">
-            <p>&copy; 2026 FATELINK Team. All rights reserved.</p>
-            <p>Liên hệ hỗ trợ: support@fatelink.vn</p>
+            <p>&copy; 2026 FATELINK. All Rights Reserved.</p>
+            <p>Kết nối định mệnh - Lan tỏa cảm xúc chân thực.</p>
         </div>
     </div>
 
