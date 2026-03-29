@@ -28,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen>
   // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
   // Môi trường test (máy ảo iOS/Web): 'http://localhost:3000'
   // Môi trường máy Android thật: 'http://192.168.1.8:3000'
-  static const String _baseUrl = 'http://192.168.1.8:3000';
+  static const String _baseUrl = 'https://fatelink-production.up.railway.app';
   // static const String _baseUrl = 'http://10.0.2.2:3000';
 
   String _status = 'Chưa đăng nhập';
