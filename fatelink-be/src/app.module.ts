@@ -23,7 +23,7 @@ import { join } from 'path';
     UsersModule,
     AuthModule,
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
+      rootPath: join(process.cwd(), 'public'),
     }),
   ],
   controllers: [AppController],
