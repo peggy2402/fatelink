@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/screens/welcome_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -197,7 +198,9 @@ class _LoginScreenState extends State<LoginScreen>
             () =>
                 _status = '✅ ĐĂNG NHẬP THÀNH CÔNG!\nToken đã được lưu an toàn.',
           );
-          // TODO: Chuyển sang màn hình Home/Chat
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+          );
         } else {
           setState(() => _status = '❌ Lỗi Backend: Mã ${response.statusCode}');
         }

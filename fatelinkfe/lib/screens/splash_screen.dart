@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
-// import 'package:fatelinkfe/screens/home_screen.dart'; // TODO: Tạo và import màn hình Home
+import 'package:fatelinkfe/screens/welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,9 +32,7 @@ class _SplashScreenState extends State<SplashScreen> {
         // Nếu có token, chuyển đến màn hình Home
         // TODO: Thay thế bằng màn hình Home/Chat thực tế
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const PlaceholderScreen(title: 'Home Screen'),
-          ),
+          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
         );
       } else {
         // Nếu không có token, chuyển đến màn hình Login
@@ -76,20 +74,6 @@ class _SplashScreenState extends State<SplashScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-// Widget giữ chỗ tạm thời cho màn hình Home
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('Chào mừng đến với $title!')),
     );
   }
 }

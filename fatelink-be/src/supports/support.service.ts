@@ -17,7 +17,7 @@ export class SupportService {
     // Tạo payload Embed định dạng siêu đẹp cho Discord
     const discordPayload = {
       username: "FateLink Support Bot",
-      avatar_url: "https://i.imgur.com/oDrsLre.png", // Link logo FateLink
+      avatar_url: "https://cdn.phototourl.com/free/2026-03-29-184da892-ad88-4edd-8767-22a3c5ad5aa7.png", // Link logo FateLink
       embeds: [
         {
           title: "🚨 Yêu Cầu Hỗ Trợ Mới",
