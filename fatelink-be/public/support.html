@@ -22,51 +22,87 @@
         }
         .container {
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
+            background: rgba(10, 20, 35, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
         h2 {
-            color: #BD114A;
+            color: #ffffff;
             text-align: center;
-            margin-bottom: 24px;
-            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 26px;
             font-weight: 700;
-            text-shadow: 0 0 10px rgba(215, 86, 86, 0.5);
+        }
+        .subtitle {
+            color: #A0B0B9;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 30px;
+            margin-top: 0;
         }
         label {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            color: #F8BBD0;
+            color: #E2E8F0;
             display: block;
             margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         input, textarea {
             width: 100%;
-            padding: 14px;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 24px;
             border-radius: 12px;
-            border: none;
-            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.2);
             color: white;
             box-sizing: border-box;
             font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.3);
         }
         input:focus, textarea:focus {
-            outline: 2px solid #BD114A;
+            outline: none;
+            border-color: #BD114A;
+            background-color: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 4px rgba(189, 17, 74, 0.2);
         }
         button {
-            background-color: #BD114A;
+            background: linear-gradient(135deg, #BD114A 0%, #D75656 100%);
             color: white;
-            padding: 16px;
+            padding: 17px;
             width: 100%;
             border: none;
             border-radius: 28px;
             font-weight: bold;
             font-size: 16px;
             cursor: pointer;
-            margin-top: 12px;
+            margin-top: 8px;
+            box-shadow: 0 8px 20px rgba(189, 17, 74, 0.3);
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(189, 17, 74, 0.4);
         }
         button:active {
             transform: scale(0.98);
+        }
+        button:disabled {
+            background: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* Modal styles */
@@ -89,56 +125,72 @@
             visibility: visible;
         }
         .modal-content {
-            background: #002B3D;
-            padding: 30px;
-            border-radius: 16px;
+            background: rgba(10, 20, 35, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px 30px;
+            border-radius: 24px;
             text-align: center;
             width: 90%;
-            max-width: 320px;
+            max-width: 340px;
             transform: scale(0.9);
-            transition: transform 0.3s;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
         .modal-overlay.visible .modal-content {
             transform: scale(1);
         }
         .modal-content h3 {
-            color: #F8BBD0;
-            margin-top: 0;
+            color: #ffffff;
+            font-size: 22px;
+            margin-top: 16px;
+            margin-bottom: 12px;
         }
         .modal-content p {
-            color: #eee;
+            color: #A0B0B9;
             font-size: 14px;
             line-height: 1.6;
+            margin-bottom: 24px;
         }
         .modal-content button {
-            background-color: #BD114A;
-            margin-top: 20px;
-            padding: 12px;
-            font-size: 15px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+            margin-top: 0;
         }
         .modal-icon {
-            font-size: 48px;
+            font-size: 42px;
+            background: rgba(16, 185, 129, 0.1);
+            width: 80px;
+            height: 80px;
+            line-height: 80px;
+            border-radius: 50%;
+            margin: 0 auto;
+            color: #10B981;
         }
     </style>
 </head>
 <body>
-    <h2>Gửi Yêu Cầu Hỗ Trợ</h2>
-    <form id="supportForm">
-        <label for="name">Họ và tên</label>
-        <input type="text" id="name" required placeholder="Nhập họ và tên của bạn...">
-        
-        <label for="email">Địa chỉ Email</label>
-        <input type="email" id="email" required placeholder="Nhập email để chúng tôi liên hệ lại...">
-        
-        <label for="content">Nội dung cần hỗ trợ</label>
-        <textarea id="content" rows="5" required placeholder="Vui lòng mô tả chi tiết vấn đề bạn đang gặp phải..."></textarea>
-        
-        <button type="submit">GỬI YÊU CẦU</button>
-    </form>
+    <div class="container">
+        <h2>Gửi Yêu Cầu Hỗ Trợ</h2>
+        <p class="subtitle">Chúng tôi luôn sẵn sàng lắng nghe và giúp đỡ bạn</p>
+        <form id="supportForm">
+            <label for="name">Họ và tên</label>
+            <input type="text" id="name" required placeholder="Nhập họ và tên của bạn...">
+            
+            <label for="email">Địa chỉ Email</label>
+            <input type="email" id="email" required placeholder="Nhập email để chúng tôi liên hệ lại...">
+            
+            <label for="content">Nội dung cần hỗ trợ</label>
+            <textarea id="content" rows="5" required placeholder="Vui lòng mô tả chi tiết vấn đề bạn đang gặp phải..."></textarea>
+            
+            <button type="submit">GỬI YÊU CẦU</button>
+        </form>
+    </div>
 
     <div class="modal-overlay" id="successModal">
         <div class="modal-content">
-            <div class="modal-icon">💌</div>
+            <div class="modal-icon">✅</div>
             <h3>Gửi thành công!</h3>
             <p>Yêu cầu của bạn đã được gửi đến đội ngũ FateLink. Chúng tôi sẽ phản hồi sớm nhất có thể.</p>
             <button id="closeModalBtn">Tuyệt vời!</button>
