@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hỗ trợ FateLink</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #002B3D;
+            color: white;
+            padding: 24px;
+            margin: 0;
+        }
+        h2 {
+            color: #BD114A;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #F8BBD0;
+            display: block;
+            margin-bottom: 8px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        input:focus, textarea:focus {
+            outline: 2px solid #BD114A;
+        }
+        button {
+            background-color: #BD114A;
+            color: white;
+            padding: 16px;
+            width: 100%;
+            border: none;
+            border-radius: 28px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <h2>Gửi Yêu Cầu Hỗ Trợ</h2>
+    <form id="supportForm">
+        <label for="name">Họ và tên</label>
+        <input type="text" id="name" required placeholder="Nhập họ và tên của bạn...">
+        
+        <label for="email">Địa chỉ Email</label>
+        <input type="email" id="email" required placeholder="Nhập email để chúng tôi liên hệ lại...">
+        
+        <label for="content">Nội dung cần hỗ trợ</label>
+        <textarea id="content" rows="5" required placeholder="Vui lòng mô tả chi tiết vấn đề bạn đang gặp phải..."></textarea>
+        
+        <button type="submit">GỬI YÊU CẦU</button>
+    </form>
+
+    <script>
+        document.getElementById('supportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'ĐANG GỬI...';
+
+            const data = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                content: document.getElementById('content').value
+            };
+
+            try {
+                const response = await fetch('/support', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Gửi yêu cầu hỗ trợ thành công! Đội ngũ FateLink sẽ sớm liên hệ với bạn.');
+                    e.target.reset();
+                } else {
+                    alert('Có lỗi từ máy chủ, vui lòng thử lại sau.');
+                }
+            } catch (error) {
+                alert('Lỗi kết nối. Vui lòng kiểm tra lại đường truyền mạng!');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'GỬI YÊU CẦU';
+            }
+        });
+    </script>
+</body>
+</html>

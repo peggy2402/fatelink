@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -12,21 +13,24 @@ export class UsersService {
    * @param profile - The user profile data from Google.
    * @returns The found or newly created user document.
    */
-  async findOrCreate(profile: {
-    email: string;
-    name?: string;
-    avatar?: string;
-    googleId: string;
-  }): Promise<UserDocument> {
-    const user = await this.userModel.findOne({ email: profile.email }).exec();
-
-    if (user) {
-      console.log('✅ User CŨ đăng nhập:', user.email);
-      return user;
-    }
-
-    const newUser = await this.userModel.create(profile);
-    console.log('✅ Đã lưu User MỚI vào MongoDB:', newUser.email);
-    return newUser;
+  async findOrCreate(profile: CreateUserDto): Promise<UserDocument> {
+    const user = await this.userModel
+      .findOneAndUpdate(
+        { email: profile.email }, // Điều kiện tìm kiếm
+        {
+          // Dữ liệu sẽ được cập nhật nếu tìm thấy, hoặc tạo mới nếu không tìm thấy
+          $set: {
+            name: profile.name,
+            avatar: profile.avatar,
+          },
+          $setOnInsert: {
+            email: profile.email,
+            googleId: profile.googleId,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }, // Tùy chọn: upsert=tạo nếu không có, new=trả về document mới
+      )
+      .exec();
+    return user;
   }
 }

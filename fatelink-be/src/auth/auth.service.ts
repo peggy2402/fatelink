@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +37,7 @@ export class AuthService {
       console.log('Thông tin user từ Google:', payload);
 
       // 3. Tìm hoặc tạo User mới trong MongoDB
-      const userProfile = {
+      const userProfile: CreateUserDto = {
         email: payload.email,
         name: payload.name || '',
         avatar: payload.picture || '',

@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { SupportModule } from './supports/support.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -22,6 +23,7 @@ import { join } from 'path';
     }),
     UsersModule,
     AuthModule,
+    SupportModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
     }),

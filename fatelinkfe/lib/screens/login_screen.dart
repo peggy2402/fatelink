@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,6 +37,9 @@ class _LoginScreenState extends State<LoginScreen>
   String _status = 'Chưa đăng nhập';
   bool _agreedToTerms = true; // Biến lưu trạng thái auto-check điều khoản
   bool _isPressed = false;
+
+  // Khởi tạo Secure Storage
+  final _secureStorage = const FlutterSecureStorage();
 
   late final AnimationController _bounceController;
   late final Animation<double> _bounceAnimation;
@@ -182,10 +186,18 @@ class _LoginScreenState extends State<LoginScreen>
         _writeLog('📥 HTTP Response Body nhận được: ${response.body}');
 
         if (response.statusCode == 201 || response.statusCode == 200) {
+          final responseData = jsonDecode(response.body);
+          final String backendToken = responseData['accessToken'];
+
+          // 4. Lưu Access Token vào Secure Storage
+          await _secureStorage.write(key: 'accessToken', value: backendToken);
+          _writeLog('✅ Đã lưu Access Token vào Secure Storage!');
+
           setState(
-            () => _status =
-                '✅ ĐĂNG NHẬP THÀNH CÔNG!\nBackend phản hồi:\n${response.body}',
+            () =>
+                _status = '✅ ĐĂNG NHẬP THÀNH CÔNG!\nToken đã được lưu an toàn.',
           );
+          // TODO: Chuyển sang màn hình Home/Chat
         } else {
           setState(() => _status = '❌ Lỗi Backend: Mã ${response.statusCode}');
         }
@@ -254,8 +266,8 @@ class _LoginScreenState extends State<LoginScreen>
                     // Khối Logo & Text
                     Image.asset(
                       'assets/icon/app_logo.png',
-                      width: 65,
-                      height: 65,
+                      width: 75,
+                      height: 75,
                     ),
                     const SizedBox(width: 16),
                     const Column(
@@ -265,15 +277,25 @@ class _LoginScreenState extends State<LoginScreen>
                           'FATELINK',
                           style: TextStyle(
                             fontFamily: 'serif',
-                            color: Colors.black87,
-                            fontSize: 26,
+                            color: Color(0xFFBD114A),
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 4.0,
                             shadows: [
+                              // Lớp Glow sáng mạnh ở gần
                               Shadow(
-                                color: Color(0x66FF0000),
-                                offset: Offset(0, 2),
-                                blurRadius: 4.0,
+                                color: Color(0xFFD75656),
+                                offset: Offset(
+                                  0,
+                                  0,
+                                ), // Đặt offset 0,0 để tỏa đều 4 hướng
+                                blurRadius: 12.0,
+                              ),
+                              // Lớp Glow mờ tỏa ra xa
+                              Shadow(
+                                color: Color(0x88D75656),
+                                offset: Offset(0, 0),
+                                blurRadius: 24.0,
                               ),
                             ],
                           ),
@@ -282,15 +304,15 @@ class _LoginScreenState extends State<LoginScreen>
                         Text(
                           '🔥Not random! It\'s Fate',
                           style: TextStyle(
-                            color: Colors.red,
+                            color: Color(0xFFBD114A),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 3.0, // Tăng độ dãn chữ
+                            letterSpacing: 4.0, // Tăng độ dãn chữ
                             shadows: [
                               Shadow(
-                                color: Color(0x44FF0000),
-                                offset: Offset(0, 1),
-                                blurRadius: 2.0,
+                                color: Color(0x88D75656),
+                                offset: Offset(0, 0),
+                                blurRadius: 8.0, // Glow nhẹ cho slogan
                               ),
                             ],
                           ),
@@ -300,7 +322,9 @@ class _LoginScreenState extends State<LoginScreen>
                     const Spacer(), // Đẩy icon support sang phải
                     // Icon Support
                     GestureDetector(
-                      onTap: _showLogDialog,
+                      onTap: () {
+                        _launchURL('$_baseUrl/support.html');
+                      },
                       child: Image.asset(
                         'assets/icon/icon-support.png',
                         width: 28,
@@ -424,6 +448,35 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                         ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Divider(
+                                  color: Colors.white54,
+                                  thickness: 0.5,
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text(
+                                  'Các tùy chọn đăng nhập khác',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(
+                                  color: Colors.white54,
+                                  thickness: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -463,8 +516,12 @@ class _LoginScreenState extends State<LoginScreen>
                                       : Icons.radio_button_unchecked,
                                   key: ValueKey<bool>(_agreedToTerms),
                                   color: _agreedToTerms
-                                      ? Colors
-                                            .greenAccent // Màu xanh báo hiệu đã tích OK
+                                      ? const Color.fromARGB(
+                                          255,
+                                          184,
+                                          235,
+                                          67,
+                                        ) // Màu xanh báo hiệu đã tích OK
                                       : Colors.white70, // Hơi mờ khi chưa tích
                                   size: 22, // Tăng size lên một chút cho dễ bấm
                                 ),
@@ -549,15 +606,17 @@ class _LoginScreenState extends State<LoginScreen>
     return SizedBox(
       width: 48,
       height: 48,
-      child: Image.asset(
-        imagePath,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white24,
-            shape: BoxShape.circle,
+      child: ClipOval(
+        child: Image.asset(
+          imagePath,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white24,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.broken_image, color: Colors.white),
           ),
-          child: const Icon(Icons.broken_image, color: Colors.white),
         ),
       ),
     );
