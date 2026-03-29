@@ -1,5 +1,5 @@
 
-# 📱 FateLink – Kết Nối Định Mệnh
+# <img src="https://cdn.phototourl.com/free/2026-03-29-184da892-ad88-4edd-8767-22a3c5ad5aa7.png" width="30"> FATELINK – Kết Nối Định Mệnh
 
 ## 🧠 Overview
 **FateLink** là ứng dụng mobile sử dụng AI để:
