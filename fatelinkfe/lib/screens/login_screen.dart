@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -208,6 +210,16 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (error) {
       setState(() => _status = '❌ Lỗi: $error');
       _writeLog('❌ BẮT ĐƯỢC LỖI TRONG QUÁ TRÌNH ĐĂNG NHẬP: $error');
+    }
+  }
+
+  // --- HÀM MỞ URL ---
+  Future<void> _launchURL(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      // Hiển thị lỗi nếu không mở được URL
+      _writeLog('❌ Không thể mở URL: $urlString');
+      setState(() => _status = 'Lỗi: Không thể mở liên kết.');
     }
   }
 
@@ -446,11 +458,11 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: Text.rich(
                                 TextSpan(
                                   text: 'Tôi đã đọc và đồng ý với ',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
                                     height: 1.5,
@@ -458,27 +470,49 @@ class _LoginScreenState extends State<LoginScreen>
                                   children: [
                                     TextSpan(
                                       text: 'Điều khoản Dịch vụ',
-                                      style: TextStyle(color: Colors.red),
+                                      style: const TextStyle(color: Colors.red),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          _launchURL('$_baseUrl/terms.html');
+                                        },
                                     ),
-                                    TextSpan(text: ' & '),
+                                    const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Chính sách Riêng Tư',
-                                      style: TextStyle(color: Colors.red),
+                                      style: const TextStyle(color: Colors.red),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          _launchURL('$_baseUrl/privacy.html');
+                                        },
                                     ),
-                                    TextSpan(text: ' & '),
+                                    const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Chính sách Cookie',
-                                      style: TextStyle(color: Colors.red),
+                                      style: const TextStyle(color: Colors.red),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          _launchURL('$_baseUrl/cookies.html');
+                                        },
                                     ),
-                                    TextSpan(text: ' & '),
+                                    const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Quy tắc của nền tảng',
-                                      style: TextStyle(color: Colors.red),
+                                      style: const TextStyle(color: Colors.red),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          _launchURL('$_baseUrl/rules.html');
+                                        },
                                     ),
-                                    TextSpan(text: ' & '),
+                                    const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Quy định an toàn trẻ em SOP',
-                                      style: TextStyle(color: Colors.red),
+                                      style: const TextStyle(color: Colors.red),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          _launchURL(
+                                            '$_baseUrl/child-safety.html',
+                                          );
+                                        },
                                     ),
                                   ],
                                 ),

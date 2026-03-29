@@ -27,6 +27,7 @@
     "@nestjs/mongoose": "^11.0.4",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/serve-static": "^5.0.4",
     "@vercel/node": "^5.6.21",
     "google-auth-library": "^10.6.2",
     "mongoose": "^9.3.3",
