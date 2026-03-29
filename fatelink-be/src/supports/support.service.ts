@@ -17,15 +17,15 @@ export class SupportService {
     // Tạo payload Embed định dạng siêu đẹp cho Discord
     const discordPayload = {
       username: "FateLink Support Bot",
-      avatar_url: "https://sf-static.upanhlaylink.com/img/image_202603298e99ebdf10483bb3c86e2be28ef92788.jpg", // Bạn có thể thay bằng link ảnh logo thực tế
+      avatar_url: "https://i.imgur.com/oDrsLre.png", // Link logo FateLink
       embeds: [
         {
           title: "🚨 Yêu Cầu Hỗ Trợ Mới",
           color: 12390730, // Màu HEX #BD114A chuyển sang Decimal
           fields: [
-            { name: "👤 Họ và tên", value: body.name || "Không có", inline: true },
-            { name: "📧 Email", value: body.email || "Không có", inline: true },
-            { name: "📝 Nội dung cần hỗ trợ", value: body.content || "Không có" }
+            { name: "👤 Người gửi", value: `**${body.name}**`, inline: true },
+            { name: "📧 Email", value: `||${body.email}||`, inline: true },
+            { name: "📝 Nội dung", value: "```" + body.content + "```" }
           ],
           timestamp: new Date().toISOString(),
           footer: {
