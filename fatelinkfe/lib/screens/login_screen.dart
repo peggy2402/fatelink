@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/welcome_screen.dart';
+import 'package:fatelinkfe/utils/toast_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,7 +36,6 @@ class _LoginScreenState extends State<LoginScreen>
   static const String _baseUrl = 'https://fatelink-production.up.railway.app';
   // static const String _baseUrl = 'http://10.0.2.2:3000';
 
-  String _status = 'Chưa đăng nhập';
   bool _agreedToTerms = true; // Biến lưu trạng thái auto-check điều khoản
   bool _isPressed = false;
 
@@ -128,9 +128,7 @@ class _LoginScreenState extends State<LoginScreen>
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Chưa có file log nào được tạo.')),
-          );
+          ToastUtil.showInfo(context, 'Chưa có file log nào được tạo.');
         }
       }
     } catch (e) {
@@ -140,21 +138,19 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleGoogleSignIn() async {
     if (!_agreedToTerms) {
-      setState(
-        () => _status =
-            '❌ Vui lòng đồng ý với các điều khoản trước khi tiếp tục.',
+      ToastUtil.showError(
+        context,
+        'Vui lòng đồng ý với các điều khoản trước khi tiếp tục.',
       );
       return;
     }
 
     try {
-      setState(() => _status = 'Đang mở Google Sign In...');
       _writeLog('--- BẮT ĐẦU LUỒNG ĐĂNG NHẬP GOOGLE ---');
 
       // 1. Mở popup/màn hình đăng nhập Google của hệ điều hành
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _status = 'Đã hủy đăng nhập');
         _writeLog('⚠️ Người dùng đã đóng popup hoặc hủy đăng nhập.');
         return;
       }
@@ -169,7 +165,6 @@ class _LoginScreenState extends State<LoginScreen>
       if (idToken != null) {
         // Tạm thời in toàn bộ token ra console để copy test trên Postman
         _writeLog('✅ Lấy được FULL ID Token: $idToken');
-        setState(() => _status = 'Đã lấy được Token!\nĐang gửi lên Backend...');
 
         // 3. Gửi Token lên Backend NestJS
         // LƯU Ý: Nếu bạn chạy bằng máy ảo Android (Emulator), phải dùng 10.0.2.2 thay vì localhost
@@ -194,19 +189,26 @@ class _LoginScreenState extends State<LoginScreen>
           await _secureStorage.write(key: 'accessToken', value: backendToken);
           _writeLog('✅ Đã lưu Access Token vào Secure Storage!');
 
-          setState(
-            () =>
-                _status = '✅ ĐĂNG NHẬP THÀNH CÔNG!\nToken đã được lưu an toàn.',
-          );
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-          );
+          if (mounted) {
+            ToastUtil.showSuccess(context, 'Đăng nhập thành công!');
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+            );
+          }
         } else {
-          setState(() => _status = '❌ Lỗi Backend: Mã ${response.statusCode}');
+          if (mounted)
+            ToastUtil.showError(
+              context,
+              'Không thể kết nối tới máy chủ. Vui lòng thử lại!',
+            );
         }
       } else {
-        setState(() => _status = '❌ Không lấy được ID Token từ Google');
         _writeLog('❌ Không lấy được ID Token từ Google');
+        if (mounted)
+          ToastUtil.showError(
+            context,
+            'Đăng nhập thất bại: Không lấy được dữ liệu từ Google.',
+          );
       }
     } on PlatformException catch (e) {
       String errorMessage = e.message ?? e.toString();
@@ -220,11 +222,16 @@ class _LoginScreenState extends State<LoginScreen>
             '3. Đảm bảo ID dán ở serverClientId là loại "Web application".\n'
             '4. Thêm email test vào màn hình OAuth Consent Screen.';
       }
-      setState(() => _status = '❌ Lỗi: $errorMessage');
       _writeLog('❌ LỖI PLATFORM: $errorMessage');
+      if (mounted)
+        ToastUtil.showError(context, 'Đã xảy ra lỗi hệ thống khi đăng nhập.');
     } catch (error) {
-      setState(() => _status = '❌ Lỗi: $error');
       _writeLog('❌ BẮT ĐƯỢC LỖI TRONG QUÁ TRÌNH ĐĂNG NHẬP: $error');
+      if (mounted)
+        ToastUtil.showError(
+          context,
+          'Đăng nhập thất bại. Vui lòng thử lại sau.',
+        );
     }
   }
 
@@ -234,7 +241,9 @@ class _LoginScreenState extends State<LoginScreen>
     if (!await launchUrl(url)) {
       // Hiển thị lỗi nếu không mở được URL
       _writeLog('❌ Không thể mở URL: $urlString');
-      setState(() => _status = 'Lỗi: Không thể mở liên kết.');
+      if (mounted) {
+        ToastUtil.showError(context, 'Không thể mở liên kết.');
+      }
     }
   }
 
@@ -381,15 +390,6 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        if (_status != 'Chưa đăng nhập')
-                          Text(
-                            _status,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
                         // --- Nút bấm với hiệu ứng ---
                         Listener(
                           onPointerDown: (_) =>
@@ -504,6 +504,18 @@ class _LoginScreenState extends State<LoginScreen>
                                 setState(() {
                                   _agreedToTerms = !_agreedToTerms;
                                 });
+
+                                if (_agreedToTerms) {
+                                  ToastUtil.showSuccess(
+                                    context,
+                                    'Đã đồng ý với các điều khoản.',
+                                  );
+                                } else {
+                                  ToastUtil.showInfo(
+                                    context,
+                                    'Vui lòng đồng ý điều khoản để tiếp tục nhé.',
+                                  );
+                                }
                               },
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
@@ -540,6 +552,24 @@ class _LoginScreenState extends State<LoginScreen>
                                     fontSize: 12,
                                     height: 1.5,
                                   ),
+                                  // Cho phép bấm vào dòng chữ này cũng có tác dụng như bấm vào checkbox
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      setState(() {
+                                        _agreedToTerms = !_agreedToTerms;
+                                      });
+                                      if (_agreedToTerms) {
+                                        ToastUtil.showSuccess(
+                                          context,
+                                          'Đã đồng ý với các điều khoản.',
+                                        );
+                                      } else {
+                                        ToastUtil.showInfo(
+                                          context,
+                                          'Vui lòng đồng ý điều khoản để tiếp tục nhé.',
+                                        );
+                                      }
+                                    },
                                   children: [
                                     TextSpan(
                                       text: 'Điều khoản Dịch vụ',

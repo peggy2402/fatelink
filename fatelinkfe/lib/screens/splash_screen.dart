@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:lottie/lottie.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
 import 'package:fatelinkfe/screens/welcome_screen.dart';
 
@@ -20,8 +21,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    // Đợi một chút để hiển thị splash screen cho đẹp
-    await Future.delayed(const Duration(seconds: 2));
+    // Tăng thời gian chờ để khớp với Lottie animation và typography effect
+    await Future.delayed(const Duration(seconds: 3));
 
     try {
       final accessToken = await _secureStorage.read(key: 'accessToken');
@@ -53,24 +54,60 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF002B3D),
-      body: Center(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
+            colors: [
+              Color(0xFF002B3D), // Màu xanh biển sâu làm tâm điểm
+              Color(0xFF00080D), // Đen tĩnh mịch và bí ẩn viền ngoài
+            ],
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/icon/app_logo.png', width: 120, height: 120),
-            const SizedBox(height: 24),
-            const Text(
-              'FATELINK',
-              style: TextStyle(
-                color: Color(0xFFBD114A),
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4.0,
-              ),
+            Lottie.asset(
+              'assets/icon/bounce_logo.json',
+              width: 250,
+              height: 250,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 20),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 1500),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, 20 * (1 - value)), // Trượt lên nhẹ nhàng
+                    child: Text(
+                      'FATELINK',
+                      style: TextStyle(
+                        color: const Color(0xFFBD114A),
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 6.0,
+                        shadows: [
+                          Shadow(
+                            color: const Color(0xFFBD114A).withOpacity(0.6),
+                            blurRadius: 15.0, // Hiệu ứng Glow sát chữ
+                          ),
+                          Shadow(
+                            color: const Color(0xFFBD114A).withOpacity(0.3),
+                            blurRadius: 30.0, // Hiệu ứng Glow lan toả
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
