@@ -1,4 +1,3 @@
-// src/ai/gemini.service.ts
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { GoogleGenerativeAI, GenerativeModel, Content } from '@google/generative-ai';
 
@@ -7,11 +6,11 @@ export class GeminiService {
   private ai: GoogleGenerativeAI;
   private model: GenerativeModel;
 
-  // Đưa System Prompt từ PROMPT.md và SYSTEMREADME.md vào đây để "huấn luyện" tính cách AI
+  // System Prompt được nạp từ thiết kế tính cách (Memories / PROMPT)
   private readonly fayeSystemInstruction = `
-    Bạn là FateLink AI (tên là Faye) – một người bạn đồng hành tinh tế, nói chuyện tự nhiên, có chiều sâu và linh hoạt như người thật. 
-    Mục tiêu của bạn gồm 2 giai đoạn: 
-    1. Hiểu con người người dùng (tính cách, cảm xúc, gu, cách yêu) 
+    Bạn là FateLink AI (tên là Faye) – một người bạn đồng hành tinh tế, nói chuyện tự nhiên, có chiều sâu và linh hoạt như người thật.
+    Mục tiêu của bạn gồm 2 giai đoạn:
+    1. Hiểu con người người dùng (tính cách, cảm xúc, gu, cách yêu)
     2. Khi đã đủ hiểu → chuyển sang ghép cặp một cách tự nhiên.
     
     NGUYÊN TẮC CỐT LÕI:
@@ -21,56 +20,42 @@ export class GeminiService {
     - Không list, không gạch đầu dòng, không "AI tone".
     - Luôn để mở để user trả lời tiếp.
     - Trước khi match, phải có 1 câu xác nhận ngầm kiểu: "nghe bạn giống kiểu..."
-    - Bạn KHÔNG phải là người "hỏi thông tin" → bạn là người khiến user muốn nói về bản thân.
+
+    QUAN TRỌNG: Bạn BẮT BUỘC phải trả về phản hồi dưới định dạng JSON chính xác như sau, tuyệt đối không bọc trong markdown (như \`\`\`json):
+    {
+      "reply": "Câu trả lời tự nhiên của bạn dành cho user",
+      "detected_emotion": "Vui | Buồn | Cô đơn | Áp lực | Rỗng tuếch | Phấn khích",
+      "is_ready_to_match": true/false
+    }
   `;
 
   constructor() {
-    // Đảm bảo bạn đã thêm GEMINI_API_KEY vào file .env
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not defined in environment variables');
-    }
-
-    this.ai = new GoogleGenerativeAI(apiKey);
+    if (!apiKey) console.warn('⚠️ Chưa cấu hình GEMINI_API_KEY trong file .env');
     
-    // Sử dụng model 1.5 để hỗ trợ systemInstruction
+    this.ai = new GoogleGenerativeAI(apiKey || 'DUMMY_KEY');
+    
     this.model = this.ai.getGenerativeModel({
       model: 'gemini-1.5-flash',
       systemInstruction: this.fayeSystemInstruction,
       generationConfig: {
-        temperature: 0.7, // Nhiệt độ vừa phải để AI sáng tạo nhưng vẫn giữ được tính cách
+        temperature: 0.7,
         topP: 0.8,
-        topK: 40,
       },
     });
   }
 
-  /**
-   * Hàm chat với AI có lưu trữ lịch sử cuộc hội thoại thực tế
-   * @param userMessage Tin nhắn mới nhất của người dùng
-   * @param chatHistory Lịch sử chat lấy từ Database (đã format chuẩn Gemini)
-   */
   async sendMessage(userMessage: string, chatHistory: Content[] = []): Promise<string> {
     try {
-      // Khởi tạo phiên chat với lịch sử đã có
-      const chatSession = this.model.startChat({
-        history: chatHistory,
-      });
-
-      // Gửi tin nhắn mới
+      const chatSession = this.model.startChat({ history: chatHistory });
       const result = await chatSession.sendMessage(userMessage);
-      const responseText = result.response.text();
-
-      return responseText;
+      return result.response.text();
     } catch (error) {
       console.error('Lỗi khi gọi Gemini API:', error);
       throw new InternalServerErrorException('Faye đang bận chút việc, bạn thử lại sau nhé!');
     }
   }
 
-  /**
-   * Hàm helper để chuyển đổi lịch sử từ DB của bạn sang định dạng của Gemini
-   */
   formatHistoryForGemini(dbMessages: any[]): Content[] {
     return dbMessages.map((msg) => ({
       role: msg.isSentByMe ? 'user' : 'model',

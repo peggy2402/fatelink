@@ -9,6 +9,8 @@ import { SupportModule } from './supports/support.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { AiModule } from './ai/ai.module';
+import { MessageModule } from './message/message.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { join } from 'path';
     UsersModule,
     AuthModule,
     SupportModule,
+    AiModule,
+    MessageModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
     }),

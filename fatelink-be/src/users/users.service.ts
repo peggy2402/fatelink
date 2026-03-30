@@ -33,4 +33,17 @@ export class UsersService {
       .exec();
     return user;
   }
+
+  /**
+   * Cập nhật trạng thái cảm xúc của người dùng
+   * @param userId - ID của người dùng trong hệ thống (MongoDB _id)
+   * @param emotion - Trạng thái cảm xúc AI phân tích được (VD: 'Cô đơn', 'Vui vẻ', ...)
+   */
+  async updateEmotion(userId: string, emotion: string): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      { $set: { detected_emotion: emotion } },
+      { new: true }, // Trả về document mới sau khi đã cập nhật
+    ).exec();
+  }
 }

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:fatelinkfe/utils/toast_utils.dart';
 
 // Model đơn giản để chứa dữ liệu của một tin nhắn
 class ChatMessage {
@@ -48,6 +53,98 @@ class _ChatScreenState extends State<ChatScreen> {
   ];
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  late IO.Socket _socket;
+  bool _isTyping = false; // Trạng thái AI đang xử lý
+  bool _isLoadingHistory = false; // Thêm biến trạng thái loading
+
+  @override
+  void initState() {
+    super.initState();
+    _connectToSocket();
+  }
+
+  void _connectToSocket() {
+    // LƯU Ý: Đổi URL này cho khớp với backend của bạn
+    // Môi trường thật: 'https://fatelink-production.up.railway.app'
+    // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
+    const String socketUrl = 'https://fatelink-production.up.railway.app';
+
+    _socket = IO.io(
+      socketUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket']) // Bắt buộc dùng websocket
+          .disableAutoConnect() // Tắt tự động kết nối để quản lý thủ công
+          .build(),
+    );
+
+    _socket.connect();
+
+    // Lắng nghe các sự kiện từ server
+    _socket.onConnect((_) => debugPrint('✅ Socket connected'));
+    _socket.onDisconnect((_) => debugPrint('❌ Socket disconnected'));
+
+    _socket.on('receiveMessage', (data) {
+      final message = ChatMessage(
+        text: data['text'],
+        isSentByMe: false,
+        timestamp: DateTime.parse(data['timestamp']).toLocal(),
+      );
+      if (mounted) {
+        setState(() {
+          _messages.add(message);
+          _isTyping = false; // Tắt trạng thái đang gõ
+        });
+        _scrollToBottom();
+      }
+    });
+
+    _socket.on('errorMessage', (data) {
+      if (mounted) {
+        setState(() => _isTyping = false);
+        ToastUtil.showError(context, data['message']);
+      }
+    });
+  }
+
+  void _sendMessage(String text) {
+    if (text.trim().isEmpty) return;
+
+    final userMessage = ChatMessage(
+      text: text.trim(),
+      isSentByMe: true,
+      timestamp: DateTime.now(),
+    );
+
+    setState(() {
+      _messages.add(userMessage);
+      _isTyping = true; // Bật trạng thái AI đang gõ
+    });
+    _textController.clear();
+    _scrollToBottom();
+
+    // Gửi tin nhắn lên server
+    _socket.emit('sendMessage', {'text': userMessage.text});
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _socket.dispose(); // Ngắt kết nối socket khi màn hình bị hủy
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,24 +155,31 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           // Nền blobs mờ ảo kế thừa từ WelcomeScreen
           _buildBackgroundBlobs(),
-          Column(
-            children: [
-              // Danh sách tin nhắn
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    return _buildMessageBubble(message);
-                  },
+          _isLoadingHistory
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFBD114A)),
+                )
+              : Column(
+                  children: [
+                    // Danh sách tin nhắn
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        itemCount: _messages.length + (_isTyping ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length && _isTyping) {
+                            return _buildTypingIndicator(); // Widget hiển thị "Đang gõ"
+                          }
+                          final message = _messages[index];
+                          return _buildMessageBubble(message);
+                        },
+                      ),
+                    ),
+                    // Khung nhập liệu
+                    _buildInputArea(),
+                  ],
                 ),
-              ),
-              // Khung nhập liệu
-              _buildInputArea(),
-            ],
-          ),
         ],
       ),
     );
@@ -167,11 +271,10 @@ class _ChatScreenState extends State<ChatScreen> {
   // Widget bong bóng chat
   Widget _buildMessageBubble(ChatMessage message) {
     final isMe = message.isSentByMe;
-    final alignment = isMe ? Alignment.centerRight : Alignment.centerLeft;
+    final alignment = isMe ? MainAxisAlignment.end : MainAxisAlignment.start;
     final bubbleColor = isMe
         ? Colors.white.withOpacity(0.15)
         : const Color(0xFFBD114A).withOpacity(0.4);
-    final textColor = Colors.white;
     final borderRadius = isMe
         ? const BorderRadius.only(
             topLeft: Radius.circular(20),
@@ -186,23 +289,107 @@ class _ChatScreenState extends State<ChatScreen> {
             bottomRight: Radius.circular(20),
           );
 
-    return Align(
-      alignment: alignment,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: borderRadius,
-          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-        ),
-        child: Text(
-          message.text,
-          style: TextStyle(color: textColor, fontSize: 15, height: 1.4),
-        ),
+    // Định dạng giờ phút (VD: 09:05)
+    final timeString =
+        "${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}";
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        mainAxisAlignment: alignment,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            const CircleAvatar(
+              backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
+              radius: 16,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: bubbleColor,
+                    borderRadius: borderRadius,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  timeString,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget hiển thị trạng thái AI đang gõ
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const CircleAvatar(
+            backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
+            radius: 16,
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFBD114A).withOpacity(0.4),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                bottomLeft: Radius.circular(4),
+                topRight: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Faye đang suy nghĩ...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -235,7 +422,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       border: InputBorder.none,
                     ),
                     onSubmitted: (text) {
-                      // TODO: Implement send message logic
+                      _sendMessage(text);
                     },
                   ),
                 ),
@@ -246,9 +433,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: Color(0xFFBD114A),
                     size: 28,
                   ),
-                  onPressed: () {
-                    // TODO: Implement send message logic
-                  },
+                  onPressed: () => _sendMessage(_textController.text),
                 ),
               ],
             ),
