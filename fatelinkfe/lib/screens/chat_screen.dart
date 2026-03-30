@@ -254,7 +254,7 @@ class _ChatScreenState extends State<ChatScreen> {
             height: 350,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFFBD114A),
+              color: Color(0xFF0066FF), // Đổi blob đỏ thành xanh dương
             ),
           ),
         ),
@@ -274,7 +274,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final alignment = isMe ? MainAxisAlignment.end : MainAxisAlignment.start;
     final bubbleColor = isMe
         ? Colors.white.withOpacity(0.15)
-        : const Color(0xFFBD114A).withOpacity(0.4);
+        : const Color(
+            0xFF0D47A1,
+          ).withOpacity(0.6); // Đổi màu bong bóng AI sang xanh đậm
     final borderRadius = isMe
         ? const BorderRadius.only(
             topLeft: Radius.circular(20),
@@ -368,7 +370,9 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFBD114A).withOpacity(0.4),
+              color: const Color(
+                0xFF0D47A1,
+              ).withOpacity(0.6), // Đổi màu sang xanh đậm
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 bottomLeft: Radius.circular(4),
@@ -430,7 +434,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 IconButton(
                   icon: const Icon(
                     Icons.send_rounded,
-                    color: Color(0xFFBD114A),
+                    color: Colors.white, // Đổi màu nút gửi thành trắng
                     size: 28,
                   ),
                   onPressed: () => _sendMessage(_textController.text),

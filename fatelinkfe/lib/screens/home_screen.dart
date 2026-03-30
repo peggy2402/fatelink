@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:fatelinkfe/widgets/custom_bottom_nav_bar.dart';
+import 'package:fatelinkfe/widgets/onboarding_modal.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool showOnboarding;
+  final VoidCallback onStartChat;
+
+  const HomeScreen({
+    super.key,
+    required this.showOnboarding,
+    required this.onStartChat,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -13,7 +20,6 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _breatheController;
   late Animation<double> _glowAnimation;
-  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -49,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
               height: 350,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFFBD114A), // Fatelink Pink/Red
+                color: Color(0xFF0066FF), // Đổi blob đỏ thành xanh dương
               ),
             ),
           ),
@@ -125,16 +131,9 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
 
-          // --- Bottom Navigation Bar ---
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: CustomBottomNavBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() => _currentIndex = index);
-              },
-            ),
-          ),
+          // --- Lớp Modal Onboarding ---
+          if (widget.showOnboarding)
+            OnboardingModal(onStartChat: widget.onStartChat),
         ],
       ),
     );
@@ -149,11 +148,12 @@ class _HomeScreenState extends State<HomeScreen>
       'Tần số Suy tư',
       'Tần số Ấm áp',
     ];
+    // Đổi dải màu sang tone xanh và trắng
     final waveColors = [
-      const Color(0xFF00E676),
-      const Color(0xFFBD114A),
-      const Color(0xFF0066FF),
-      const Color(0xFFF8BBD0),
+      Colors.lightBlue.shade300,
+      Colors.white,
+      Colors.cyanAccent,
+      Colors.blue.shade700,
     ];
 
     return Container(
@@ -184,16 +184,16 @@ class _HomeScreenState extends State<HomeScreen>
                   shape: BoxShape.circle,
                   color: const Color(0xFF001520),
                   border: Border.all(
-                    color: const Color(
-                      0xFFBD114A,
-                    ).withOpacity(_glowAnimation.value), // Viền thở
+                    color: Colors.white.withOpacity(
+                      _glowAnimation.value,
+                    ), // Viền thở màu trắng
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(
-                        0xFFBD114A,
-                      ).withOpacity(_glowAnimation.value * 0.4),
+                      color: Colors.white.withOpacity(
+                        _glowAnimation.value * 0.3,
+                      ),
                       blurRadius: 15,
                       spreadRadius: 2,
                     ),
@@ -247,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen>
                 Text(
                   '${96 - index}% Tương hợp',
                   style: const TextStyle(
-                    color: Color(0xFFBD114A),
+                    color: Colors.lightBlueAccent,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,

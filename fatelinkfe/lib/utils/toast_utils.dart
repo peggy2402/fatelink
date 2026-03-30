@@ -33,31 +33,66 @@ class ToastUtil {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+        // 1. Làm cho SnackBar gốc trở nên vô hình
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // 2. Animate toàn bộ nội dung bên trong để mô phỏng khối Toast trượt xuống
+        content: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Opacity(
+              // Hiệu ứng mờ dần (FadeIn)
+              opacity: value,
+              child: Transform.translate(
+                // Hiệu ứng trượt từ trên xuống
+                offset: Offset(0, (1 - value) * -30),
+                child: child,
               ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: bgColor.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        backgroundColor: bgColor.withOpacity(
-          0.95,
-        ), // Hơi trong suốt tạo cảm giác hiện đại
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        // Đẩy SnackBar lên trên cùng
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 120,
+          left: 16,
+          right: 16,
+        ),
         duration: const Duration(seconds: 3),
-        elevation: 8,
+        padding: EdgeInsets.zero, // Xóa padding mặc định của SnackBar
       ),
     );
   }

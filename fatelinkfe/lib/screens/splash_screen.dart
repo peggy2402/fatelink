@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lottie/lottie.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
-import 'package:fatelinkfe/screens/welcome_screen.dart';
+import 'package:fatelinkfe/screens/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,10 +30,9 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
 
       if (accessToken != null && accessToken.isNotEmpty) {
-        // Nếu có token, chuyển đến màn hình Home
-        // TODO: Thay thế bằng màn hình Home/Chat thực tế
+        // Nếu đã có token đăng nhập, vào thẳng hệ thống chính (MainScreen)
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       } else {
         // Nếu không có token, chuyển đến màn hình Login
@@ -88,17 +87,19 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: Text(
                       'FATELINK',
                       style: TextStyle(
-                        color: const Color(0xFFBD114A),
+                        color: Colors.white, // Đổi màu chữ chính thành trắng
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 6.0,
                         shadows: [
                           Shadow(
-                            color: const Color(0xFFBD114A).withOpacity(0.6),
+                            color: Colors.white.withOpacity(
+                              0.4,
+                            ), // Đổi màu glow thành trắng
                             blurRadius: 15.0, // Hiệu ứng Glow sát chữ
                           ),
                           Shadow(
-                            color: const Color(0xFFBD114A).withOpacity(0.3),
+                            color: Colors.white.withOpacity(0.2),
                             blurRadius: 30.0, // Hiệu ứng Glow lan toả
                           ),
                         ],

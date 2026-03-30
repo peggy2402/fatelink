@@ -40,7 +40,9 @@ class CustomBottomNavBar extends StatelessWidget {
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = currentIndex == index;
-    final color = isSelected ? const Color(0xFFBD114A) : Colors.white54;
+    final color = isSelected
+        ? Colors.white
+        : Colors.white54; // Đổi màu highlight thành trắng
 
     return GestureDetector(
       onTap: () => onTap(index),
@@ -54,7 +56,7 @@ class CustomBottomNavBar extends StatelessWidget {
                 ? BoxDecoration(
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.5),
+                        color: Colors.white.withOpacity(0.4), // Glow trắng
                         blurRadius: 12,
                         spreadRadius: 1,
                       ),

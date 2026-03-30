@@ -8,7 +8,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:fatelinkfe/screens/welcome_screen.dart';
+import 'package:fatelinkfe/screens/main_screen.dart';
 import 'package:fatelinkfe/utils/toast_utils.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (mounted) {
             ToastUtil.showSuccess(context, 'Đăng nhập thành công!');
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+              MaterialPageRoute(builder: (context) => const MainScreen()),
             );
           }
         } else {
@@ -250,14 +250,13 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF001520), // Đồng bộ nền tối
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.white, Color(0xFFF8BBD0)], // Trắng tới hồng nhạt
-            begin: Alignment.topLeft,
+            colors: [Color(0xFF002B3D), Color(0xFF00080D)], // Gradient xanh đậm
+            begin: Alignment.topCenter,
             end: Alignment.bottomRight,
-            stops: [0.0, 0.7], // Giúp màu trắng chiếm ưu thế ở trên
           ),
         ),
         child: SafeArea(
@@ -282,32 +281,21 @@ class _LoginScreenState extends State<LoginScreen>
                       height: 75,
                     ),
                     const SizedBox(width: 16),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'FATELINK',
                           style: TextStyle(
                             fontFamily: 'serif',
-                            color: Color(0xFFBD114A),
+                            color: Colors.white, // Đổi sang màu trắng
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 4.0,
                             shadows: [
-                              // Lớp Glow sáng mạnh ở gần
                               Shadow(
-                                color: Color(0xFFD75656),
-                                offset: Offset(
-                                  0,
-                                  0,
-                                ), // Đặt offset 0,0 để tỏa đều 4 hướng
+                                color: Colors.white.withOpacity(0.5),
                                 blurRadius: 12.0,
-                              ),
-                              // Lớp Glow mờ tỏa ra xa
-                              Shadow(
-                                color: Color(0x88D75656),
-                                offset: Offset(0, 0),
-                                blurRadius: 24.0,
                               ),
                             ],
                           ),
@@ -316,14 +304,13 @@ class _LoginScreenState extends State<LoginScreen>
                         Text(
                           '🔥Not random! It\'s Fate',
                           style: TextStyle(
-                            color: Color(0xFFBD114A),
+                            color: Colors.white70, // Đổi sang màu trắng mờ
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 4.0, // Tăng độ dãn chữ
                             shadows: [
                               Shadow(
-                                color: Color(0x88D75656),
-                                offset: Offset(0, 0),
+                                color: Colors.white.withOpacity(0.3),
                                 blurRadius: 8.0, // Glow nhẹ cho slogan
                               ),
                             ],
@@ -341,8 +328,11 @@ class _LoginScreenState extends State<LoginScreen>
                         'assets/icon/icon-support.png',
                         width: 28,
                         height: 28,
+                        color: Colors.black, // Đổi màu icon thành đen
+                        colorBlendMode: BlendMode
+                            .srcIn, // Áp dụng màu lên hình dạng của ảnh
                         errorBuilder: (c, e, s) => const Icon(
-                          Icons.headset_mic,
+                          Icons.headset_mic_outlined,
                           color: Colors.black54,
                         ),
                       ),
@@ -378,12 +368,13 @@ class _LoginScreenState extends State<LoginScreen>
                   height:
                       MediaQuery.of(context).size.height *
                       0.45, // ~45% chiều cao màn hình
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF5A1827),
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.2), // Nền kính mờ
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(32.0),
                       topRight: Radius.circular(32.0),
                     ),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24.0, 32.0, 24.0, 0),
@@ -411,7 +402,8 @@ class _LoginScreenState extends State<LoginScreen>
                             },
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
+                                backgroundColor:
+                                    Colors.white, // Nút màu trắng nổi bật
                                 foregroundColor: Colors.black87,
                                 minimumSize: const Size(double.infinity, 56),
                                 shape: RoundedRectangleBorder(
@@ -531,12 +523,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       : Icons.radio_button_unchecked,
                                   key: ValueKey<bool>(_agreedToTerms),
                                   color: _agreedToTerms
-                                      ? const Color.fromARGB(
-                                          255,
-                                          184,
-                                          235,
-                                          67,
-                                        ) // Màu xanh báo hiệu đã tích OK
+                                      ? Colors
+                                            .lightBlueAccent // Màu xanh dương sáng
                                       : Colors.white70, // Hơi mờ khi chưa tích
                                   size: 22, // Tăng size lên một chút cho dễ bấm
                                 ),
@@ -573,7 +561,9 @@ class _LoginScreenState extends State<LoginScreen>
                                   children: [
                                     TextSpan(
                                       text: 'Điều khoản Dịch vụ',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: const TextStyle(
+                                        color: Colors.lightBlueAccent,
+                                      ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL('$_baseUrl/terms.html');
@@ -582,7 +572,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Chính sách Riêng Tư',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: const TextStyle(
+                                        color: Colors.lightBlueAccent,
+                                      ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL('$_baseUrl/privacy.html');
@@ -591,7 +583,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Chính sách Cookie',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: const TextStyle(
+                                        color: Colors.lightBlueAccent,
+                                      ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL('$_baseUrl/cookies.html');
@@ -600,7 +594,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Quy tắc của nền tảng',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: const TextStyle(
+                                        color: Colors.lightBlueAccent,
+                                      ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL('$_baseUrl/rules.html');
@@ -609,7 +605,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     const TextSpan(text: ' & '),
                                     TextSpan(
                                       text: 'Quy định an toàn trẻ em SOP',
-                                      style: const TextStyle(color: Colors.red),
+                                      style: const TextStyle(
+                                        color: Colors.lightBlueAccent,
+                                      ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL(
