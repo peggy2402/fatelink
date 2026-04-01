@@ -9,4 +9,9 @@ export class UsersController {
   async getMatches(@Param('id') id: string) {
     return this.usersService.findMatches(id);
   }
+
+  @Get(':id/profile')
+  async getProfile(@Param('id') id: string) {
+    return this.usersService.findById(id);
+  }
 }

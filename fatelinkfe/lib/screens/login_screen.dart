@@ -336,7 +336,6 @@ class _LoginScreenState extends State<LoginScreen>
                         'assets/icon/icon-support.png',
                         width: 28,
                         height: 28,
-                        color: Colors.black, // Đổi màu icon thành đen
                         colorBlendMode: BlendMode
                             .srcIn, // Áp dụng màu lên hình dạng của ảnh
                         errorBuilder: (c, e, s) => const Icon(

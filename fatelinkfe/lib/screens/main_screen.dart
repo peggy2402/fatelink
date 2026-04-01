@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/home_screen.dart';
 import 'package:fatelinkfe/screens/chat_screen.dart';
+import 'package:fatelinkfe/screens/matches_screen.dart';
 import 'package:fatelinkfe/screens/profile_screen.dart';
 import 'package:fatelinkfe/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/widgets/floating_ai_bubble.dart';
@@ -99,12 +100,7 @@ class _MainScreenState extends State<MainScreen> {
           }
         },
       ),
-      const Center(
-        child: Text(
-          "Matches (Coming Soon)",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
+      const MatchesScreen(),
       const ProfileScreen(),
     ];
 
@@ -264,39 +260,76 @@ class _MainScreenState extends State<MainScreen> {
     int index,
     Color iconColor,
   ) {
-    return GestureDetector(
+    return _AnimatedPopupItem(
+      icon: icon,
+      label: label,
+      iconColor: iconColor,
       onTap: () {
         setState(() {
           _currentIndex = index;
           _isPopupOpen = false;
         });
       },
+    );
+  }
+}
+
+class _AnimatedPopupItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _AnimatedPopupItem({
+    required this.icon,
+    required this.label,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedPopupItem> createState() => _AnimatedPopupItemState();
+}
+
+class _AnimatedPopupItemState extends State<_AnimatedPopupItem> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15), // Nền mờ đồng bộ với màu icon
-              shape: BoxShape.circle,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.8 : 1.0, // Hiệu ứng thu nhỏ khi nhấn giữ
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.iconColor.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(widget.icon, color: widget.iconColor, size: 24),
             ),
-            child: Icon(
-              icon,
-              color: iconColor, // Gán màu cho icon
-              size: 24,
-            ), // Sử dụng IconData trước theo yêu cầu
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+            const SizedBox(height: 8),
+            Text(
+              widget.label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

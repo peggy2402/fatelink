@@ -87,6 +87,25 @@
 
 ---
 
+## 📅 Ngày: 02/04/2026
+
+### 🎯 Trọng tâm hôm nay: Thuật toán Matchmaking, AI JSON Enforcement & Data Visualization
+
+#### 1. Backend (NestJS)
+
+- **Thuật toán Matchmaking (Toán học)**: Xây dựng thành công `MatchmakingService` kết nối trực tiếp MongoDB, sử dụng 2 công thức: **Khoảng cách Euclidean** (tương đồng tính cách) và **Ma trận bù trừ cảm xúc** (Complementary Matrix) với tỷ lệ trọng số 40-60.
+- **AI JSON Enforcement**: Nâng cấp `GeminiService` bắt buộc trả về định dạng `application/json` chứa `reply`, `latestEmotion`, `detected_emotions`, và `detected_personality`.
+- **Thuật toán làm mượt dữ liệu (EMA)**: Áp dụng Exponential Moving Average trong `UsersService.updateUserTraits` để cập nhật từ từ vector cảm xúc (80/20) và tính cách (90/10) của người dùng mỗi khi chat với AI, đảm bảo dữ liệu không bị nhiễu do một vài cảm xúc nhất thời.
+- **API Profile**: Bổ sung endpoint `GET /users/:id/profile` để cung cấp dữ liệu phân tích sâu (Deep Analytics) về người dùng cho Frontend.
+
+#### 2. Frontend (Flutter)
+
+- **Radar Chart (Biểu đồ Tần số)**: Tích hợp thư viện `fl_chart` vào `ProfileScreen` để trực quan hóa "Tần số cảm xúc" (Stress, Lonely, Sadness, Calm, Warmth, Happy) bằng biểu đồ Radar đa giác, tự động lấy và render dữ liệu thực tế từ API Backend.
+- **Giao diện MatchesScreen**: Thiết kế UI hiện đại cho màn hình "Định mệnh của bạn" với nền Dark Mesh Gradient (Glow đỏ/hồng), Card Glassmorphism, Avatar viền sáng và huy hiệu hiển thị % Tương hợp.
+- **Hiệu ứng Micro-interaction**: Thêm hiệu ứng vật lý nảy (Bounce/Scale) khi nhấn giữ (`onTapDown`, `onTapUp`) vào các nút điều hướng chức năng bên trong Custom Modal Popup.
+
+---
+
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
 
 - [x] **Frontend**: Xây dựng màn hình chờ (Splash Screen) có logic auto-login.
@@ -95,4 +114,6 @@
 - [x] **Backend**: Xây dựng `ChatModule` sử dụng WebSocket (Socket.IO hoặc ws) để phục vụ cho việc chat real-time giữa người dùng và AI.
 - [x] **Frontend & Backend**: Liên kết Bottom Navigation Bar (điều hướng thực tế giữa các tab Home, Chat, Matches, Profile).
 - [x] **Frontend**: Hoàn thiện UI/UX cho màn hình Profile (ProfileScreen).
-- [ ] **Backend**: Viết API GET trả về danh sách người dùng ẩn danh cho `HomeScreen` dựa trên thuật toán Matchmaking sơ bộ.
+- [x] **Backend**: Viết API GET trả về danh sách người dùng ẩn danh cho `HomeScreen` dựa trên thuật toán Matchmaking sơ bộ.
+- [ ] **Frontend**: Kết nối API thực tế để lấy danh sách những người đã ghép đôi cho màn hình `MatchesScreen`.
+- [ ] **Frontend**: Tích hợp tính năng Đa ngôn ngữ (i18n / Switch Language) sử dụng `easy_localization`.

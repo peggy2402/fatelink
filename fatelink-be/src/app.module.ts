@@ -11,6 +11,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AiModule } from './ai/ai.module';
 import { MessageModule } from './message/message.module';
+import { MatchmakingModule } from './matchmaking/matchmaking.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { MessageModule } from './message/message.module';
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
     }),
+    MatchmakingModule,
   ],
   controllers: [AppController],
   providers: [

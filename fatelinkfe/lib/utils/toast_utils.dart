@@ -18,7 +18,7 @@ class ToastUtil {
 
   // Hiển thị Toast thông tin chung (Xanh biển sâu)
   static void showInfo(BuildContext context, String message) {
-    _showToast(context, message, const Color(0xFF002B3D), Icons.info_outline);
+    _showToast(context, message, const Color(0xFFBD114A), Icons.info_outline);
   }
 
   // Hàm private xử lý giao diện chung cho Toast

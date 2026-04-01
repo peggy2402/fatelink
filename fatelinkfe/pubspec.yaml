@@ -43,6 +43,8 @@ dependencies:
   socket_io_client: ^3.1.4
   shared_preferences: ^2.5.5
   shimmer: ^3.0.0
+  easy_localization: ^3.0.8
+  fl_chart: ^1.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,6 +70,20 @@ flutter:
   assets:
     - assets/icon/
     - assets/images/
+    - assets/translations/
+    # - assets/lottie/
+    # - assets/fonts/
+    # - assets/animations/
+    # - assets/avatars/
+    # - assets/placeholders/
+    # - assets/flags/
+    # - assets/emoji/
+    # - assets/illustrations/
+    # - assets/particles/
+    # - assets/svgs/
+    # - assets/backgrounds/
+    # - assets/overlays/
+    # - assets/decoration/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

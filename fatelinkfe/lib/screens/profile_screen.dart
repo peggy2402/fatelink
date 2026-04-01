@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,6 +15,15 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _avatarUrl;
+  // Dữ liệu giả cho biểu đồ Radar
+  final Map<String, double> emotionData = {
+    'Stress': 4,
+    'Lonely': 2,
+    'Sadness': 3,
+    'Calm': 8,
+    'Warmth': 7,
+    'Happy': 6,
+  };
 
   @override
   void initState() {
@@ -19,11 +31,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserProfile();
   }
 
+  String? _getUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final data = jsonDecode(payload);
+      return data['sub'] ?? data['id'] ?? data['userId'];
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _loadUserProfile() async {
     const secureStorage = FlutterSecureStorage();
+    final token = await secureStorage.read(key: 'accessToken');
     final avatar = await secureStorage.read(key: 'avatarUrl');
+
     if (mounted) {
       setState(() => _avatarUrl = avatar);
+    }
+
+    if (token == null) return;
+    final userId = _getUserIdFromToken(token);
+    if (userId == null) return;
+
+    try {
+      final url = Uri.parse(
+        'https://fatelink-production.up.railway.app/users/$userId/profile',
+      );
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final data = jsonDecode(response.body);
+        if (data['emotions'] != null) {
+          setState(() {
+            emotionData['Stress'] = (data['emotions']['stress'] ?? 5)
+                .toDouble();
+            emotionData['Lonely'] = (data['emotions']['loneliness'] ?? 5)
+                .toDouble();
+            emotionData['Sadness'] = (data['emotions']['sadness'] ?? 5)
+                .toDouble();
+            emotionData['Calm'] = (data['emotions']['calmness'] ?? 5)
+                .toDouble();
+            emotionData['Warmth'] = (data['emotions']['warmth'] ?? 5)
+                .toDouble();
+            emotionData['Happy'] = (data['emotions']['happiness'] ?? 5)
+                .toDouble();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi tải profile: $e');
     }
   }
 
@@ -137,7 +201,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+
+                // Biểu đồ Radar
+                SizedBox(
+                  height: 200,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: RadarChart(
+                      RadarChartData(
+                        dataSets: [
+                          RadarDataSet(
+                            dataEntries: emotionData.entries
+                                .map((e) => RadarEntry(value: e.value))
+                                .toList(),
+                            borderColor: Colors.lightBlueAccent,
+                            fillColor: Colors.lightBlueAccent.withOpacity(0.3),
+                          ),
+                        ],
+                        getTitle: (index, angle) {
+                          return RadarChartTitle(
+                            text: emotionData.keys.elementAt(index),
+                            angle: angle,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
 
                 // Card Cài đặt
                 Expanded(
@@ -180,6 +271,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.settings_outlined,
                             'Cài đặt ứng dụng',
                             () {},
+                          ),
+                          _buildMenuButton(
+                            Icons.language,
+                            'Ngôn ngữ',
+                            () {}, // TODO: Sẽ tích hợp thư viện đa ngôn ngữ vào đây
                           ),
                           _buildMenuButton(
                             Icons.privacy_tip_outlined,

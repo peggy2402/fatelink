@@ -12,15 +12,22 @@ class MatchUser {
   final String id;
   final String name;
   final String emotion;
-  // Thêm các trường khác nếu cần, ví dụ: compatibilityScore
+  final int compatibilityScore;
 
-  MatchUser({required this.id, required this.name, required this.emotion});
+  MatchUser({
+    required this.id,
+    required this.name,
+    required this.emotion,
+    required this.compatibilityScore,
+  });
 
   factory MatchUser.fromJson(Map<String, dynamic> json) {
     return MatchUser(
-      id: json['_id'],
-      name: json['name'] ?? 'Mảnh ghép ẩn danh',
-      emotion: json['detected_emotion'] ?? 'Bí ẩn',
+      id: json['id'] ?? json['_id'] ?? '',
+      name: json['displayName'] ?? json['name'] ?? 'Mảnh ghép ẩn danh',
+      emotion: json['dominantEmotion'] ?? json['detected_emotion'] ?? 'Bí ẩn',
+      compatibilityScore:
+          json['matchingScore'] ?? json['compatibilityScore'] ?? 80,
     );
   }
 }
@@ -97,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final url = Uri.parse(
-      'https://fatelink-production.up.railway.app/users/$userId/matches',
+      'https://fatelink-production.up.railway.app/matchmaking/recommendations',
     );
     final response = await http.get(
       url,
@@ -162,71 +169,74 @@ class _HomeScreenState extends State<HomeScreen>
           // --- Main Content ---
           SafeArea(
             bottom: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header (Thanh tiêu đề)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'The Matchmaker',
-                        style: TextStyle(
-                          fontFamily: 'serif',
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.tune,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ),
-
-                // List Cards
-                _isLoadingMatches
-                    ? Expanded(
-                        child: ListView.builder(
-                          itemCount: 3, // Hiển thị 3 thẻ shimmer
-                          itemBuilder: (context, index) =>
-                              const ShimmerUserCard(),
-                        ),
-                      )
-                    : _matchedUsers.isEmpty
-                    ? Expanded(
-                        child: Center(
-                          child: Text(
-                            'Trò chuyện thêm với Faye\nđể tìm những mảnh ghép tương hợp nhé.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 16,
-                              height: 1.5,
-                            ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header (Thanh tiêu đề)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 16.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'The Matchmaker',
+                          style: TextStyle(
+                            fontFamily: 'serif',
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
-                    : Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 100, top: 8),
-                          itemCount: _matchedUsers.length,
-                          itemBuilder: (context, index) =>
-                              _buildUserCard(_matchedUsers[index]),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.tune,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          onPressed: () {},
                         ),
-                      ),
-              ],
+                      ],
+                    ),
+                  ),
+
+                  // List Cards
+                  _isLoadingMatches
+                      ? Expanded(
+                          child: ListView.builder(
+                            itemCount: 3, // Hiển thị 3 thẻ shimmer
+                            itemBuilder: (context, index) =>
+                                const ShimmerUserCard(),
+                          ),
+                        )
+                      : _matchedUsers.isEmpty
+                      ? Expanded(
+                          child: Center(
+                            child: Text(
+                              'Trò chuyện thêm với Faye\nđể tìm những mảnh ghép tương hợp nhé.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 16,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 100, top: 8),
+                            itemCount: _matchedUsers.length,
+                            itemBuilder: (context, index) =>
+                                _buildUserCard(_matchedUsers[index]),
+                          ),
+                        ),
+                ],
+              ),
             ),
           ),
 
@@ -343,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${90 + user.id.hashCode % 10}% Tương hợp', // Fake compatibility score
+                      '${user.compatibilityScore}% Tương hợp', // Lấy dữ liệu thật từ API
                       style: const TextStyle(
                         color: Colors.lightBlueAccent,
                         fontSize: 14,

@@ -41,6 +41,7 @@ export class GeminiService {
       generationConfig: {
         temperature: 0.7,
         topP: 0.8,
+        responseMimeType: "application/json",
       },
     });
   }

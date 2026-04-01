@@ -79,9 +79,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const parsedData = JSON.parse(aiResponseRaw);
         if (parsedData.reply) aiText = parsedData.reply;
 
-        // Cập nhật cảm xúc vào User DB
-        if (parsedData.detected_emotion) {
-          await this.usersService.updateEmotion(userId, parsedData.detected_emotion);
+        // Cập nhật Cảm xúc & Tính cách vào DB
+        if (parsedData.detected_emotions || parsedData.detected_personality) {
+          // Gọi hàm updateUserTraits trong UsersService
+          await this.usersService.updateUserTraits(
+            userId,
+            parsedData.detected_emotions,
+            parsedData.detected_personality,
+            parsedData.latestEmotion
+          );
         }
       } catch (e) {
         console.warn('AI không trả về JSON hợp lệ, fallback dùng text thuần');
