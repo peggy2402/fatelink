@@ -48,11 +48,27 @@ export class GeminiService {
 
   async sendMessage(userMessage: string, chatHistory: Content[] = []): Promise<string> {
     try {
-      const chatSession = this.model.startChat({ history: chatHistory });
-      const result = await chatSession.sendMessage(userMessage);
+      // Thay vì dùng startChat dễ bị lỗi format, chúng ta chuyển lịch sử thành văn bản đưa vào prompt
+      let historyText = '';
+      if (chatHistory && chatHistory.length > 0) {
+        historyText = chatHistory.map(msg => 
+          `${msg.role === 'user' ? 'User' : 'Faye'}: ${msg.parts[0].text}`
+        ).join('\n');
+      }
+
+      const finalPrompt = `
+Lịch sử trò chuyện gần đây:
+${historyText}
+
+Tin nhắn hiện tại của User: "${userMessage}"
+
+Hãy phân tích và trả lời tuân thủ đúng định dạng JSON đã yêu cầu.
+      `;
+
+      const result = await this.model.generateContent(finalPrompt);
       return result.response.text();
-    } catch (error) {
-      console.error('Lỗi khi gọi Gemini API:', error);
+    } catch (error: any) {
+      console.error('Lỗi khi gọi Gemini API:', error?.message || error);
       throw new InternalServerErrorException('Faye đang bận chút việc, bạn thử lại sau nhé!');
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -122,26 +123,26 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                         children: [
                           _buildNavItem(
                             0,
-                            'Home',
+                            'Home'.tr(),
                             'assets/icon/home.png',
                             activeAssetPath: 'assets/icon/home_active.png',
                           ),
                           _buildNavItem(
                             1,
-                            'Chat',
+                            'Chat'.tr(),
                             'assets/icon/chat.png',
                             activeAssetPath: 'assets/icon/chat_active.png',
                             hasBadge: true,
                           ),
                           _buildNavItem(
                             2,
-                            'Matches',
+                            'Matches'.tr(),
                             'assets/icon/matches.png',
                             activeAssetPath: 'assets/icon/matches_active.png',
                           ),
                           _buildNavItem(
                             3,
-                            'Profile',
+                            'Profile'.tr(),
                             '',
                           ), // Index 3 sẽ dùng CircleAvatar
                         ],

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -274,8 +275,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           _buildMenuButton(
                             Icons.language,
-                            'Ngôn ngữ',
-                            () {}, // TODO: Sẽ tích hợp thư viện đa ngôn ngữ vào đây
+                            'Ngôn ngữ / Language (${context.locale.languageCode.toUpperCase()})',
+                            () {
+                              if (context.locale.languageCode == 'vi') {
+                                context.setLocale(const Locale('en'));
+                              } else {
+                                context.setLocale(const Locale('vi'));
+                              }
+                            },
                           ),
                           _buildMenuButton(
                             Icons.privacy_tip_outlined,

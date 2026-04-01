@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart'; // Import thư viện
 
 class ChatInputBar extends StatelessWidget {
   final TextEditingController controller;
@@ -75,9 +76,9 @@ class ChatInputBar extends StatelessWidget {
                       child: TextField(
                         controller: controller,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Gửi tin nhắn...',
-                          hintStyle: TextStyle(color: Colors.white54),
+                        decoration: InputDecoration(
+                          hintText: 'chat_input_hint'.tr(),
+                          hintStyle: const TextStyle(color: Colors.white54),
                           border: InputBorder.none,
                         ),
                         onSubmitted: (_) => onSend(),

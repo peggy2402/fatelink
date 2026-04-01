@@ -9,6 +9,7 @@ import 'package:fatelinkfe/screens/profile_screen.dart';
 import 'package:fatelinkfe/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/widgets/chat_input_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -236,16 +237,16 @@ class _MainScreenState extends State<MainScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildPopupItem(Icons.home_filled, 'Home', 0, Colors.blueAccent),
+          _buildPopupItem(Icons.home_filled, 'Home'.tr(), 0, Colors.blueAccent),
           _buildPopupItem(
             Icons.favorite_border,
-            'Matches',
+            'Matches'.tr(),
             2,
             Colors.pinkAccent,
           ),
           _buildPopupItem(
             Icons.person_outline,
-            'Profile',
+            'Profile'.tr(),
             3,
             Colors.deepPurpleAccent,
           ),

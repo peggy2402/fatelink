@@ -104,6 +104,13 @@
 - **Giao diện MatchesScreen**: Thiết kế UI hiện đại cho màn hình "Định mệnh của bạn" với nền Dark Mesh Gradient (Glow đỏ/hồng), Card Glassmorphism, Avatar viền sáng và huy hiệu hiển thị % Tương hợp.
 - **Hiệu ứng Micro-interaction**: Thêm hiệu ứng vật lý nảy (Bounce/Scale) khi nhấn giữ (`onTapDown`, `onTapUp`) vào các nút điều hướng chức năng bên trong Custom Modal Popup.
 
+#### 3. Cập nhật thêm (Cuối ngày 02/04/2026)
+
+- **Kết nối API Matches**: `MatchesScreen` đã được gọi API thực tế, tích hợp phân trang (Load More) với `ScrollController`, xử lý lỗi parse JSON an toàn và UI Hủy ghép đôi (Unmatch).
+- **Đa ngôn ngữ (i18n)**: Cài đặt thành công `easy_localization`, bọc toàn bộ app, cho phép chuyển đổi ngôn ngữ Anh-Việt mượt mà tại `ProfileScreen`.
+- **Match Chat & AI Assistant**: Tạo màn hình `MatchChatScreen` dành riêng cho việc chat với người được ghép đôi, tích hợp nút "Faye gợi ý mở lời" (AI Assistant) giúp người hướng nội dễ dàng bắt chuyện.
+- **Fix Bug Gemini**: Sửa lỗi AI báo bận bằng cách chuyển đổi mảng History thành string nhúng trực tiếp vào prompt, đảm bảo định dạng JSON trả về luôn chuẩn xác.
+
 ---
 
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
@@ -115,5 +122,7 @@
 - [x] **Frontend & Backend**: Liên kết Bottom Navigation Bar (điều hướng thực tế giữa các tab Home, Chat, Matches, Profile).
 - [x] **Frontend**: Hoàn thiện UI/UX cho màn hình Profile (ProfileScreen).
 - [x] **Backend**: Viết API GET trả về danh sách người dùng ẩn danh cho `HomeScreen` dựa trên thuật toán Matchmaking sơ bộ.
-- [ ] **Frontend**: Kết nối API thực tế để lấy danh sách những người đã ghép đôi cho màn hình `MatchesScreen`.
-- [ ] **Frontend**: Tích hợp tính năng Đa ngôn ngữ (i18n / Switch Language) sử dụng `easy_localization`.
+- [x] **Frontend**: Kết nối API thực tế để lấy danh sách những người đã ghép đôi cho màn hình `MatchesScreen`.
+- [x] **Frontend**: Tích hợp tính năng Đa ngôn ngữ (i18n / Switch Language) sử dụng `easy_localization`.
+- [ ] **Backend**: Viết API "Unmatch" trong NestJS để đồng bộ việc xóa ghép đôi vào MongoDB.
+- [ ] **Frontend**: Xây dựng chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.

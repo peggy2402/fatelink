@@ -1,0 +1,11 @@
+{
+    "Home": "Home",
+    "Matches": "Matches",
+    "Profile": "Profile",
+    "Chat": "Chat",
+    "Support": "Support",
+    "Settings": "Settings",
+    "Logout": "Logout",
+    "chat_input_hint": "Type your message...",
+    "language": "Language"
+}
