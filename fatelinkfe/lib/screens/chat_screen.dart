@@ -179,6 +179,16 @@ class ChatScreenState extends State<ChatScreen> {
   void sendMessage(String text) {
     if (text.trim().isEmpty) return;
 
+    // Kiểm tra kết nối trước khi gửi
+    if (!_socket.connected) {
+      ToastUtil.showError(
+        context,
+        "Mất kết nối máy chủ. Đang thử kết nối lại...",
+      );
+      _socket.connect();
+      return;
+    }
+
     final userMessage = ChatMessage(
       text: text.trim(),
       isSentByMe: true,
@@ -193,6 +203,17 @@ class ChatScreenState extends State<ChatScreen> {
 
     // Gửi tin nhắn lên server
     _socket.emit('sendMessage', {'text': userMessage.text});
+
+    // Timeout an toàn: Tự động tắt typing sau 15 giây nếu server không phản hồi
+    Future.delayed(const Duration(seconds: 15), () {
+      if (mounted && _isTyping) {
+        setState(() => _isTyping = false);
+        ToastUtil.showError(
+          context,
+          "Mạng yếu hoặc Faye đang bận. Vui lòng thử lại!",
+        );
+      }
+    });
   }
 
   void _scrollToBottom() {
