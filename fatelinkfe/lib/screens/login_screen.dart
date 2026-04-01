@@ -185,9 +185,17 @@ class _LoginScreenState extends State<LoginScreen>
           final responseData = jsonDecode(response.body);
           final String backendToken = responseData['accessToken'];
 
-          // 4. Lưu Access Token vào Secure Storage
+          // 4. Lưu Access Token và Avatar URL vào Secure Storage
           await _secureStorage.write(key: 'accessToken', value: backendToken);
-          _writeLog('✅ Đã lưu Access Token vào Secure Storage!');
+
+          // Lấy avatar từ backend (nếu API có trả về), nếu không thì lấy trực tiếp từ Google
+          final String avatarUrl =
+              responseData['user']?['avatar'] ??
+              responseData['avatar'] ??
+              googleUser.photoUrl ??
+              '';
+          await _secureStorage.write(key: 'avatarUrl', value: avatarUrl);
+          _writeLog('✅ Đã lưu Access Token và Avatar vào Secure Storage!');
 
           if (mounted) {
             ToastUtil.showSuccess(context, 'Đăng nhập thành công!');

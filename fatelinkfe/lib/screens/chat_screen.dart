@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:fatelinkfe/utils/toast_utils.dart';
+import 'package:fatelinkfe/widgets/typing_indicator.dart';
 
 // Model đơn giản để chứa dữ liệu của một tin nhắn
 class ChatMessage {
@@ -20,16 +21,24 @@ class ChatMessage {
 }
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final VoidCallback onBack;
+  final VoidCallback onNewMessage;
+
+  const ChatScreen({
+    super.key,
+    required this.onBack,
+    required this.onNewMessage,
+  });
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<ChatScreen> createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class ChatScreenState extends State<ChatScreen> {
   // Dữ liệu giả để dựng giao diện
   final List<ChatMessage> _messages = [
-    ChatMessage(
+    // Dữ liệu giả này sẽ được thay thế bằng API
+    /* ChatMessage(
       text: "Chào bạn, mình là Faye. Hôm nay của bạn thế nào?",
       isSentByMe: false,
       timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
@@ -49,21 +58,80 @@ class _ChatScreenState extends State<ChatScreen> {
       text: "Haha, tinh ý thật đấy.",
       isSentByMe: true,
       timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
+    ), */
   ];
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _secureStorage = const FlutterSecureStorage();
   late IO.Socket _socket;
   bool _isTyping = false; // Trạng thái AI đang xử lý
-  bool _isLoadingHistory = false; // Thêm biến trạng thái loading
+  bool _isLoadingHistory = true; // Thêm biến trạng thái loading
+  bool _isInputEmpty = true; // Theo dõi trạng thái rỗng của input
 
   @override
   void initState() {
     super.initState();
-    _connectToSocket();
+    _initializeChat();
   }
 
-  void _connectToSocket() {
+  Future<void> _initializeChat() async {
+    final token = await _secureStorage.read(key: 'accessToken');
+    await _loadChatHistory(token);
+    if (token != null) _connectToSocket(token);
+  }
+
+  String? _getUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final data = jsonDecode(payload);
+      return data['sub'] ?? data['id'] ?? data['userId'];
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _loadChatHistory(String? token) async {
+    if (token == null) {
+      setState(() => _isLoadingHistory = false);
+      return;
+    }
+    try {
+      final userId = _getUserIdFromToken(token);
+      if (userId == null) throw Exception('Token không hợp lệ');
+
+      final url = Uri.parse(
+        'https://fatelink-production.up.railway.app/messages/$userId?limit=50',
+      );
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final history = data
+            .map(
+              (msg) => ChatMessage(
+                text: msg['text'],
+                isSentByMe: msg['isSentByMe'],
+                timestamp: DateTime.parse(msg['timestamp']).toLocal(),
+              ),
+            )
+            .toList();
+        if (mounted) setState(() => _messages.addAll(history));
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi tải lịch sử chat: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  void _connectToSocket(String token) {
     // LƯU Ý: Đổi URL này cho khớp với backend của bạn
     // Môi trường thật: 'https://fatelink-production.up.railway.app'
     // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
@@ -74,6 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
       IO.OptionBuilder()
           .setTransports(['websocket']) // Bắt buộc dùng websocket
           .disableAutoConnect() // Tắt tự động kết nối để quản lý thủ công
+          .setAuth({'token': token})
           .build(),
     );
 
@@ -95,6 +164,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _isTyping = false; // Tắt trạng thái đang gõ
         });
         _scrollToBottom();
+        widget.onNewMessage(); // Báo cho MainScreen biết có tin nhắn mới
       }
     });
 
@@ -106,7 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _sendMessage(String text) {
+  void sendMessage(String text) {
     if (text.trim().isEmpty) return;
 
     final userMessage = ChatMessage(
@@ -119,7 +189,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(userMessage);
       _isTyping = true; // Bật trạng thái AI đang gõ
     });
-    _textController.clear();
     _scrollToBottom();
 
     // Gửi tin nhắn lên server
@@ -141,7 +210,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _socket.dispose(); // Ngắt kết nối socket khi màn hình bị hủy
-    _textController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -165,7 +233,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     Expanded(
                       child: ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        padding: const EdgeInsets.only(
+                          top: 16.0,
+                          bottom: 120.0,
+                        ), // Tạo khoảng trống để không bị che bởi ChatInputBar nổi
                         itemCount: _messages.length + (_isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == _messages.length && _isTyping) {
@@ -176,8 +247,6 @@ class _ChatScreenState extends State<ChatScreen> {
                         },
                       ),
                     ),
-                    // Khung nhập liệu
-                    _buildInputArea(),
                   ],
                 ),
         ],
@@ -197,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: widget.onBack, // Gọi hàm onBack từ MainScreen
             ),
             title: Row(
               children: [
@@ -384,65 +453,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 width: 1,
               ),
             ),
-            child: Text(
-              'Faye đang suy nghĩ...',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
+            child: const TypingIndicator(), // Sử dụng widget mới
           ),
         ],
-      ),
-    );
-  }
-
-  // Widget khung nhập liệu
-  Widget _buildInputArea() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.2),
-            border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.1)),
-            ),
-          ),
-          child: SafeArea(
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nhắn tin cho Faye...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                      ),
-                      border: InputBorder.none,
-                    ),
-                    onSubmitted: (text) {
-                      _sendMessage(text);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: const Icon(
-                    Icons.send_rounded,
-                    color: Colors.white, // Đổi màu nút gửi thành trắng
-                    size: 28,
-                  ),
-                  onPressed: () => _sendMessage(_textController.text),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

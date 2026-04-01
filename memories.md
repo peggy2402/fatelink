@@ -1,6 +1,6 @@
 # 🧠 Nhật ký phát triển FateLink (Memories)
 
-## 📅 Ngày: 30/03/2026
+## 📅 Ngày: 30/03/2026 (Cập nhật lần 2)
 
 ### 🎯 Trọng tâm hôm nay: Hoàn thiện luồng xác thực, Tối ưu UI/UX & Xây dựng tính năng Hỗ trợ người dùng
 
@@ -15,11 +15,20 @@
   - Tùy chỉnh màn hình chờ gốc của Android (`launch_background.xml`).
   - Nâng cấp `splash_screen.dart` thành phiên bản "Cinematic" với nền Deep Burgundy gradient, hạt Bokeh lơ lửng, Logo Glassmorphism và hiệu ứng animation (Fade/Scale) mượt mà.
   - Tích hợp logic kiểm tra `accessToken` để tự động điều hướng (Auto-login).
-- **Màn hình Welcome (AI Onboarding)**: Xây dựng `WelcomeScreen` theo phong cách "app store story card" cao cấp. Giao diện sử dụng nền Frosted Glass, khung hình quả trứng hữu cơ chứa Avatar Faye AI, typography thanh lịch. Định tuyến mượt mà: Splash -> Login -> Welcome.
 - **Liên kết Điều khoản**: Sử dụng `url_launcher` để mở các trang web chứa điều khoản dịch vụ, được phục vụ từ chính backend NestJS.
 - **Màn hình Chat (Faye AI)**: Hoàn thiện `chat_screen.dart` với giao diện bong bóng chat tinh tế, có thời gian (timestamp), hiệu ứng AI đang gõ (Typing indicator), và tích hợp `socket_io_client` để trò chuyện thời gian thực. Bổ sung tính năng tự động tải lịch sử chat cũ khi mở màn hình.
 - **Thanh Điều Hướng (Custom Bottom Nav Bar)**: Tạo widget `CustomBottomNavBar` sử dụng hiệu ứng Glassmorphism (kính mờ) và đổ bóng phát sáng (Glow shadow) cho các icon được chọn.
 - **Màn hình Trang chủ (Home Screen)**: Xây dựng UI `home_screen.dart` theo chuẩn Premium Dark Theme kết hợp Mesh Gradient. Thiết kế các "Thẻ người dùng ẩn danh" với Avatar AI có hiệu ứng nhịp thở (Breathing light) và biểu đồ sóng tần số cảm xúc được mã hóa màu.
+- **Kiến trúc Điều hướng Chuyên nghiệp**:
+  - Xây dựng `main_screen.dart` làm màn hình khung (Dashboard) chính, sử dụng `IndexedStack` để quản lý các tab (Home, Chat, Matches, Profile) một cách mượt mà và giữ nguyên trạng thái.
+  - Tạo `profile_screen.dart` với giao diện Glassmorphism đồng bộ và tích hợp tính năng Đăng xuất.
+- **Tối ưu Luồng Trải nghiệm Người dùng (UX Flow)**:
+  - Xóa bỏ màn hình `WelcomeScreen` tĩnh.
+  - Thay thế bằng `OnboardingModal` (Modal Popup) hiển thị trên `HomeScreen` cho người dùng lần đầu, tạo lời mời gọi hành động mạnh mẽ.
+  - Tạo widget `FloatingAiBubble` (Bong bóng AI nổi) để khuyến khích tương tác sau khi người dùng đã bắt đầu trò chuyện.
+- **Refactor Giao diện (UI Overhaul)**:
+  - Thay đổi toàn bộ tone màu chủ đạo của ứng dụng từ Đỏ/Hồng sang **Xanh dương đậm và Trắng**, mang lại cảm giác công nghệ, sâu lắng và hiện đại.
+  - Nâng cấp `ToastUtil` với hiệu ứng trượt từ trên xuống kết hợp mờ dần (FadeIn), tăng tính tinh tế.
 
 #### 2. Backend (NestJS)
 
@@ -45,11 +54,45 @@
 
 ---
 
+## 📅 Ngày: 01/04/2026
+
+### 🎯 Trọng tâm hôm nay: Đánh bóng UI/UX (Polishing) và Tối ưu trải nghiệm tương tác (Micro-interactions)
+
+#### 1. Frontend (Flutter)
+
+- **Thanh điều hướng (CustomBottomNavBar)**:
+  - Thiết kế lại theo dạng Floating Capsule (viên thuốc nổi), đổ bóng hiện đại.
+  - Thêm hiệu ứng Highlight Pill (vòng tròn sáng) trượt mượt mà theo tỷ lệ màn hình chính xác 100%.
+  - Hỗ trợ hiển thị ảnh Active Icons (giữ nguyên màu gốc khi chọn) và khắc phục triệt để lỗi đè màu (color override).
+  - Tích hợp logic load Avatar thật của người dùng từ `FlutterSecureStorage` kèm theo hệ thống Fallback an toàn (chống crash app khi lỗi mạng/mất ảnh).
+- **Bong bóng AI (FloatingAiBubble)**:
+  - Nâng cấp trải nghiệm kéo thả mượt mà (smooth 60fps) dựa trên tọa độ tuyệt đối (`globalPosition`), không còn độ trễ.
+  - Bổ sung hiệu ứng vật lý: Tự động "hít" (snap) về 2 mép màn hình khi thả tay ra (hiệu ứng nảy easeOutBack).
+  - Thêm tính năng kéo xuống đáy để xóa (Close Target "X") y hệt chat head của Messenger.
+  - Tích hợp `SharedPreferences` để lưu lại tọa độ của bong bóng, giữ nguyên vị trí ngay cả khi tắt app mở lại.
+- **Đồng bộ hóa Dữ liệu Đăng nhập**:
+  - Cập nhật `login_screen.dart` để lấy và lưu trữ `avatarUrl` (từ Google hoặc Backend) xuống bộ nhớ bảo mật.
+  - Sửa lỗi Layer (Z-index) trong `main_screen.dart` giúp Bong bóng AI luôn nổi lên trên cùng, không bị thanh Navbar che khuất.
+- **Màn hình Cá nhân (ProfileScreen)**:
+  - Chuyển đổi thành `StatefulWidget` để tự động tải và hiển thị `avatarUrl` thực tế từ `FlutterSecureStorage`.
+  - Thiết kế giao diện Glassmorphism với hiệu ứng viền sáng và đổ bóng (glow) cho Avatar, kết hợp fallback an toàn chống crash.
+  - Cấu trúc lại danh sách cài đặt thành các khối thẻ (Card Menu) bo góc tròn mềm mại.
+  - Cải tiến nút Đăng xuất (Logout) với viền đỏ nổi bật và logic xóa toàn bộ session mượt mà.
+- **Trải nghiệm Chat (ChatInputBar & Morphing UI)**:
+  - Tách riêng `ChatInputBar` thành widget độc lập. Thiết kế dạng viên thuốc nổi (floating pill) với nút '+' xoay 45 độ (`AnimatedRotation`).
+  - Thêm hiệu ứng Morphing bằng `AnimatedSwitcher` tại `main_screen.dart` để hoán đổi mượt mà (Slide & Fade) giữa Bottom Nav và Chat Input khi người dùng chuyển tab.
+  - Thiết kế Custom Modal Popup bật lên từ nút '+' sử dụng hiệu ứng vật lý lò xo (Spring Physics) kết hợp lớp nền kính mờ tập trung (`BackdropFilter`).
+  - Cải tiến UI Modal Popup với các icon chức năng (Home, Matches, Profile) được gán màu sắc đặc trưng (Xanh dương, Hồng, Tím) kèm nền mờ ánh màu đồng bộ cực kỳ bắt mắt.
+  - Tích hợp logic tự động chuyển đổi nút Mic và Send thông minh bằng `ValueListenableBuilder` và `ScaleTransition` dựa trên trạng thái nhập liệu.
+
+---
+
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
 
 - [x] **Frontend**: Xây dựng màn hình chờ (Splash Screen) có logic auto-login.
 - [x] **Frontend**: Xây dựng UI màn hình Welcome để chuẩn bị Onboarding.
 - [x] **Frontend**: Thiết kế `chat_screen.dart` với khung chat tinh tế để bắt đầu nói chuyện với Faye AI.
 - [x] **Backend**: Xây dựng `ChatModule` sử dụng WebSocket (Socket.IO hoặc ws) để phục vụ cho việc chat real-time giữa người dùng và AI.
-- [ ] **Frontend & Backend**: Liên kết Bottom Navigation Bar (điều hướng thực tế giữa các tab Home, Chat, Matches, Profile).
+- [x] **Frontend & Backend**: Liên kết Bottom Navigation Bar (điều hướng thực tế giữa các tab Home, Chat, Matches, Profile).
+- [x] **Frontend**: Hoàn thiện UI/UX cho màn hình Profile (ProfileScreen).
 - [ ] **Backend**: Viết API GET trả về danh sách người dùng ẩn danh cho `HomeScreen` dựa trên thuật toán Matchmaking sơ bộ.

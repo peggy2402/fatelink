@@ -3,8 +3,29 @@ import 'dart:ui';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    const secureStorage = FlutterSecureStorage();
+    final avatar = await secureStorage.read(key: 'avatarUrl');
+    if (mounted) {
+      setState(() => _avatarUrl = avatar);
+    }
+  }
 
   Future<void> _logout(BuildContext context) async {
     const secureStorage = FlutterSecureStorage();
@@ -121,10 +142,6 @@ class ProfileScreen extends StatelessWidget {
                 // Card Cài đặt
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 24,
-                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.03),
                       borderRadius: const BorderRadius.only(
@@ -136,55 +153,72 @@ class ProfileScreen extends StatelessWidget {
                         width: 1,
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        _buildMenuButton(
-                          Icons.person_outline,
-                          'Thông tin cá nhân',
-                          () {},
-                        ),
-                        _buildMenuButton(
-                          Icons.graphic_eq,
-                          'Phân tích tần số',
-                          () {},
-                        ),
-                        _buildMenuButton(
-                          Icons.privacy_tip_outlined,
-                          'Quyền riêng tư',
-                          () {},
-                        ),
-                        const Spacer(),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(40),
+                        topRight: Radius.circular(40),
+                      ),
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          24,
+                          32,
+                          24,
+                          100,
+                        ), // Padding bottom lớn để không vướng thanh Nav
+                        children: [
+                          _buildMenuButton(
+                            Icons.person_outline,
+                            'Thông tin cá nhân',
+                            () {},
+                          ),
+                          _buildMenuButton(
+                            Icons.graphic_eq,
+                            'Phân tích tần số',
+                            () {},
+                          ),
+                          _buildMenuButton(
+                            Icons.settings_outlined,
+                            'Cài đặt ứng dụng',
+                            () {},
+                          ),
+                          _buildMenuButton(
+                            Icons.privacy_tip_outlined,
+                            'Quyền riêng tư & Điều khoản',
+                            () {},
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Nút Đăng xuất
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(
-                                0.1,
-                              ), // Nền mờ
-                              foregroundColor: Colors.white, // Chữ trắng
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                                side: BorderSide(
-                                  color: Colors.white.withOpacity(0.5),
-                                  width: 1,
+                          // Nút Đăng xuất
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent.withOpacity(
+                                  0.1,
+                                ), // Nền đỏ mờ
+                                foregroundColor: Colors.redAccent, // Chữ đỏ
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: Colors.redAccent.withOpacity(0.5),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              onPressed: () => _logout(context),
+                              child: const Text(
+                                'Đăng Xuất',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                            onPressed: () => _logout(context),
-                            child: const Text(
-                              'Đăng Xuất',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ),
-                        ),
-                        const SizedBox(height: 80), // Cách đáy cho BottomNavBar
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -197,19 +231,43 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildMenuButton(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white70),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
-      trailing: const Icon(
-        Icons.arrow_forward_ios,
-        color: Colors.white38,
-        size: 16,
+      child: ListTile(
+        leading: Icon(icon, color: Colors.white70),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.white.withOpacity(0.3),
+          size: 16,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onTap: onTap,
       ),
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
+    );
+  }
+
+  Widget _buildFallbackAvatar() {
+    return Image.asset(
+      'assets/images/default_avatar.png',
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey.withOpacity(0.5),
+        child: const Icon(Icons.person, color: Colors.white, size: 60),
+      ),
     );
   }
 }

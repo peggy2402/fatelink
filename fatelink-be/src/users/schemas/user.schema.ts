@@ -17,8 +17,8 @@ export class User {
   @Prop({ unique: true, sparse: true })
   googleId: string;
 
-  @Prop({ type: [String], default: [] })
-  emotionalStates: string[]; // Mảng linh hoạt để AI lưu các tags cảm xúc
+  @Prop({ default: 'Bình thường' })
+  detected_emotion: string; // Lưu trạng thái cảm xúc gần nhất do AI phân tích
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

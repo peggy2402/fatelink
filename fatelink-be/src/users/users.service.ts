@@ -46,4 +46,21 @@ export class UsersService {
       { new: true }, // Trả về document mới sau khi đã cập nhật
     ).exec();
   }
+
+  /**
+   * Tìm danh sách người dùng có cùng tần số cảm xúc
+   */
+  async findMatches(userId: string): Promise<UserDocument[]> {
+    const user = await this.userModel.findById(userId).exec();
+    
+    if (!user || !user.detected_emotion) {
+      return []; // Chưa có cảm xúc thì không trả về match
+    }
+
+    // Tìm những user có cùng detected_emotion nhưng khác _id với user hiện tại
+    return this.userModel.find({
+      _id: { $ne: userId },
+      detected_emotion: user.detected_emotion,
+    }).limit(20).exec(); // Lấy giới hạn 20 người
+  }
 }

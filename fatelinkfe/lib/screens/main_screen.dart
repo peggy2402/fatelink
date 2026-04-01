@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/home_screen.dart';
 import 'package:fatelinkfe/screens/chat_screen.dart';
 import 'package:fatelinkfe/screens/profile_screen.dart';
 import 'package:fatelinkfe/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/widgets/floating_ai_bubble.dart';
+import 'package:fatelinkfe/widgets/chat_input_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,6 +21,13 @@ class _MainScreenState extends State<MainScreen> {
   bool _showOnboarding = false;
   bool _hasStartedChat = false;
   bool _isLoading = true; // Để hiển thị loading khi check SharedPreferences
+  bool _hasUnreadMessages = false; // Biến lưu trạng thái có tin nhắn mới
+  String? _avatarUrl; // Biến lưu URL ảnh đại diện
+
+  final GlobalKey<ChatScreenState> _chatScreenKey =
+      GlobalKey<ChatScreenState>();
+  final TextEditingController _chatController = TextEditingController();
+  bool _isPopupOpen = false;
 
   @override
   void initState() {
@@ -30,8 +40,15 @@ class _MainScreenState extends State<MainScreen> {
     // Nếu chưa có key 'has_started_chat' hoặc giá trị là false, thì đây là lần đầu
     final hasChatted = prefs.getBool('has_started_chat') ?? false;
 
+    // Lấy URL ảnh đại diện đã lưu từ FlutterSecureStorage
+    const secureStorage = FlutterSecureStorage();
+    final avatar = await secureStorage.read(
+      key: 'avatarUrl',
+    ); // Key này phải khớp với key bạn lưu lúc Login
+
     if (mounted) {
       setState(() {
+        _avatarUrl = avatar;
         _hasStartedChat = hasChatted;
         _showOnboarding = !hasChatted;
         _isLoading = false;
@@ -47,8 +64,15 @@ class _MainScreenState extends State<MainScreen> {
         _showOnboarding = false;
         _hasStartedChat = true;
         _currentIndex = 1; // Chuyển sang tab Chat
+        _hasUnreadMessages = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
   }
 
   @override
@@ -62,7 +86,19 @@ class _MainScreenState extends State<MainScreen> {
         showOnboarding: _showOnboarding,
         onStartChat: _handleStartChat,
       ),
-      const ChatScreen(),
+      ChatScreen(
+        key: _chatScreenKey,
+        onBack: () => setState(() {
+          _currentIndex = 0;
+          _isPopupOpen = false; // Đóng popup nếu đang mở
+        }),
+        onNewMessage: () {
+          if (_currentIndex != 1) {
+            // Chỉ hiện chấm đỏ nếu đang KHÔNG ở tab Chat
+            setState(() => _hasUnreadMessages = true);
+          }
+        },
+      ),
       const Center(
         child: Text(
           "Matches (Coming Soon)",
@@ -83,20 +119,183 @@ class _MainScreenState extends State<MainScreen> {
           else
             IndexedStack(index: _currentIndex, children: screens),
 
-          // Hiển thị bong bóng AI nếu đã bắt đầu chat và không ở tab Chat
-          if (_hasStartedChat && _currentIndex != 1 && !isKeyboardOpen)
-            FloatingAiBubble(onTap: () => setState(() => _currentIndex = 1)),
+          // Lớp Blur mờ phía sau khi mở Modal Popup
+          if (_isPopupOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _isPopupOpen = false),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Container(color: Colors.black.withOpacity(0.3)),
+                ),
+              ),
+            ),
 
-          if (!isKeyboardOpen && !_isLoading)
+          // Custom Modal Popup (Nổi lên từ nút +)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.elasticOut, // Hiệu ứng Bounce (Spring Physics)
+            bottom: _isPopupOpen ? 110.0 : 40.0, // Vị trí nảy lên
+            left: 24,
+            child: AnimatedScale(
+              scale: _isPopupOpen ? 1.0 : 0.5, // Hiệu ứng Scale lớn dần
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _isPopupOpen ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: !_isPopupOpen,
+                  child: _buildCustomPopup(),
+                ),
+              ),
+            ),
+          ),
+
+          // Thanh Điều Hướng hoặc Thanh Chat Input
+          if (!_isLoading && (!isKeyboardOpen || _currentIndex == 1))
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: CustomBottomNavBar(
-                currentIndex: _currentIndex,
-                onTap: (index) => setState(() => _currentIndex = index),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) {
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.8), // Trượt từ dưới lên
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                child: _currentIndex == 1
+                    ? ChatInputBar(
+                        key: const ValueKey('chatBar'),
+                        controller: _chatController,
+                        isPopupOpen: _isPopupOpen,
+                        onPlusTap: () =>
+                            setState(() => _isPopupOpen = !_isPopupOpen),
+                        onSend: () {
+                          final text = _chatController.text;
+                          if (text.trim().isNotEmpty) {
+                            _chatScreenKey.currentState?.sendMessage(text);
+                            _chatController.clear();
+                          }
+                        },
+                      )
+                    : CustomBottomNavBar(
+                        key: const ValueKey('navBar'),
+                        currentIndex: _currentIndex,
+                        avatarUrl: _avatarUrl,
+                        onTap: (index) => setState(() {
+                          _currentIndex = index;
+                          _isPopupOpen = false;
+                          if (index == 1) _hasUnreadMessages = false;
+                        }),
+                      ),
               ),
             ),
+
+          // Hiển thị bong bóng AI nếu đã bắt đầu chat và không ở tab Chat (Đưa xuống cuối để nổi lên trên cùng)
+          if (_hasStartedChat &&
+              _currentIndex != 1 &&
+              !isKeyboardOpen &&
+              !_isPopupOpen)
+            FloatingAiBubble(
+              hasNotification: _hasUnreadMessages,
+              onTap: () => setState(() {
+                _currentIndex = 1;
+                _hasUnreadMessages = false; // Tắt chấm đỏ khi đã vào Chat
+              }),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // --- UI Custom Modal Popup ---
+  Widget _buildCustomPopup() {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF001520), // Xanh navy đậm
+        borderRadius: BorderRadius.circular(32), // Bo góc cực đại
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 25,
+            offset: const Offset(0, 15),
+          ),
+        ],
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildPopupItem(Icons.home_filled, 'Home', 0, Colors.blueAccent),
+          _buildPopupItem(
+            Icons.favorite_border,
+            'Matches',
+            2,
+            Colors.pinkAccent,
+          ),
+          _buildPopupItem(
+            Icons.person_outline,
+            'Profile',
+            3,
+            Colors.deepPurpleAccent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPopupItem(
+    IconData icon,
+    String label,
+    int index,
+    Color iconColor,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+          _isPopupOpen = false;
+        });
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.15), // Nền mờ đồng bộ với màu icon
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: iconColor, // Gán màu cho icon
+              size: 24,
+            ), // Sử dụng IconData trước theo yêu cầu
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
