@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final url = Uri.parse(
-      'https://fatelink-production.up.railway.app/matchmaking/recommendations',
+      'https://fatelink-be.fly.dev/matchmaking/recommendations',
     );
     final response = await http.get(
       url,

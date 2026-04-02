@@ -104,7 +104,7 @@ class ChatScreenState extends State<ChatScreen> {
       if (userId == null) throw Exception('Token không hợp lệ');
 
       final url = Uri.parse(
-        'https://fatelink-production.up.railway.app/messages/$userId?limit=50',
+        'https://fatelink-be.fly.dev/messages/$userId?limit=50',
       );
       final response = await http.get(
         url,
@@ -133,7 +133,7 @@ class ChatScreenState extends State<ChatScreen> {
 
   void _connectToSocket(String token) {
     // LƯU Ý: Đổi URL này cho khớp với backend của bạn
-    // Môi trường thật: 'https://fatelink-be.fly.dev/' (Fly.io có hỗ trợ HTTPS miễn phí)
+    // Môi trường thật: 'https://fatelink-be.fly.dev'
     // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
     const String socketUrl = 'https://fatelink-be.fly.dev';
 

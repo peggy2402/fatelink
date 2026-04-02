@@ -29,11 +29,11 @@ class _LoginScreenState extends State<LoginScreen>
   );
 
   // --- CONFIG: Đổi URL của backend tại đây ---
-  // Môi trường thật (khi deploy lên Railway): 'https://fatelink-production.up.railway.app'
+  // Môi trường thật (khi deploy lên Fly.io): 'https://fatelink-be.fly.dev'
   // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
   // Môi trường test (máy ảo iOS/Web): 'http://localhost:3000'
   // Môi trường máy Android thật: 'http://192.168.1.8:3000'
-  static const String _baseUrl = 'https://fatelink-production.up.railway.app';
+  static const String _baseUrl = 'https://fatelink-be.fly.dev';
   // static const String _baseUrl = 'http://10.0.2.2:3000';
 
   bool _agreedToTerms = true; // Biến lưu trạng thái auto-check điều khoản

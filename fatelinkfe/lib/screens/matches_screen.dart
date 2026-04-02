@@ -101,7 +101,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
       // Gọi API có truyền thêm số trang (page)
       final url = Uri.parse(
-        'https://fatelink-production.up.railway.app/users/$userId/matches?page=$_page&limit=10',
+        'https://fatelink-be.fly.dev/users/$userId/matches?page=$_page&limit=10',
       );
       final response = await http.get(
         url,

@@ -61,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final url = Uri.parse(
-        'https://fatelink-production.up.railway.app/users/$userId/profile',
+        'https://fatelink-be.fly.dev/users/$userId/profile',
       );
       final response = await http.get(
         url,
