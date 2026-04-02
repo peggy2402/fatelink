@@ -38,7 +38,7 @@ export class GeminiService {
     this.ai = new GoogleGenerativeAI(apiKey || 'DUMMY_KEY');
     
     this.model = this.ai.getGenerativeModel({
-      model: 'gemini-1.5-pro', // Sử dụng định danh model chuẩn, bỏ hậu tố -latest
+      model: 'gemini-2.5-pro', // Sử dụng định danh model chuẩn, bỏ hậu tố -latest
       systemInstruction: this.fayeSystemInstruction,
       generationConfig: {
         temperature: 0.7,
