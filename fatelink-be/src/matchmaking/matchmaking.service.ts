@@ -53,7 +53,7 @@ export class MatchmakingService {
     let currentUser;
     try {
       currentUser = await this.userModel.findById(userId).exec();
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Invalid userId format or DB error: ${error.message}`);
     }
 

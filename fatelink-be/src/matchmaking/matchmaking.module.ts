@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MatchmakingController } from './matchmaking.controller';
 import { MatchmakingService } from './matchmaking.service';
-import { UserSchema } from 'src/users/schemas/user.schema';
+import { UserSchema } from '../users/schemas/user.schema';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
