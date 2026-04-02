@@ -124,5 +124,6 @@
 - [x] **Backend**: Viết API GET trả về danh sách người dùng ẩn danh cho `HomeScreen` dựa trên thuật toán Matchmaking sơ bộ.
 - [x] **Frontend**: Kết nối API thực tế để lấy danh sách những người đã ghép đôi cho màn hình `MatchesScreen`.
 - [x] **Frontend**: Tích hợp tính năng Đa ngôn ngữ (i18n / Switch Language) sử dụng `easy_localization`.
-- [ ] **Backend**: Viết API "Unmatch" trong NestJS để đồng bộ việc xóa ghép đôi vào MongoDB.
-- [ ] **Frontend**: Xây dựng chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.
+- [x] **Backend & Frontend**: Viết API "Unmatch" trong NestJS và tích hợp thành công trên giao diện Flutter.
+- [x] **Frontend**: Xây dựng UI chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.
+- [ ] **Frontend & Backend**: Tích hợp Firebase Cloud Messaging (FCM) để gửi Push Notification khi có tin nhắn mới (lúc app chạy nền).
