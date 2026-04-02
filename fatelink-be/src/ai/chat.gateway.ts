@@ -22,6 +22,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  // Biến lưu trữ ánh xạ giữa UserID và SocketID hiện tại
+  private activeUsers = new Map<string, string>();
+
   constructor(
     private readonly geminiService: GeminiService,
     private readonly messageService: MessageService,
@@ -40,6 +43,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Gắn userId vào client data để dùng cho các luồng nhắn tin sau này
       client.data.userId = decoded.sub || decoded.id || decoded.userId; 
       console.log(`🔌 Client connected: ${client.id} (User: ${client.data.userId})`);
+      
+      // Đánh dấu user đang online
+      this.activeUsers.set(client.data.userId, client.id);
     } catch (error) {
       console.log(`❌ Kết nối bị từ chối do Token không hợp lệ: ${client.id}`);
       client.disconnect(); // Ngắt kết nối ngay nếu không xác thực được
@@ -47,6 +53,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
+    if (client.data.userId) {
+      this.activeUsers.delete(client.data.userId); // Gỡ user khỏi danh sách online
+    }
     console.log(`🔌 Client disconnected: ${client.id}`);
   }
 
@@ -75,8 +84,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       let aiText = aiResponseRaw;
       try {
-        // Parse JSON từ AI
-        const parsedData = JSON.parse(aiResponseRaw);
+        // Đảm bảo loại bỏ markdown code block nếu AI cố tình trả về markdown
+        const cleanJsonString = aiResponseRaw.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const parsedData = JSON.parse(cleanJsonString);
+        
         if (parsedData.reply) aiText = parsedData.reply;
 
         // Cập nhật Cảm xúc & Tính cách vào DB
@@ -91,6 +102,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       } catch (e) {
         console.warn('AI không trả về JSON hợp lệ, fallback dùng text thuần');
+        console.error('Lỗi Parse JSON:', e.message);
       }
 
       // 4. Lưu tin nhắn của AI vào DB
@@ -103,10 +115,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('❌ Lỗi khi xử lý tin nhắn:', error);
+      console.error('❌ Lỗi khi xử lý tin nhắn trong ChatGateway:', error.stack || error.message);
       client.emit('errorMessage', {
         message: 'Faye đang bận chút việc, bạn thử lại sau nhé!',
       });
+    }
+  }
+
+  // --- GIAO TIẾP 1-1 (GIỮA 2 USER THẬT) ---
+  @SubscribeMessage('sendDirectMessage')
+  async handleDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { partnerId: string; text: string },
+  ) {
+    const senderId = client.data.userId;
+    const { partnerId, text } = payload;
+
+    // 1. TODO: Lưu tin nhắn thực tế vào DB (Bổ sung vào MessageService)
+    // await this.messageService.createDirectMessage(senderId, partnerId, text);
+
+    // 2. Tìm kiếm đối phương có đang Online không
+    const targetSocketId = this.activeUsers.get(partnerId);
+
+    if (targetSocketId) {
+      // Đối phương đang mở app -> Bắn sự kiện realtime
+      this.server.to(targetSocketId).emit('receiveDirectMessage', {
+        senderId: senderId,
+        text: text,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // Đối phương đang tắt app hoặc chạy nền -> Kích hoạt Push Notification
+      console.log(`Người dùng ${partnerId} đang offline. Tiến hành gửi Push Notification.`);
     }
   }
 }

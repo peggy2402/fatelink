@@ -212,7 +212,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã hủy kết nối với ${user.name}'),
+        content: Text('matches_cancelled ${user.name}'.tr()),
         backgroundColor: Colors.white.withOpacity(0.1),
         behavior: SnackBarBehavior.floating,
       ),
@@ -314,13 +314,19 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Widget _buildMatchItem(MatchedUser user) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final shouldReload = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => MatchChatScreen(partnerName: user.name),
+            builder: (context) => MatchChatScreen(
+              partnerName: user.name,
+              partnerId: user.id, // Đã fix: Truyền thêm partnerId
+            ),
           ),
         );
+        if (shouldReload == true) {
+          _fetchMatches(); // Gọi lại API để làm mới danh sách nếu vừa unmatch
+        }
       },
       onLongPress: () {
         _showUnmatchDialog(user);

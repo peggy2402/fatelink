@@ -9,8 +9,11 @@ export class MatchmakingController {
 
   @Get('recommendations')
   async getRecommendations(@Req() req) {
-    // const userId = req.user.id; // Lấy ID từ JWT token
-    const userId = 'temp-id'; // Tạm thời hardcode
+    // Đã fix lỗi Cast to ObjectId: Thay 'temp-id' bằng ID thật của user.
+    // Lưu ý: Bạn cần mở comment @UseGuards(JwtAuthGuard) ở trên class để req có object user
+    const userId = req.user?.id || req.user?.sub;
+    if (!userId) throw new Error('Không tìm thấy thông tin người dùng trong Token');
+
     return this.matchmakingService.getRecommendations(userId);
   }
 }

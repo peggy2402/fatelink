@@ -24,8 +24,10 @@ export class GeminiService {
     QUAN TRỌNG: Bạn BẮT BUỘC phải trả về phản hồi dưới định dạng JSON chính xác như sau, tuyệt đối không bọc trong markdown (như \`\`\`json):
     {
       "reply": "Câu trả lời tự nhiên của bạn dành cho user",
-      "detected_emotion": "Vui | Buồn | Cô đơn | Áp lực | Rỗng tuếch | Phấn khích",
-      "is_ready_to_match": true/false
+      "latestEmotion": "Vui | Buồn | Cô đơn | Áp lực | Rỗng tuếch | Phấn khích",
+      "detected_emotions": { "Vui": 10, "Buồn": 0, "Cô đơn": 5 },
+      "detected_personality": { "Hướng nội": 80, "Cảm xúc": 70 },
+      "is_ready_to_match": false
     }
   `;
 
@@ -36,7 +38,7 @@ export class GeminiService {
     this.ai = new GoogleGenerativeAI(apiKey || 'DUMMY_KEY');
     
     this.model = this.ai.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-pro-latest', // Nếu vẫn bị lỗi, hãy thử đổi thành 'gemini-pro'
       systemInstruction: this.fayeSystemInstruction,
       generationConfig: {
         temperature: 0.7,
@@ -65,10 +67,31 @@ Tin nhắn hiện tại của User: "${userMessage}"
 Hãy phân tích và trả lời tuân thủ đúng định dạng JSON đã yêu cầu.
       `;
 
-      const result = await this.model.generateContent(finalPrompt);
-      return result.response.text();
+      let retries = 3;
+      let delayMs = 1000;
+      
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const result = await this.model.generateContent(finalPrompt);
+          return result.response.text();
+        } catch (apiError: any) {
+          const isRateLimit = apiError?.status === 429 || apiError?.message?.includes('429') || apiError?.message?.includes('quota') || apiError?.message?.includes('Too Many Requests');
+          
+          if (isRateLimit && attempt < retries) {
+            console.warn(`⏳ Rate limit từ Gemini API. Đợi ${delayMs}ms và thử lại (Lần ${attempt})...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            delayMs *= 2; // Tăng gấp đôi thời gian chờ cho lần thử sau (Exponential backoff)
+            continue;
+          }
+          throw apiError; // Nếu không phải rate limit hoặc hết lượt thử, ném lỗi ra ngoài
+        }
+      }
+      throw new Error('Max retries reached');
     } catch (error: any) {
-      console.error('Lỗi khi gọi Gemini API:', error?.message || error);
+      console.error('🔥 LỖI TẠI GEMINI SERVICE:');
+      console.error(error?.message || error);
+      if (!process.env.GEMINI_API_KEY) console.error('💡 Gợi ý: Kiểm tra lại xem bạn đã điền GEMINI_API_KEY trong file .env chưa?');
+      
       throw new InternalServerErrorException('Faye đang bận chút việc, bạn thử lại sau nhé!');
     }
   }
