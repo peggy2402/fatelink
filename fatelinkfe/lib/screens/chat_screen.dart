@@ -133,9 +133,9 @@ class ChatScreenState extends State<ChatScreen> {
 
   void _connectToSocket(String token) {
     // LƯU Ý: Đổi URL này cho khớp với backend của bạn
-    // Môi trường thật: 'https://fatelink-production.up.railway.app'
+    // Môi trường thật: 'https://fatelink-be.fly.dev/' (Fly.io có hỗ trợ HTTPS miễn phí)
     // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
-    const String socketUrl = 'https://fatelink-production.up.railway.app';
+    const String socketUrl = 'https://fatelink-be.fly.dev';
 
     _socket = IO.io(
       socketUrl,
