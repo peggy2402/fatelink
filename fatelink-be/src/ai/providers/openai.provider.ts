@@ -13,18 +13,20 @@ export class OpenAiProvider implements IAiProvider {
   private openai: OpenAI;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Đổi sang dùng Groq API Key để dùng Llama 3 miễn phí và tốc độ cao
+    const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      this.logger.warn('Chưa cấu hình OPENAI_API_KEY, OpenAiProvider sẽ không hoạt động.');
+      this.logger.warn('Chưa cấu hình GROQ_API_KEY, OpenAiProvider sẽ không hoạt động.');
     }
     this.openai = new OpenAI({
       apiKey: apiKey || 'DUMMY_KEY',
+      baseURL: 'https://api.groq.com/openai/v1', // Trỏ baseURL về hệ thống của Groq
     });
   }
 
   async generateContent(prompt: string): Promise<AiProviderResponse> {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OpenAI API Key chưa được cấu hình.');
+    if (!this.openai.apiKey || this.openai.apiKey === 'DUMMY_KEY') {
+      throw new Error('API Key chưa được cấu hình.');
     }
 
     try {
@@ -36,7 +38,7 @@ export class OpenAiProvider implements IAiProvider {
       // Chạy đua giữa lời gọi API và timeout
       const response = await Promise.race([
         this.openai.chat.completions.create({
-          model: 'gpt-4o-mini', // Dùng model nhanh và tiết kiệm chi phí
+          model: 'llama3-8b-8192', // Gọi model Llama 3 8B của Groq
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
         }),

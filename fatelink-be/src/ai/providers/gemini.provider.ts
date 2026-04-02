@@ -26,7 +26,7 @@ export class GeminiProvider implements IAiProvider {
       throw new Error('Gemini API Key chưa được cấu hình.');
     }
 
-    let currentModelName = 'gemini-1.5-flash';
+    let currentModelName = 'gemini-2.0-flash'; // Bắt đầu với model nhanh hơn
     let retries = 3;
     let delayMs = 1000;
 

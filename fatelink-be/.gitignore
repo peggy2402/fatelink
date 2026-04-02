@@ -11,6 +11,9 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+# Ignore Llama AI Models
+*.gguf
+models/
 
 # OS
 .DS_Store

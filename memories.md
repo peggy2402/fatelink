@@ -113,6 +113,46 @@
 
 ---
 
+## 📅 Ngày: 02/04/2026 (Cập nhật lần 3)
+
+### 🎯 Trọng tâm: Nâng cấp Kiến trúc AI (Fallback Chain), Real-time Socket & Triển khai Fly.io
+
+#### 1. Kiến trúc Hệ thống AI (Strategy Pattern & Fallback)
+
+- **Refactor toàn diện AI Service**: Đổi tên `GeminiService` thành `AiService`, áp dụng mô hình thiết kế Strategy Pattern để quản lý linh hoạt nhiều nhà cung cấp AI.
+- **Xây dựng AI Providers**:
+  - `GeminiProvider`: Nâng cấp lên thư viện mới nhất `@google/genai`. Xử lý logic tự động hạ cấp model (fallback từ `gemini-2.0-flash` xuống `gemini-1.5-pro` hoặc `1.5-flash`) khi gặp lỗi 404 hoặc bị Rate Limit.
+  - `OpenAiProvider`: Tích hợp ChatGPT (`gpt-4o-mini`) làm phương án dự phòng thứ nhất.
+  - `MockAiProvider`: Chốt chặn cuối cùng (Last-resort fallback). Tự động trả về chuẩn JSON báo lỗi "quá tải" khi tất cả các API thực tế đều hết Quota (lỗi HTTP 429), giúp ứng dụng không bao giờ bị crash.
+- **Cơ chế Timeout**: Áp dụng `Promise.race` để giới hạn thời gian chờ (15s) cho mỗi Provider, tránh kẹt request gây treo server.
+- **Dependency Injection**: Cấu hình `useFactory` trong `AiModule` để thiết lập chuỗi ưu tiên tự động: Gemini -> OpenAI -> MockAI.
+
+#### 2. Tối ưu Real-time WebSocket (NestJS & Flutter)
+
+- **Quản lý Trạng thái Global**: Tạo `ChatProvider` trên dự án Flutter, sử dụng `ChangeNotifier` để quản lý tập trung trạng thái Online và Typing.
+- **Tối ưu Broadcast Backend**: Nâng cấp `ChatGateway` tự động phát sự kiện `userStatusChanged` tới toàn bộ client ngay khi có người connect/disconnect thay vì để client phải polling. Bổ sung sự kiện `checkUsersStatus` để tra cứu hàng loạt giúp tối ưu băng thông.
+- **Trải nghiệm Gõ phím (Typing Indicator)**:
+  - Tích hợp package `flutter_spinkit` tạo hiệu ứng 3 chấm nảy lên nảy xuống mượt mà.
+  - Bắt sự kiện vòng đời `dispose()` trong `MatchChatScreen` để tự động gửi tín hiệu "ngừng gõ" (isTyping: false) khi thoát màn hình.
+- **Quản lý Service**: Sử dụng `ProxyProvider` trong Flutter để khởi tạo và cung cấp `SocketService` ở phạm vi toàn cục.
+
+#### 3. Bug Fixes & Deployment (Fly.io)
+
+- **Khắc phục lỗi TypeScript**:
+  - Xử lý triệt để cảnh báo kiểu `unknown` trong các khối `catch` bằng cách ép kiểu `error: any` tại `chat.gateway.ts` và `matchmaking.service.ts`.
+  - Sửa lỗi import bằng đường dẫn tuyệt đối (đổi từ `src/...` sang `../...`) để tương thích với `"moduleResolution": "nodenext"` khi chạy lệnh `npm run build` trên cloud.
+- **CI/CD Actions**: Khắc phục lỗi `invalid token: all tokens missing third-party discharge tokens` trên GitHub Actions bằng cách thay thế Personal Token thành Deploy Token chuyên dụng của Fly.io (`flyctl tokens create deploy`).
+
+#### 4. Tích hợp AI Cục bộ (Local LLM - Llama 3)
+
+- **Thử nghiệm & Chuyển đổi thư viện**: Khởi đầu với `@llama-node` nhưng gặp lỗi type definition (do thư viện cũ/ngừng bảo trì). Đã chuyển sang `node-llama-cpp` ổn định và hỗ trợ TypeScript tối ưu hơn.
+- **Xây dựng LlamaProvider**: Tạo provider nạp trực tiếp model lượng tử hóa (`.gguf`) vào RAM thông qua `LlamaChatSession`, cho phép AI chạy hoàn toàn offline.
+- **Cấu hình Model chuẩn**: Chốt phương án dùng `Meta-Llama-3-8B-Instruct.Q4_K_M.gguf` (bản Instruct, chuẩn Q4) thay vì bản Base/Q2 để đảm bảo AI đủ thông minh và tuân thủ định dạng JSON đầu ra phục vụ cho app Flutter.
+- **Tối ưu Fallback Chain**: Cập nhật `AiModule`, đưa Llama vào chuỗi dự phòng khép kín: `Gemini` -> `LlamaLocal` -> `OpenAI` -> `MockAI`.
+- **Lưu ý Hạ tầng (OOM)**: Chạy Local LLM yêu cầu cấu hình máy RAM 8GB+. Nếu deploy lên các host Free-tier (như Fly.io/Railway với 256MB RAM) sẽ bị crash (Out of Memory). Giải pháp thay thế là sử dụng Groq API để gọi Llama 3 miễn phí & siêu tốc.
+
+---
+
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
 
 - [x] **Frontend**: Xây dựng màn hình chờ (Splash Screen) có logic auto-login.
