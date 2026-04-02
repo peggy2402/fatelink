@@ -1,9 +1,9 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { MatchmakingService } from './matchmaking.service';
-// import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Bảo vệ API
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // Đã mở comment
 
 @Controller('matchmaking')
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard) // Đã mở comment để bắt buộc có Token
 export class MatchmakingController {
   constructor(private readonly matchmakingService: MatchmakingService) {}
 
