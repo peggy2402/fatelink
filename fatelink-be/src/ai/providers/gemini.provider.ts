@@ -1,20 +1,24 @@
 // src/ai/providers/gemini.provider.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { IAiProvider, AiProviderResponse } from './ai-provider.interface';
+
+const API_TIMEOUT = 15000; // 15 giây
 
 @Injectable()
 export class GeminiProvider implements IAiProvider {
   readonly providerName = 'Gemini';
   private readonly logger = new Logger(GeminiProvider.name);
-  private ai: GoogleGenerativeAI;
+  private ai: GoogleGenAI;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       this.logger.warn('Chưa cấu hình GEMINI_API_KEY, GeminiProvider sẽ không hoạt động.');
     }
-    this.ai = new GoogleGenerativeAI(apiKey || 'DUMMY_KEY');
+    this.ai = new GoogleGenAI({
+      apiKey: apiKey || 'DUMMY_KEY'
+    });
   }
 
   async generateContent(prompt: string): Promise<AiProviderResponse> {
@@ -28,20 +32,30 @@ export class GeminiProvider implements IAiProvider {
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const model = this.ai.getGenerativeModel({
-          model: currentModelName,
-          generationConfig: { temperature: 0.7, topP: 0.8 },
-        });
+        // Tạo một promise sẽ reject sau khoảng thời gian timeout
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Yêu cầu đến Gemini quá thời gian chờ ${API_TIMEOUT}ms.`)), API_TIMEOUT)
+        );
 
-        const result = await model.generateContent(prompt);
-        const rawText = result.response.text();
+        // Chạy đua giữa lời gọi API và timeout
+        const result = await Promise.race([
+          this.ai.models.generateContent({
+            model: currentModelName,
+            contents: prompt,
+            config: { temperature: 0.7, topP: 0.8 },
+          }),
+          timeoutPromise
+        ]);
+
+        // Ở thư viện mới, text được trả về trực tiếp
+        const rawText = result.text || '';
         return { rawText };
       } catch (apiError: any) {
         const errorMessage = apiError?.message || '';
 
         if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-          this.logger.warn(`Model ${currentModelName} bị 404. Tự động đổi sang gemini-pro (Lần thử ${attempt})...`);
-          currentModelName = 'gemini-pro';
+          this.logger.warn(`Model ${currentModelName} bị 404. Tự động đổi sang gemini-1.5-pro (Lần thử ${attempt})...`);
+          currentModelName = 'gemini-1.5-pro';
           continue;
         }
 

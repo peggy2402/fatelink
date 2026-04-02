@@ -47,6 +47,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       
       // Đánh dấu user đang online
       this.activeUsers.set(client.data.userId, client.id);
+      
+      // TỐI ƯU: Broadcast cho toàn bộ client biết user này vừa online
+      this.server.emit('userStatusChanged', { userId: client.data.userId, isOnline: true });
     } catch (error: any) {
       console.log(`❌ Kết nối bị từ chối do Token không hợp lệ: ${client.id}`);
       client.disconnect(); // Ngắt kết nối ngay nếu không xác thực được
@@ -56,6 +59,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     if (client.data.userId) {
       this.activeUsers.delete(client.data.userId); // Gỡ user khỏi danh sách online
+      
+      // TỐI ƯU: Broadcast cho toàn bộ client biết user này vừa offline
+      this.server.emit('userStatusChanged', { userId: client.data.userId, isOnline: false });
     }
     console.log(`🔌 Client disconnected: ${client.id}`);
   }
@@ -162,6 +168,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: payload.targetUserId,
       isOnline: isOnline,
     });
+  }
+
+  // --- TÍNH NĂNG KIỂM TRA TRẠNG THÁI NHIỀU USER CÙNG LÚC ---
+  @SubscribeMessage('checkUsersStatus')
+  handleCheckUsersStatus(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserIds: string[] },
+  ) {
+    const statuses: Record<string, boolean> = {};
+    if (payload.targetUserIds && Array.isArray(payload.targetUserIds)) {
+      for (const id of payload.targetUserIds) {
+        statuses[id] = this.activeUsers.has(id);
+      }
+    }
+    client.emit('usersStatusResult', statuses);
   }
 
   // --- TÍNH NĂNG "ĐANG GÕ..." (TYPING) ---

@@ -3,6 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { IAiProvider, AiProviderResponse } from './ai-provider.interface';
 
+// Thời gian chờ tối đa cho một yêu cầu API (miliseconds)
+const API_TIMEOUT = 15000; // 15 giây
+
 @Injectable()
 export class OpenAiProvider implements IAiProvider {
   readonly providerName = 'OpenAI';
@@ -25,11 +28,21 @@ export class OpenAiProvider implements IAiProvider {
     }
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Dùng model nhanh và tiết kiệm chi phí
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-      });
+      // Tạo một promise sẽ reject sau khoảng thời gian timeout
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Yêu cầu đến OpenAI quá thời gian chờ ${API_TIMEOUT}ms.`)), API_TIMEOUT)
+      );
+
+      // Chạy đua giữa lời gọi API và timeout
+      const response = await Promise.race([
+        this.openai.chat.completions.create({
+          model: 'gpt-4o-mini', // Dùng model nhanh và tiết kiệm chi phí
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+        }),
+        timeoutPromise
+      ]);
+
 
       const rawText = response.choices[0]?.message?.content || '';
       return { rawText };
