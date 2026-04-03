@@ -55,6 +55,9 @@
                 <button onclick="switchTab('checkAiTab')" id="btn-checkAiTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-stethoscope w-5"></i> <span>Trạng thái Model</span>
                 </button>
+                <button onclick="switchTab('testChatTab')" id="btn-testChatTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
+                    <i class="fas fa-comments w-5"></i> <span>Test AI Chat</span>
+                </button>
             </nav>
             <div class="p-4 border-t border-gray-800">
                 <button onclick="logout()" class="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-gray-800 rounded-lg text-left">
@@ -86,16 +89,6 @@
                     </div>
 
                     <div class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Nhà cung cấp AI ưu tiên (Chỉ chọn Model đang Online)</label>
-                            <select id="activeProvider" class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                <option value="gemini">Đang kiểm tra trạng thái Gemini...</option>
-                                <option value="openai">Đang kiểm tra trạng thái OpenAI/Groq...</option>
-                                <option value="llama">Đang kiểm tra trạng thái Local Llama...</option>
-                                <option value="huggingface">Đang kiểm tra trạng thái HuggingFace...</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1"><i class="fas fa-spinner fa-spin"></i> Đang tự động quét sức khỏe các API...</p>
-                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">System Prompt (Tính cách của Faye AI)</label>
                             <textarea id="systemPrompt" rows="12" class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"></textarea>
@@ -157,7 +150,7 @@
                 <!-- TAB 4: QUẢN LÝ AI MODELS -->
                 <div id="modelsTab" class="hidden">
                      <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-semibold text-gray-800">Danh sách các Model AI</h3>
+                        <h3 class="text-lg font-semibold text-gray-800">Danh sách Model (Kéo & Thả để sắp xếp ưu tiên)</h3>
                         <button onclick="showModelModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
                             <i class="fas fa-plus"></i> <span>Thêm Model Mới</span>
                         </button>
@@ -176,6 +169,23 @@
                                 <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- TAB 5: TEST AI CHAT -->
+                <div id="testChatTab" class="hidden h-[75vh] flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+                    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-700">Chat thử nghiệm với Faye</h3>
+                        <button onclick="clearChat()" class="text-sm text-gray-500 hover:text-red-500"><i class="fas fa-trash"></i> Xóa lịch sử</button>
+                    </div>
+                    <div id="chatBox" class="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-100 text-sm">
+                        <div class="text-center text-gray-400 italic mt-10">Bắt đầu trò chuyện để kiểm tra xem System Prompt có hoạt động tốt không nhé!</div>
+                    </div>
+                    <div class="p-4 border-t border-gray-200 bg-white">
+                        <form id="chatForm" class="flex space-x-2" onsubmit="sendTestChat(event)">
+                            <input type="text" id="chatInput" placeholder="Nhắn gì đó cho Faye..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" autocomplete="off" required>
+                            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"><i class="fas fa-paper-plane"></i></button>
+                        </form>
                     </div>
                 </div>
 
@@ -281,6 +291,7 @@
             document.getElementById('usersTab').classList.add('hidden');
             document.getElementById('modelsTab').classList.add('hidden');
             document.getElementById('checkAiTab').classList.add('hidden');
+            document.getElementById('testChatTab').classList.add('hidden');
             
             document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-configTab').classList.remove('text-white');
@@ -290,6 +301,8 @@
             document.getElementById('btn-modelsTab').classList.remove('text-white');
             document.getElementById('btn-checkAiTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-checkAiTab').classList.remove('text-white');
+            document.getElementById('btn-testChatTab').classList.replace('bg-gray-800', 'text-gray-400');
+            document.getElementById('btn-testChatTab').classList.remove('text-white');
 
             document.getElementById(tabId).classList.remove('hidden');
             const activeBtn = document.getElementById(`btn-${tabId}`);
@@ -305,6 +318,8 @@
             } else if (tabId === 'modelsTab') {
                 document.getElementById('pageTitle').innerText = 'Quản lý AI Models';
                 loadAiModels();
+            } else if (tabId === 'testChatTab') {
+                document.getElementById('pageTitle').innerText = 'Test AI Chat';
             } else {
                 document.getElementById('pageTitle').innerText = 'Kiểm tra trạng thái AI';
             }
@@ -318,12 +333,8 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    document.getElementById('activeProvider').value = data.activeAiProvider || 'gemini';
                     document.getElementById('systemPrompt').value = data.systemPrompt || '';
                     document.getElementById('additionalKnowledge').value = data.additionalKnowledge || '';
-                    
-                    // Chạy quét model ngầm để cập nhật Dropdown
-                    syncProviderDropdown();
                 } else if(res.status === 401) {
                     logout();
                 }
@@ -332,38 +343,7 @@
             }
         }
 
-        // HÀM QUÉT MODEL NGẦM VÀ DISABLE MODEL CHẾT
-        async function syncProviderDropdown() {
-            try {
-                const res = await fetch(`${API_URL}/admin/ai-status`, { headers: { 'Authorization': `Bearer ${token}` }});
-                if (res.ok) {
-                    const statuses = await res.json();
-                    const select = document.getElementById('activeProvider');
-                    
-                    // Cập nhật lại Text và Trạng thái Disable cho từng Option
-                    Array.from(select.options).forEach(option => {
-                        const val = option.value;
-                        const statusObj = statuses.find(s => s.provider.toLowerCase().includes(val));
-                        
-                        if (statusObj) {
-                            const isOnline = statusObj.status.includes('Online');
-                            option.text = `${statusObj.provider} ${isOnline ? '(Sẵn sàng 🟢)' : '(Offline 🔴)'}`;
-                            option.disabled = !isOnline;
-                            if(!isOnline && select.value === val) {
-                                // Nếu model đang chọn bị sập, cảnh báo người dùng
-                                showToast(`Model ${val} hiện đang lỗi! Hãy chọn model khác.`, 'error');
-                            }
-                        }
-                    });
-                    document.querySelector('#configTab p.text-xs').innerHTML = '<i class="fas fa-check text-green-500"></i> Đã đồng bộ trạng thái AI.';
-                }
-            } catch (e) {
-                console.error("Lỗi sync model", e);
-            }
-        }
-
         async function saveConfig() {
-            const activeProvider = document.getElementById('activeProvider').value;
             const systemPrompt = document.getElementById('systemPrompt').value;
             const additionalKnowledge = document.getElementById('additionalKnowledge').value;
 
@@ -374,7 +354,7 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ activeAiProvider: activeProvider, systemPrompt, additionalKnowledge })
+                    body: JSON.stringify({ systemPrompt, additionalKnowledge })
                 });
                 if (res.ok) {
                     showToast('Lưu cấu hình thành công', 'success');
@@ -577,8 +557,13 @@
                     tbody.innerHTML = '';
                     models.forEach(model => {
                         const tr = document.createElement('tr');
+                        tr.draggable = true;
+                        tr.dataset.id = model._id;
+                        tr.className = "hover:bg-gray-50 cursor-move transition-colors";
+                        const isEnabled = model.isEnabled !== false;
+                        
                         tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${model.displayName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2">(Tắt)</span>' : ''}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${model.providerName}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${model.modelId}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
@@ -588,6 +573,7 @@
                         `;
                         tbody.appendChild(tr);
                     });
+                    initDragAndDrop(tbody);
                 }
             } catch (err) {
                 showToast('Lỗi tải danh sách models', 'error');
@@ -603,6 +589,92 @@
             } catch (err) {
                 showToast('Lỗi khi xóa', 'error');
             }
+        }
+
+        // --- KÉO THẢ (DRAG AND DROP) NATIVE HTML5 ---
+        function initDragAndDrop(tbody) {
+            let draggedRow = null;
+
+            tbody.addEventListener('dragstart', (e) => {
+                if (e.target.tagName === 'TR') {
+                    draggedRow = e.target;
+                    e.dataTransfer.effectAllowed = 'move';
+                    setTimeout(() => e.target.classList.add('opacity-50', 'bg-blue-50'), 0);
+                }
+            });
+
+            tbody.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const targetRow = e.target.closest('tr');
+                if (targetRow && targetRow !== draggedRow && targetRow.tagName === 'TR') {
+                    const rect = targetRow.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                    tbody.insertBefore(draggedRow, next ? targetRow.nextSibling : targetRow);
+                }
+            });
+
+            tbody.addEventListener('dragend', (e) => {
+                if (draggedRow) {
+                    draggedRow.classList.remove('opacity-50', 'bg-blue-50');
+                    draggedRow = null;
+                    saveModelOrder();
+                }
+            });
+        }
+
+        async function saveModelOrder() {
+            const rows = document.querySelectorAll('#modelsTableBody tr');
+            const modelIds = Array.from(rows).map(row => row.dataset.id);
+            try {
+                await fetch(`${API_URL}/admin/models/reorder`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modelIds })
+                });
+                showToast('Đã lưu thứ tự ưu tiên!', 'success');
+            } catch(e) {}
+        }
+
+        // --- TEST CHAT AI ---
+        async function sendTestChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const message = input.value;
+            if (!message) return;
+            input.value = '';
+
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML += `<div class="text-right mb-4"><span class="bg-blue-600 text-white px-4 py-2 rounded-xl inline-block shadow-sm">${message}</span></div>`;
+            chatBox.innerHTML += `<div id="typing" class="text-left mb-4"><span class="bg-gray-200 text-gray-500 px-4 py-2 rounded-xl inline-block animate-pulse">AI đang phân tích...</span></div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/ai-chat`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                document.getElementById('typing').remove();
+
+                const textResponse = await res.text();
+                let parsed = null;
+                try { parsed = JSON.parse(textResponse); } catch(e) {}
+
+                if (parsed && parsed.reply) {
+                    chatBox.innerHTML += `<div class="text-left mb-4"><span class="bg-white border border-gray-200 px-4 py-2 rounded-xl inline-block text-gray-800 shadow-sm">${parsed.reply.replace(/\n/g, '<br>')}</span><pre class="text-[11px] bg-gray-900 text-green-400 p-3 mt-2 rounded-lg overflow-x-auto mt-2">Dữ liệu bóc tách (JSON):\n${textResponse}</pre></div>`;
+                } else {
+                    chatBox.innerHTML += `<div class="text-left mb-4"><pre class="text-[11px] bg-gray-900 text-yellow-400 p-3 rounded-lg overflow-x-auto shadow-sm">${textResponse}</pre></div>`;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (err) {
+                if(document.getElementById('typing')) document.getElementById('typing').remove();
+                showToast('Lỗi gửi tin nhắn', 'error');
+            }
+        }
+
+        function clearChat() {
+            document.getElementById('chatBox').innerHTML = '<div class="text-center text-gray-400 italic mt-10">Lịch sử chat đã được xóa.</div>';
         }
 
         // HIỂN THỊ THÔNG BÁO (TOAST)
