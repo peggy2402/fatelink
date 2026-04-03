@@ -2,10 +2,14 @@ import { Controller, Get, Put, Post, Body, Param, UseGuards, HttpCode, HttpStatu
 import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { AiService } from '../ai/ai.service';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly aiService: AiService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK) // Thay đổi mặc định 201 Created thành 200 OK
@@ -35,5 +39,11 @@ export class AdminController {
   @Put('users/:id/ban')
   banUser(@Param('id') id: string, @Body('isBanned') isBanned: boolean) {
     return this.adminService.banUser(id, isBanned);
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('ai-status')
+  checkAiStatus() {
+    return this.aiService.checkProvidersStatus();
   }
 }

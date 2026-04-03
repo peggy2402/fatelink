@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ChatGateway } from './chat.gateway';
 import { MessageModule } from '../message/message.module';
 import { UsersModule } from '../users/users.module';
+import { SystemConfig, SystemConfigSchema } from '../admin/schemas/system-config.schema';
 import { AiService } from './ai.service';
 import { AI_PROVIDER } from './providers/ai-provider.interface';
 import { GeminiProvider } from './providers/gemini.provider';
@@ -10,7 +12,11 @@ import { MockAiProvider } from './providers/mock-ai.provider';
 import { LlamaProvider } from './providers/llama.provider';
 
 @Module({
-  imports: [MessageModule, UsersModule],
+  imports: [
+    MessageModule, 
+    UsersModule,
+    MongooseModule.forFeature([{ name: SystemConfig.name, schema: SystemConfigSchema }])
+  ],
   providers: [
     GeminiProvider,
     OpenAiProvider,

@@ -5,6 +5,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { SystemConfig, SystemConfigSchema } from './schemas/system-config.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
       { name: User.name, schema: UserSchema } 
     ]),
     JwtModule.register({}), // Cấp phép sử dụng JwtService
+    AiModule, // Nhúng AiModule để sử dụng hàm test trạng thái AI
   ],
   controllers: [AdminController],
   providers: [AdminService],

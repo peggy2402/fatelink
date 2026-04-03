@@ -49,6 +49,9 @@
                 <button onclick="switchTab('usersTab')" id="btn-usersTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-users w-5"></i> <span>Quản lý Users</span>
                 </button>
+                <button onclick="switchTab('checkAiTab')" id="btn-checkAiTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
+                    <i class="fas fa-stethoscope w-5"></i> <span>Trạng thái Model</span>
+                </button>
             </nav>
             <div class="p-4 border-t border-gray-800">
                 <button onclick="logout()" class="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-gray-800 rounded-lg text-left">
@@ -107,6 +110,20 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- TAB 3: TRẠNG THÁI MODEL AI -->
+                <div id="checkAiTab" class="hidden bg-white rounded-xl shadow-sm p-6 max-w-4xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Tình trạng kết nối các Provider AI</h3>
+                        <button onclick="checkAiModels()" id="btnCheckAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2">
+                            <i class="fas fa-sync-alt"></i> <span id="btnCheckAiText">Kiểm tra ngay</span>
+                        </button>
+                    </div>
+                    <div id="aiStatusContainer" class="space-y-4">
+                        <p class="text-gray-500 italic flex items-center space-x-2"><i class="fas fa-info-circle"></i> <span>Bấm "Kiểm tra ngay" để ping đến tất cả các model AI đang có trong luồng dự phòng...</span></p>
+                    </div>
+                </div>
+
             </main>
         </div>
     </div>
@@ -175,11 +192,14 @@
         function switchTab(tabId) {
             document.getElementById('configTab').classList.add('hidden');
             document.getElementById('usersTab').classList.add('hidden');
+            document.getElementById('checkAiTab').classList.add('hidden');
             
             document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-configTab').classList.remove('text-white');
             document.getElementById('btn-usersTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-usersTab').classList.remove('text-white');
+            document.getElementById('btn-checkAiTab').classList.replace('bg-gray-800', 'text-gray-400');
+            document.getElementById('btn-checkAiTab').classList.remove('text-white');
 
             document.getElementById(tabId).classList.remove('hidden');
             const activeBtn = document.getElementById(`btn-${tabId}`);
@@ -189,9 +209,11 @@
             if (tabId === 'configTab') {
                 document.getElementById('pageTitle').innerText = 'Cấu hình AI';
                 loadConfig();
-            } else {
+            } else if (tabId === 'usersTab') {
                 document.getElementById('pageTitle').innerText = 'Quản lý Users';
                 loadUsers();
+            } else {
+                document.getElementById('pageTitle').innerText = 'Kiểm tra trạng thái AI';
             }
         }
 
@@ -308,6 +330,45 @@
                 }
             } catch (err) {
                 showToast('Lỗi thực thi lệnh', 'error');
+            }
+        }
+
+        // CALL API: KIỂM TRA TRẠNG THÁI AI MODELS
+        async function checkAiModels() {
+            const btn = document.getElementById('btnCheckAi');
+            const btnText = document.getElementById('btnCheckAiText');
+            const container = document.getElementById('aiStatusContainer');
+            
+            btn.disabled = true;
+            btnText.innerText = 'Đang kiểm tra...';
+            container.innerHTML = '<p class="text-gray-500 italic animate-pulse">Đang gửi request test đến các provider, có thể mất đến 15 giây, vui lòng chờ...</p>';
+
+            try {
+                const res = await fetch(`${API_URL}/admin/ai-status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    container.innerHTML = '';
+                    data.forEach(item => {
+                        const isOnline = item.status.includes('Online');
+                        container.innerHTML += `
+                            <div class="p-4 border rounded-lg shadow-sm ${isOnline ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                                <div class="flex justify-between items-center">
+                                    <strong class="text-lg ${isOnline ? 'text-green-800' : 'text-red-800'}"><i class="fas ${isOnline ? 'fa-check-circle' : 'fa-times-circle'} mr-2"></i>${item.provider}</strong>
+                                    <span class="px-3 py-1 rounded-full text-sm font-mono font-bold ${isOnline ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${isOnline ? 'Ping: ' + item.ping : item.status}</span>
+                                </div>
+                                ${!isOnline ? `<p class="text-sm text-red-600 mt-2 bg-red-100 p-2 rounded border border-red-200 font-mono overflow-auto">${item.error}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                }
+            } catch (err) {
+                showToast('Lỗi khi kiểm tra trạng thái AI', 'error');
+                container.innerHTML = '<p class="text-red-500 italic">Kiểm tra thất bại do lỗi kết nối mạng.</p>';
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = 'Kiểm tra ngay';
             }
         }
 
