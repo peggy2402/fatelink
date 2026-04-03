@@ -199,6 +199,17 @@
 - **AI Chủ động mở lời**: Sửa logic tại `ChatScreen`, khi người dùng mới vào phòng chat (chưa có lịch sử), Faye sẽ tự động gửi câu hỏi đầy EQ: _"Hôm nay tâm trạng của bạn đang như thế nào? 🍂"_.
 - **Emotion Action Chips**: Thay vì bắt người dùng tự gõ, ứng dụng sẽ render một loạt các nút bấm cảm xúc (Bình yên, Áp lực, Cô đơn...) để người dùng chọn nhanh, tăng tỷ lệ tương tác (Conversion Rate) cho Onboarding Phase 1.
 
+#### 6. Nâng cấp Bảng Điều khiển (Admin Dashboard) & Matchmaking Phase 2
+
+- **Tối ưu hiển thị AI Models (Quan hệ 1-N)**: Cập nhật logic `AiService` và Dashboard để gom nhóm (Group By) chính xác nhiều Model thuộc cùng 1 Provider. Khắc phục triệt để lỗi hiển thị `N/A` và "Chưa xác định" khi test ping trạng thái.
+- **Phân trang & Tìm kiếm (Pagination & Filtering)**: Tích hợp thuật toán phân trang và lọc dữ liệu cực mượt cho cả bảng Users và AI Models trực tiếp bằng JavaScript ở Frontend.
+- **Xuất file Logs Server**: Cấu hình Node.js `fs` ghi log hệ thống theo thời gian thực xuống file `admin_logs.txt` và xây dựng API `GET /admin/logs/download` cho phép tải về máy.
+- **Bảo mật & Fix lỗi Typescript**:
+  - Kích hoạt CORS bảo mật trong `main.ts` chỉ cho phép các domain được cấp quyền.
+  - Sửa lỗi Dependency Injection (`JwtModule`) trong `UsersModule`.
+  - Khắc phục xung đột kiểu dữ liệu decorator bằng `import type { Response }`.
+- **Giao diện chuyển pha Matchmaking (Flutter)**: Bắt thành công sự kiện `matchReady` qua Socket.IO và hiển thị Popup "Đã thấu hiểu tâm hồn" rực rỡ, tạo điểm chạm mượt mà để chuyển hướng người dùng sang `MatchesScreen`.
+
 ---
 
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
@@ -215,4 +226,4 @@
 - [x] **Backend & Frontend**: Viết API "Unmatch" trong NestJS và tích hợp thành công trên giao diện Flutter.
 - [x] **Frontend**: Xây dựng UI chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.
 - [x] **Frontend & Backend**: Tích hợp Firebase Cloud Messaging (FCM) để gửi Push Notification khi có tin nhắn mới (lúc app chạy nền).
-- [ ] **AI & Matchmaking**: Bắt đầu thiết kế luồng chuyển tiếp (Transition) từ Phase 1 (Onboarding) sang Phase 2 (Matchmaking) khi API trả về `is_ready_to_match: true`.
+- [x] **AI & Matchmaking**: Thiết kế luồng chuyển tiếp (Transition) từ Phase 1 (Onboarding) sang Phase 2 (Matchmaking) khi API trả về `is_ready_to_match: true`.

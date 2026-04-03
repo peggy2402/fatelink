@@ -247,7 +247,10 @@
                     <div class="bg-gray-900 rounded-xl shadow-sm overflow-hidden border border-gray-700 shrink-0 h-48 flex flex-col">
                         <div class="p-3 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
                             <h3 class="text-sm font-semibold text-gray-300"><i class="fas fa-terminal mr-2"></i>Logs Hệ thống</h3>
-                            <button onclick="clearTerminalLogs()" class="text-xs text-gray-400 hover:text-red-400 transition flex items-center space-x-1"><i class="fas fa-trash-alt"></i> <span>Xóa Logs</span></button>
+                            <div class="flex items-center space-x-3">
+                                <button onclick="downloadLogs()" class="text-xs text-blue-400 hover:text-blue-300 transition flex items-center space-x-1"><i class="fas fa-download"></i> <span>Tải Logs (.txt)</span></button>
+                                <button onclick="clearTerminalLogs()" class="text-xs text-gray-400 hover:text-red-400 transition flex items-center space-x-1"><i class="fas fa-trash-alt"></i> <span>Xóa</span></button>
+                            </div>
                         </div>
                         <div id="aiStatusContainer" class="p-4 space-y-3 text-gray-300 font-mono text-[13px] overflow-y-auto flex-1">
                             <p class="text-gray-500 italic">Nhấn "Cập nhật trạng thái" ở trên để gửi gói tin Ping tới các Model...</p>
@@ -339,6 +342,29 @@
 
         function clearTerminalLogs() {
             document.getElementById('aiStatusContainer').innerHTML = '<p class="text-gray-500 italic">Đã dọn dẹp hệ thống logs. Sẵn sàng ghi nhận mới...</p>';
+        }
+
+        async function downloadLogs() {
+            try {
+                const res = await fetch(`${API_URL}/admin/logs/download`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'fatelink_admin_logs.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    showToast('Chưa có file log', 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi tải file', 'error');
+            }
         }
 
         // Code xử lý Logic Giao diện & Gọi API

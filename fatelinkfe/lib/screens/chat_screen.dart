@@ -190,6 +190,61 @@ class ChatScreenState extends State<ChatScreen> {
         ToastUtil.showError(context, data['message']);
       }
     });
+
+    // Bắt sự kiện khi AI báo đã sẵn sàng ghép cặp (Kích hoạt Phase 2)
+    _socket.on('matchReady', (data) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF001520),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              '✨ Đã thấu hiểu tâm hồn',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              data['message'] ??
+                  'Faye đã hiểu rõ bạn là người thế nào. Hãy cùng xem ai là người đang tìm kiếm một tâm hồn như bạn nhé!',
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFBD114A), Color(0xFFD75656)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Đóng Dialog
+                    // Đẩy sang màn hình Danh sách những người hợp nhau
+                    Navigator.pushReplacementNamed(context, '/matches');
+                  },
+                  child: const Text(
+                    'Khám phá Định mệnh',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    });
   }
 
   void sendMessage(String text) {

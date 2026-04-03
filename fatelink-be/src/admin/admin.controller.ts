@@ -1,10 +1,11 @@
-import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { AiService } from '../ai/ai.service';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { Response } from 'express';
 
 @Controller('admin')
 export class AdminController {
@@ -95,5 +96,16 @@ export class AdminController {
     // Ghi nối tiếp vào cuối file
     fs.appendFileSync(logPath, logLine);
     return { success: true };
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('logs/download')
+  downloadLogs(@Res() res: Response) {
+    const logPath = path.join(process.cwd(), 'admin_logs.txt');
+    if (fs.existsSync(logPath)) {
+      res.download(logPath, 'fatelink_admin_logs.txt');
+    } else {
+      res.status(404).send('Chưa có file log nào được tạo.');
+    }
   }
 }
