@@ -21,12 +21,12 @@ export class GeminiProvider implements IAiProvider {
     });
   }
 
-  async generateContent(prompt: string): Promise<AiProviderResponse> {
+  async generateContent(prompt: string, modelName?: string): Promise<AiProviderResponse> {
     if (!process.env.GEMINI_API_KEY) {
       throw new Error('Gemini API Key chưa được cấu hình.');
     }
 
-    let currentModelName = 'gemini-2.0-flash'; // Bắt đầu với model nhanh hơn
+    let currentModelName = modelName || 'gemini-2.0-flash'; // Sử dụng model từ tham số truyền vào
     let retries = 3;
     let delayMs = 1000;
 

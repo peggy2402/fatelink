@@ -19,8 +19,10 @@ export class HuggingFaceProvider implements IAiProvider {
     }
   }
 
-  async generateContent(prompt: string): Promise<AiProviderResponse> {
+  async generateContent(prompt: string, modelName?: string): Promise<AiProviderResponse> {
     if (!this.apiKey) throw new Error('HuggingFace API Key chưa được cấu hình.');
+    
+    const targetModelId = modelName || this.modelId; // Dùng model động từ tham số truyền vào
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -34,7 +36,7 @@ export class HuggingFaceProvider implements IAiProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: this.modelId,
+          model: targetModelId,
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 500,
           temperature: 0.7

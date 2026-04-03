@@ -71,4 +71,17 @@ export class AdminController {
   deleteAiModel(@Param('id') id: string) {
     return this.adminService.deleteAiModel(id);
   }
+
+  @UseGuards(AdminGuard)
+  @Put('models/reorder')
+  reorderAiModels(@Body('modelIds') modelIds: string[]): Promise<any> {
+    return this.adminService.reorderAiModels(modelIds);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('ai-chat')
+  testAiChat(@Body('message') message: string) {
+    // Gọi hàm chat của AI, lịch sử truyền rỗng để tập trung test System Prompt
+    return this.aiService.sendMessage(message, []);
+  }
 }

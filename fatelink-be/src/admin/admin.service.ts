@@ -73,4 +73,13 @@ export class AdminService {
     return this.aiModel.findByIdAndDelete(id).exec();
   }
 
+  async reorderAiModels(modelIds: string[]): Promise<any> {
+    const bulkOps = modelIds.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id },
+        update: { priority: index }
+      }
+    }));
+    return this.aiModel.bulkWrite(bulkOps);
+  }
 }

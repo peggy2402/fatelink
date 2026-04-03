@@ -4,6 +4,7 @@ import { ChatGateway } from './chat.gateway';
 import { MessageModule } from '../message/message.module';
 import { UsersModule } from '../users/users.module';
 import { SystemConfig, SystemConfigSchema } from '../admin/schemas/system-config.schema';
+import { AiModel, AiModelSchema } from '../admin/schemas/ai-model.schema';
 import { AiService } from './ai.service';
 import { AI_PROVIDER } from './providers/ai-provider.interface';
 import { GeminiProvider } from './providers/gemini.provider';
@@ -16,7 +17,10 @@ import { HuggingFaceProvider } from './providers/huggingface.provider';
   imports: [
     MessageModule, 
     UsersModule,
-    MongooseModule.forFeature([{ name: SystemConfig.name, schema: SystemConfigSchema }])
+    MongooseModule.forFeature([
+      { name: SystemConfig.name, schema: SystemConfigSchema },
+      { name: AiModel.name, schema: AiModelSchema }
+    ])
   ],
   providers: [
     GeminiProvider,

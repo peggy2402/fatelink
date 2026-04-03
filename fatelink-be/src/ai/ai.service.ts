@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Content } from '@google/generative-ai';
 import { AI_PROVIDER, IAiProvider } from './providers/ai-provider.interface';
 import { SystemConfig, SystemConfigDocument } from '../admin/schemas/system-config.schema';
+import { AiModel, AiModelDocument } from '../admin/schemas/ai-model.schema';
 
 export interface ProviderStatusResult {
   provider: string;
@@ -24,6 +25,7 @@ export class AiService {
   constructor(
     @Inject(AI_PROVIDER) private readonly providers: IAiProvider[],
     @InjectModel(SystemConfig.name) private configModel: Model<SystemConfigDocument>,
+    @InjectModel(AiModel.name) private aiModelModel: Model<AiModelDocument>,
   ) {
     if (!providers || providers.length === 0) {
       this.logger.error('Không có AI Provider nào được inject! Dịch vụ AI sẽ không hoạt động.');
@@ -56,27 +58,30 @@ export class AiService {
 
     const finalPrompt = `HƯỚNG DẪN HỆ THỐNG DÀNH CHO BẠN: ${fayeSystemInstruction}\n\nLỊCH SỬ TRÒ CHUYỆN:\n${historyText}\n\nTIN NHẮN MỚI TỪ USER: ${userMessage}\n\nHãy trả lời chỉ với JSON theo đúng định dạng đã hướng dẫn.`;
 
-    // 3. Sắp xếp thứ tự gọi API dựa trên activeAiProvider từ DB
-    let sortedProviders = [...this.providers];
-    if (config?.activeAiProvider) {
-      const activeIndex = sortedProviders.findIndex(p => 
-        p.providerName.toLowerCase().includes(config!.activeAiProvider.toLowerCase())
-      );
-      if (activeIndex > 0) { // Nếu tìm thấy model ưu tiên và nó đang không đứng đầu
-        const activeProvider = sortedProviders.splice(activeIndex, 1)[0];
-        sortedProviders.unshift(activeProvider); // Đẩy model ưu tiên lên vị trí #1
-      }
-    }
+    // 3. Lấy danh sách Model động từ Database, ưu tiên từ cao đến thấp
+    const activeModels = await this.aiModelModel.find({ isEnabled: true }).sort({ priority: 1 }).exec();
 
-    // 4. Gửi prompt theo chuỗi Fallback đã được sắp xếp thông minh
-    for (const provider of sortedProviders) {
-      try {
-        this.logger.log(`Gửi yêu cầu đến provider: ${provider.providerName}`);
-        const response = await provider.generateContent(finalPrompt);
-        this.logger.log(`Nhận phản hồi từ provider ${provider.providerName} thành công.`);
-        return response.rawText; // Trả về ngay khi có kết quả
-      } catch (error: any) {
-        this.logger.error(`Provider ${provider.providerName} thất bại. Lỗi: ${error.message}. Chuyển sang provider tiếp theo...`);
+    // 4. Gửi request theo chuỗi (Fallback)
+    if (activeModels.length > 0) {
+      for (const dbModel of activeModels) {
+        const provider = this.providers.find(p => p.providerName === dbModel.providerName);
+        if (provider) {
+          try {
+            this.logger.log(`Gửi yêu cầu đến ${provider.providerName} (Model: ${dbModel.modelId})`);
+            const response = await provider.generateContent(finalPrompt, dbModel.modelId);
+            return response.rawText;
+          } catch (error: any) {
+            this.logger.error(`Model ${dbModel.modelId} thất bại. Lỗi: ${error.message}. Chuyển sang model tiếp theo...`);
+          }
+        }
+      }
+    } else {
+      // Fallback an toàn nếu DB rỗng
+      for (const provider of this.providers) {
+        try {
+          const response = await provider.generateContent(finalPrompt);
+          return response.rawText;
+        } catch(e) {}
       }
     }
 
