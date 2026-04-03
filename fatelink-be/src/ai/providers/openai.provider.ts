@@ -24,7 +24,8 @@ export class OpenAiProvider implements IAiProvider {
     });
   }
 
-  async generateContent(prompt: string): Promise<AiProviderResponse> {
+  // Thêm tham số modelName để có thể truyền động từ Database
+  async generateContent(prompt: string, modelName?: string): Promise<AiProviderResponse> {
     if (!this.openai.apiKey || this.openai.apiKey === 'DUMMY_KEY') {
       throw new Error('API Key chưa được cấu hình.');
     }
@@ -38,7 +39,7 @@ export class OpenAiProvider implements IAiProvider {
       // Chạy đua giữa lời gọi API và timeout
       const response = await Promise.race([
         this.openai.chat.completions.create({
-          model: 'llama-3.1-8b-instant', // Đã cập nhật sang model mới nhất của Groq
+          model: modelName || 'llama-3.1-8b-instant', // Sử dụng model động từ Admin, nếu không có thì dùng mặc định
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
         }),
