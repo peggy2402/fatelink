@@ -5,6 +5,13 @@ import { Content } from '@google/generative-ai';
 import { AI_PROVIDER, IAiProvider } from './providers/ai-provider.interface';
 import { SystemConfig, SystemConfigDocument } from '../admin/schemas/system-config.schema';
 
+export interface ProviderStatusResult {
+  provider: string;
+  status: string;
+  ping?: string;
+  error?: string;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -35,11 +42,12 @@ export class AiService {
     }
 
     const personaPrompt = config?.systemPrompt || 'Bạn là FateLink AI (tên là Faye) – một người bạn đồng hành tinh tế...';
+    const knowledgePrompt = config?.additionalKnowledge ? `\n\n[KIẾN THỨC TÂM LÝ HỌC HÀNH VI ĐỂ BẠN THAM KHẢO ÁP DỤNG]:\n${config.additionalKnowledge}` : '';
     
     // Ép buộc JSON format (Phần này hardcode để bảo vệ logic backend không bị lỗi parse)
     const jsonInstruction = `\n\nQUAN TRỌNG: Bạn BẮT BUỘC phải trả về phản hồi dưới định dạng JSON chính xác như sau, tuyệt đối không bọc trong markdown (như \`\`\`json):\n{\n  "reply": "Câu trả lời tự nhiên của bạn dành cho user",\n  "latestEmotion": "Vui | Buồn | Cô đơn | Áp lực | Rỗng tuếch | Phấn khích",\n  "detected_emotions": { "Vui": 10, "Buồn": 0, "Cô đơn": 5 },\n  "detected_personality": { "Hướng nội": 80, "Cảm xúc": 70 },\n  "is_ready_to_match": false\n}`;
     
-    const fayeSystemInstruction = personaPrompt + jsonInstruction;
+    const fayeSystemInstruction = personaPrompt + knowledgePrompt + jsonInstruction;
 
     // 2. Xây dựng prompt hoàn chỉnh với system instruction và lịch sử chat
     const historyText = chatHistory.length > 0
@@ -79,7 +87,7 @@ export class AiService {
 
   // Hàm Ping check "sức khỏe" các provider AI
   async checkProvidersStatus() {
-    const results: any[] = [];
+    const results: ProviderStatusResult[] = [];
     const testPrompt = 'Chỉ trả về chuỗi JSON sau: {"reply": "OK", "latestEmotion": "Bình tĩnh", "detected_emotions": {}, "detected_personality": {}, "is_ready_to_match": false}';
     
     for (const provider of this.providers) {

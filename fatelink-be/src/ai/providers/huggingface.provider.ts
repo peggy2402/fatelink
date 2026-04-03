@@ -1,0 +1,56 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { IAiProvider, AiProviderResponse } from './ai-provider.interface';
+
+const API_TIMEOUT = 15000;
+
+@Injectable()
+export class HuggingFaceProvider implements IAiProvider {
+  readonly providerName = 'HuggingFace';
+  private readonly logger = new Logger(HuggingFaceProvider.name);
+  private readonly apiKey: string;
+  // Sử dụng một model text-generation xuất sắc mã nguồn mở (có thể thay đổi URL)
+  private readonly endpoint = 'https://router.huggingface.co/hf-inference/models/mistralai/Mixtral-8x7B-Instruct-v0.1'; 
+
+  constructor() {
+    this.apiKey = process.env.HUGGINGFACE_API_KEY || '';
+    if (!this.apiKey) {
+      this.logger.warn('Chưa cấu hình HUGGINGFACE_API_KEY trong .env');
+    }
+  }
+
+  async generateContent(prompt: string): Promise<AiProviderResponse> {
+    if (!this.apiKey) throw new Error('HuggingFace API Key chưa được cấu hình.');
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Yêu cầu đến HuggingFace quá thời gian chờ ${API_TIMEOUT}ms.`)), API_TIMEOUT)
+      );
+
+      const fetchPromise = fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: { return_full_text: false, max_new_tokens: 500, temperature: 0.7 }
+        })
+      }).then(async res => {
+        if (!res.ok) {
+          const errBody = await res.text();
+          this.logger.error(`Lỗi từ HuggingFace (${res.status}): ${errBody}`);
+          throw new Error(`HuggingFace API Error (${res.status}): ${errBody}`);
+        }
+        return res.json();
+      });
+
+      const result: any = await Promise.race([fetchPromise, timeoutPromise]);
+      
+      const rawText = (Array.isArray(result) && result.length > 0) ? result[0].generated_text : result.generated_text;
+      return { rawText: rawText || '' };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+}

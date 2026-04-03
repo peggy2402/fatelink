@@ -18,6 +18,9 @@ export class SystemConfig {
     default: 'Bạn là Faye - một AI thấu hiểu cảm xúc. Hãy trò chuyện ngắn gọn, tự nhiên và thân thiện...' 
   })
   systemPrompt!: string;
+
+  @Prop({ default: '' }) 
+  additionalKnowledge!: string; // Lưu trữ kiến thức sách Tâm lý học hành vi
   
   @Prop({ default: 10 }) // Số tin nhắn tối đa trong luồng Onboarding
   onboardingMessageLimit!: number;

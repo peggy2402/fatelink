@@ -10,6 +10,7 @@ import { GeminiProvider } from './providers/gemini.provider';
 import { OpenAiProvider } from './providers/openai.provider';
 import { MockAiProvider } from './providers/mock-ai.provider';
 import { LlamaProvider } from './providers/llama.provider';
+import { HuggingFaceProvider } from './providers/huggingface.provider';
 
 @Module({
   imports: [
@@ -21,14 +22,15 @@ import { LlamaProvider } from './providers/llama.provider';
     GeminiProvider,
     OpenAiProvider,
     LlamaProvider,
+    HuggingFaceProvider,
     MockAiProvider,
     {
       provide: AI_PROVIDER,
-      useFactory: (gemini: GeminiProvider, openai: OpenAiProvider, llama: LlamaProvider, mock: MockAiProvider) => {
-        // Đưa Llama vào chuỗi Fallback
-        return [gemini, llama, openai, mock]; 
+      useFactory: (gemini: GeminiProvider, openai: OpenAiProvider, llama: LlamaProvider, hf: HuggingFaceProvider, mock: MockAiProvider) => {
+        // Đưa HuggingFace vào chuỗi Fallback
+        return [gemini, llama, openai, hf, mock]; 
       },
-      inject: [GeminiProvider, OpenAiProvider, LlamaProvider, MockAiProvider],
+      inject: [GeminiProvider, OpenAiProvider, LlamaProvider, HuggingFaceProvider, MockAiProvider],
     },
     AiService,
     ChatGateway
