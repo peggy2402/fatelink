@@ -40,10 +40,20 @@
     </div>
 
     <!-- MÀN HÌNH QUẢN TRỊ (DASHBOARD) -->
-    <div id="dashboardScreen" class="hidden min-h-screen bg-gray-100 flex">
+    <div id="dashboardScreen" class="hidden h-screen bg-gray-100 flex flex-col md:flex-row relative overflow-hidden">
+        
+        <!-- Header Mobile (Chỉ hiện trên điện thoại) -->
+        <div class="md:hidden bg-gray-900 text-white p-4 flex justify-between items-center shadow-md z-20 shrink-0">
+            <div class="text-xl font-bold">FateLink Admin</div>
+            <button onclick="toggleSidebar()" class="focus:outline-none hover:text-blue-400 transition"><i class="fas fa-bars text-2xl"></i></button>
+        </div>
+
         <!-- Cột Menu Trái (Sidebar) -->
-        <div class="w-64 bg-gray-900 text-white flex flex-col">
-            <div class="p-6 text-2xl font-bold border-b border-gray-800">FateLink Admin</div>
+        <div id="sidebar" class="w-64 bg-gray-900 text-white flex flex-col absolute md:relative z-30 h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none">
+            <div class="p-6 text-2xl font-bold border-b border-gray-800 flex justify-between items-center">
+                <span>FateLink Admin</span>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
             <nav class="flex-1 p-4 space-y-2">
                 <button onclick="switchTab('configTab')" id="btn-configTab" class="w-full flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-lg text-left text-white">
                     <i class="fas fa-robot w-5"></i> <span>Cấu hình AI</span>
@@ -65,8 +75,11 @@
             </div>
         </div>
 
+        <!-- Màng chắn đen khi mở Menu trên Mobile -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="hidden fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden backdrop-blur-sm transition-opacity"></div>
+
         <!-- Nội dung chính (Main Content) -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden w-full relative z-10">
             <header class="bg-white shadow-sm z-10">
                 <div class="px-6 py-4 flex justify-between items-center">
                     <h2 id="pageTitle" class="text-xl font-semibold text-gray-800">Cấu hình AI</h2>
@@ -178,16 +191,18 @@
 
                 <!-- TAB 3: QUẢN LÝ AI MODELS (GỘP TRẠNG THÁI) -->
                 <div id="modelsTab" class="hidden flex-col h-[75vh]">
-                     <div class="flex justify-between items-center mb-6 shrink-0">
-                        <h3 class="text-lg font-semibold text-gray-800">Danh sách Model (Kéo & Thả để sắp xếp ưu tiên)</h3>
-                        <div class="space-x-3 flex">
-                            <button onclick="checkAiModels()" id="btnCheckAi" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2 shadow-sm font-medium">
-                                <i class="fas fa-stethoscope"></i> <span id="btnCheckAiText">Cập nhật trạng thái</span>
-                            </button>
-                            <button onclick="showModelModal()" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2 shadow-sm font-medium">
-                                <i class="fas fa-plus"></i> <span>Thêm Model</span>
-                            </button>
-                        </div>
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-3">
+                      <h3 class="text-lg font-semibold text-gray-800">Danh sách Model (Kéo & Thả để sắp xếp ưu tiên)</h3>
+                      <div class="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
+                        <button onclick="checkAiModels()" id="btnCheckAi"
+                          class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2 shadow-sm font-medium">
+                          <i class="fas fa-stethoscope"></i> <span id="btnCheckAiText">Cập nhật trạng thái</span>
+                        </button>
+                        <button onclick="showModelModal()"
+                          class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2 shadow-sm font-medium">
+                          <i class="fas fa-plus"></i> <span>Thêm Model</span>
+                        </button>
+                      </div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 flex-1 flex flex-col border border-gray-200">
                         <!-- Thanh công cụ Search & Filter cho Models -->
@@ -344,6 +359,16 @@
             document.getElementById('aiStatusContainer').innerHTML = '<p class="text-gray-500 italic">Đã dọn dẹp hệ thống logs. Sẵn sàng ghi nhận mới...</p>';
         }
 
+        // --- HIỆU ỨNG SIDEBAR MOBILE ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        // --- TẢI FILE LOGS ---
         async function downloadLogs() {
             try {
                 const res = await fetch(`${API_URL}/admin/logs/download`, {
@@ -462,6 +487,12 @@
                 loadAiModels();
             } else if (tabId === 'testChatTab') {
                 document.getElementById('pageTitle').innerText = 'Test AI Chat';
+            }
+
+            // Tự động đóng menu trên mobile khi click
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebarOverlay').classList.add('hidden');
             }
         }
 
@@ -796,11 +827,22 @@
                         <span class="sm:hidden font-semibold text-gray-600">Trạng thái:</span>
                         <span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500"><i class="fas fa-question-circle mr-1 mt-0.5"></i> Chưa kiểm tra</span>
                     </td>
-                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium border-t border-gray-100 sm:border-none">
-                        <div class="flex justify-end space-x-2 sm:space-x-3 w-full">
-                            <button onclick="toggleAiModel('${model._id}', ${isEnabled})" class="flex-1 sm:flex-none ${isEnabled ? 'text-orange-600 hover:text-orange-900 bg-orange-50 border border-orange-200' : 'text-green-600 hover:text-green-900 bg-green-50 border border-green-200'} px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm" title="${isEnabled ? 'Tắt Model' : 'Bật Model'}"><i class="fas ${isEnabled ? 'fa-pause' : 'fa-play'} sm:mr-0 mr-2"></i><span class="sm:hidden">${isEnabled ? 'TẠM DỪNG' : 'BẬT LÊN'}</span></button>
-                            <button onclick='showModelModal(${JSON.stringify(model).replace(/'/g, "\\'")})' class="flex-1 sm:flex-none text-blue-600 hover:text-blue-900 bg-blue-50 border border-blue-200 px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm"><i class="fas fa-pen sm:mr-0 mr-2"></i><span class="sm:hidden">SỬA</span></button>
-                            <button onclick="deleteAiModel('${model._id}')" class="flex-1 sm:flex-none text-red-600 hover:text-red-900 bg-red-50 border border-red-200 px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm"><i class="fas fa-trash sm:mr-0 mr-2"></i><span class="sm:hidden">XÓA</span></button>
+                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 text-right text-sm font-medium border-t border-gray-100 sm:border-none">
+                        <div class="flex justify-between gap-1.5 sm:gap-3 w-full">
+                            <button onclick="toggleAiModel('${model._id}', ${isEnabled})" class="flex-1 sm:flex-none flex items-center justify-center ${isEnabled ? 'text-orange-600 hover:text-orange-900 bg-orange-50 border border-orange-200' : 'text-green-600 hover:text-green-900 bg-green-50 border border-green-200'} px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate" title="${isEnabled ? 'Tắt Model' : 'Bật Model'}">
+                                <i class="fas ${isEnabled ? 'fa-pause' : 'fa-play'} sm:mr-0 mr-1.5"></i>
+                                <span class="sm:hidden">${isEnabled ? 'TẠM DỪNG' : 'BẬT LÊN'}</span>
+                            </button>
+                            
+                            <button onclick='showModelModal(${JSON.stringify(model).replace(/'/g, "\\'")})' class="flex-1 sm:flex-none flex items-center justify-center text-blue-600 hover:text-blue-900 bg-blue-50 border border-blue-200 px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate">
+                                <i class="fas fa-pen sm:mr-0 mr-1.5"></i>
+                                <span class="sm:hidden">SỬA</span>
+                            </button>
+                            
+                            <button onclick="deleteAiModel('${model._id}')" class="flex-1 sm:flex-none flex items-center justify-center text-red-600 hover:text-red-900 bg-red-50 border border-red-200 px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate">
+                                <i class="fas fa-trash sm:mr-0 mr-1.5"></i>
+                                <span class="sm:hidden">XÓA</span>
+                            </button>
                         </div>
                     </td>
                 `;
