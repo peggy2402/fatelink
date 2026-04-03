@@ -17,6 +17,11 @@ export class LlamaProvider implements IAiProvider {
 
   private async initModel() {
     try {
+      // 🛑 CHẶN KHỞI TẠO NẾU ĐANG CHẠY TRÊN FLY.IO (PRODUCTION)
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.warn('Bỏ qua khởi tạo Local Llama trên môi trường Production (để tiết kiệm RAM).');
+        return; 
+      }
       // Import động (dynamic import) để tương thích với node-llama-cpp
       const { getLlama, LlamaChatSession } = await import('node-llama-cpp');
       
@@ -37,6 +42,9 @@ export class LlamaProvider implements IAiProvider {
   }
 
   async generateContent(prompt: string): Promise<AiProviderResponse> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Local Llama is disabled in production.'); // Quăng lỗi để AiModule tự nhảy sang fallback tiếp theo (OpenAI/MockAI)
+    }
     if (!this.isModelLoaded) throw new Error('Llama model chưa sẵn sàng hoặc đang khởi tạo.');
 
     try {
