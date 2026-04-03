@@ -119,7 +119,7 @@
 
     <script>
         // Code xử lý Logic Giao diện & Gọi API
-        const API_URL = ''; // Để chuỗi rỗng để tự động nhận diện localhost hoặc fly.io
+        const API_URL = '/api'; // Thêm /api vì backend NestJS của bạn đang sử dụng Global Prefix
         let token = localStorage.getItem('admin_token');
 
         const loginScreen = document.getElementById('loginScreen');
