@@ -153,6 +153,54 @@
 
 ---
 
+## 📅 Ngày: 03/04/2026
+
+### 🎯 Trọng tâm: Admin Dashboard (Quản trị hệ thống), Dynamic AI Models, HuggingFace & Push Notification
+
+#### 1. Hạ tầng & Triển khai (Fly.io & Docker)
+
+- **Khắc phục lỗi Build**: Nâng cấp base image từ `node:18-alpine` sang `node:20-slim` để hỗ trợ biên dịch C++ (`node-llama-cpp`) và tương thích hoàn toàn với các package yêu cầu Node >= 20.
+- **Tối ưu RAM Production**: Cấu hình tự động vô hiệu hóa (`disable`) Local Llama khi `NODE_ENV=production` để ngăn chặn lỗi sập server (OOM) trên VPS 512MB RAM của Fly.io.
+- **Xác minh Fallback Chain**: Hệ thống dự phòng AI đã hoạt động hoàn hảo 100% trong thực tế (Tự động bypass LlamaLocal -> xử lý lỗi Model Decommissioned của Groq -> Fallback thành công xuống MockAI).
+
+#### 2. Xây dựng Admin Dashboard "All-in-One" (Trình duyệt Web)
+
+- **Frontend Web (TailwindCSS)**: Tạo giao diện quản trị siêu mượt trực tiếp bằng HTML/JS thuần trong thư mục `public` của NestJS, được phục vụ qua `ServeStaticModule`.
+- **Hệ thống API Quản trị (NestJS)**:
+  - **Bảo mật**: Triển khai `JwtModule` và `AdminGuard` để tạo token JWT và bảo vệ toàn bộ API `/admin/*`. Tài khoản mặc định đọc từ biến môi trường `.env`.
+  - **Quản lý Users**: Thêm chức năng xem danh sách, Tìm kiếm (Search), Lọc (Filter) trạng thái và Khóa/Mở khóa (Ban/Unban) tài khoản người dùng.
+  - **Quản lý Cấu hình (SystemConfig)**: Cho phép thay đổi linh hoạt System Prompt và "Bơm kiến thức" (Additional Knowledge) như sách tâm lý học hành vi trực tiếp vào não AI.
+  - **Quản lý Models AI (CRUD)**: Không còn hardcode! Xây dựng bảng `AiModels` cho phép Thêm/Sửa/Xóa các provider AI. Tích hợp tính năng Kéo & Thả (Drag & Drop) Native HTML5 để thay đổi độ ưu tiên của model.
+  - **Trạng thái Model (Ping Check)**: Chức năng gửi request đồng loạt để đo độ trễ (Ping) và kiểm tra sức khỏe (Online/Offline) của toàn bộ các Provider trong chuỗi Fallback.
+  - **Test Chat AI**: Khung chat giả lập ngay trên Dashboard hiển thị raw JSON, giúp Admin dễ dàng thử nghiệm và tinh chỉnh Prompt đầu ra.
+
+#### 3. Nâng cấp Hệ sinh thái AI (AiModule)
+
+- **In-memory Caching**: Tối ưu hóa việc gọi Database bằng cách lưu Cache cấu hình Prompt trong 60 giây.
+- **Dynamic AI Router**: `AiService` tự động đọc danh sách Model đang bật (`isEnabled: true`) từ Database, sắp xếp theo ưu tiên và linh hoạt điều hướng prompt.
+- **Tích hợp HuggingFaceProvider**:
+  - Thêm nhà cung cấp mới sử dụng chuẩn OpenAI API (`router.huggingface.co/v1/chat/completions`).
+  - Cấu hình thành công model **Qwen/Qwen2.5-7B-Instruct** (Nhẹ, khởi động nhanh, tiếng Việt xuất sắc) thay thế cho các model quá nặng. Tăng timeout lên 60s để khắc phục lỗi Cold Start.
+
+#### 4. Push Notification (Firebase Cloud Messaging - FCM)
+
+- **Backend (NestJS)**:
+  - Cài đặt `firebase-admin`, xử lý chuẩn xác cấu trúc chứng chỉ PEM (`\n`) cho `FIREBASE_PRIVATE_KEY` trên môi trường Linux.
+  - Cập nhật `UsersService` lưu trữ `fcmToken` vào MongoDB.
+  - Tạo `NotificationService` để dễ dàng gọi hàm gửi thông báo từ bất kỳ module nào.
+- **Frontend (Flutter)**:
+  - Tích hợp `firebase_messaging` và xin quyền thông báo thành công.
+  - Quản lý vòng đời thông báo:
+    - **Foreground**: Hiện thông báo thả xuống mượt mà bằng `fluttertoast`.
+    - **Background / Terminated**: Sử dụng `GlobalKey<NavigatorState>` để bắt sự kiện nhấp vào thông báo và tự động điều hướng người dùng thẳng vào `MatchChatScreen` với đúng `partnerId`.
+
+#### 5. Cải thiện UX phòng Chat (Faye AI)
+
+- **AI Chủ động mở lời**: Sửa logic tại `ChatScreen`, khi người dùng mới vào phòng chat (chưa có lịch sử), Faye sẽ tự động gửi câu hỏi đầy EQ: _"Hôm nay tâm trạng của bạn đang như thế nào? 🍂"_.
+- **Emotion Action Chips**: Thay vì bắt người dùng tự gõ, ứng dụng sẽ render một loạt các nút bấm cảm xúc (Bình yên, Áp lực, Cô đơn...) để người dùng chọn nhanh, tăng tỷ lệ tương tác (Conversion Rate) cho Onboarding Phase 1.
+
+---
+
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
 
 - [x] **Frontend**: Xây dựng màn hình chờ (Splash Screen) có logic auto-login.
@@ -166,4 +214,5 @@
 - [x] **Frontend**: Tích hợp tính năng Đa ngôn ngữ (i18n / Switch Language) sử dụng `easy_localization`.
 - [x] **Backend & Frontend**: Viết API "Unmatch" trong NestJS và tích hợp thành công trên giao diện Flutter.
 - [x] **Frontend**: Xây dựng UI chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.
-- [ ] **Frontend & Backend**: Tích hợp Firebase Cloud Messaging (FCM) để gửi Push Notification khi có tin nhắn mới (lúc app chạy nền).
+- [x] **Frontend & Backend**: Tích hợp Firebase Cloud Messaging (FCM) để gửi Push Notification khi có tin nhắn mới (lúc app chạy nền).
+- [ ] **AI & Matchmaking**: Bắt đầu thiết kế luồng chuyển tiếp (Transition) từ Phase 1 (Onboarding) sang Phase 2 (Matchmaking) khi API trả về `is_ready_to_match: true`.
