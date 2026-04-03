@@ -1,46 +1,333 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="/">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="fatelinkfe">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>fatelinkfe</title>
-  <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FateLink Admin Dashboard</title>
+    <!-- Sử dụng Tailwind CSS qua CDN cho giao diện hiện đại -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Thêm icon từ FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hidden { display: none !important; }
+    </style>
 </head>
-<body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+<body class="bg-gray-100 font-sans antialiased text-gray-900">
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+    <!-- MÀN HÌNH ĐĂNG NHẬP -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gray-900">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">FateLink Admin</h1>
+                <p class="text-gray-500 mt-2">Đăng nhập để quản lý hệ thống</p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tài khoản</label>
+                    <input type="text" id="username" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                    <input type="password" id="password" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Đăng nhập
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH QUẢN TRỊ (DASHBOARD) -->
+    <div id="dashboardScreen" class="hidden min-h-screen bg-gray-100 flex">
+        <!-- Cột Menu Trái (Sidebar) -->
+        <div class="w-64 bg-gray-900 text-white flex flex-col">
+            <div class="p-6 text-2xl font-bold border-b border-gray-800">FateLink Admin</div>
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="switchTab('configTab')" id="btn-configTab" class="w-full flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-lg text-left text-white">
+                    <i class="fas fa-robot w-5"></i> <span>Cấu hình AI</span>
+                </button>
+                <button onclick="switchTab('usersTab')" id="btn-usersTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
+                    <i class="fas fa-users w-5"></i> <span>Quản lý Users</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t border-gray-800">
+                <button onclick="logout()" class="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-gray-800 rounded-lg text-left">
+                    <i class="fas fa-sign-out-alt w-5"></i> <span>Đăng xuất</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Nội dung chính (Main Content) -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-white shadow-sm z-10">
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 id="pageTitle" class="text-xl font-semibold text-gray-800">Cấu hình AI</h2>
+                    <span class="text-sm text-gray-500">Đang hoạt động bình thường 🟢</span>
+                </div>
+            </header>
+            
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                
+                <!-- TAB 1: CẤU HÌNH AI -->
+                <div id="configTab" class="bg-white rounded-xl shadow-sm p-6 max-w-4xl">
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nhà cung cấp AI ưu tiên</label>
+                            <select id="activeProvider" class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="gemini">Gemini 2.0 Flash (Khuyên dùng)</option>
+                                <option value="openai">Groq / OpenAI (Llama 3)</option>
+                                <option value="llama">Local Llama (Cần server mạnh)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">System Prompt (Tính cách của Faye AI)</label>
+                            <textarea id="systemPrompt" rows="12" class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="saveConfig()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center space-x-2 transition">
+                                <i class="fas fa-save"></i> <span>Lưu Cấu Hình</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: QUẢN LÝ USERS -->
+                <div id="usersTab" class="hidden bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người dùng</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tham gia</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Dữ liệu User sẽ được Javascript đổ vào đây -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Thông báo nổi (Toast) -->
+    <div id="toast" class="fixed bottom-5 right-5 transform transition-all duration-300 translate-y-20 opacity-0 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 z-50">
+        <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toastMsg">Thành công!</span>
+    </div>
+
+    <script>
+        // Code xử lý Logic Giao diện & Gọi API
+        const API_URL = ''; // Gọi relative path trên cùng domain
+        let token = localStorage.getItem('admin_token');
+
+        const loginScreen = document.getElementById('loginScreen');
+        const dashboardScreen = document.getElementById('dashboardScreen');
+        const loginForm = document.getElementById('loginForm');
+
+        // Kiểm tra xem đã đăng nhập chưa
+        if (token) {
+            showDashboard();
+        }
+
+        // XỬ LÝ ĐĂNG NHẬP
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.accessToken;
+                    localStorage.setItem('admin_token', token);
+                    showDashboard();
+                    showToast('Đăng nhập thành công', 'success');
+                } else {
+                    showToast('Sai tài khoản hoặc mật khẩu!', 'error');
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối server', 'error');
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('admin_token');
+            token = null;
+            loginScreen.classList.remove('hidden');
+            dashboardScreen.classList.add('hidden');
+        }
+
+        function showDashboard() {
+            loginScreen.classList.add('hidden');
+            dashboardScreen.classList.remove('hidden');
+            loadConfig();
+        }
+
+        // ĐIỀU HƯỚNG TAB
+        function switchTab(tabId) {
+            document.getElementById('configTab').classList.add('hidden');
+            document.getElementById('usersTab').classList.add('hidden');
+            
+            document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
+            document.getElementById('btn-configTab').classList.remove('text-white');
+            document.getElementById('btn-usersTab').classList.replace('bg-gray-800', 'text-gray-400');
+            document.getElementById('btn-usersTab').classList.remove('text-white');
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.remove('text-gray-400');
+            activeBtn.classList.add('bg-gray-800', 'text-white');
+
+            if (tabId === 'configTab') {
+                document.getElementById('pageTitle').innerText = 'Cấu hình AI';
+                loadConfig();
+            } else {
+                document.getElementById('pageTitle').innerText = 'Quản lý Users';
+                loadUsers();
+            }
+        }
+
+        // CALL API: LẤY VÀ LƯU CẤU HÌNH AI
+        async function loadConfig() {
+            try {
+                const res = await fetch(`${API_URL}/admin/config`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('activeProvider').value = data.activeAiProvider || 'gemini';
+                    document.getElementById('systemPrompt').value = data.systemPrompt || '';
+                } else if(res.status === 401) {
+                    logout();
+                }
+            } catch (err) {
+                showToast('Lỗi tải cấu hình', 'error');
+            }
+        }
+
+        async function saveConfig() {
+            const activeProvider = document.getElementById('activeProvider').value;
+            const systemPrompt = document.getElementById('systemPrompt').value;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/config`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ activeAiProvider: activeProvider, systemPrompt })
+                });
+                if (res.ok) {
+                    showToast('Lưu cấu hình thành công', 'success');
+                }
+            } catch (err) {
+                showToast('Lỗi khi lưu cấu hình', 'error');
+            }
+        }
+
+        // CALL API: QUẢN LÝ NGƯỜI DÙNG
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_URL}/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const users = await res.json();
+                    renderUsers(users);
+                }
+            } catch (err) {
+                showToast('Lỗi tải danh sách users', 'error');
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                const isBanned = user.isBanned || false;
+                // Lấy tên hoặc email để hiển thị (tùy theo cấu trúc DB của bạn)
+                const name = user.name || user.email || 'Người dùng ẩn danh';
+                const date = new Date(user.createdAt || Date.now()).toLocaleDateString('vi-VN');
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <img class="h-10 w-10 rounded-full object-cover shadow-sm" src="${user.avatarUrl || 'https://ui-avatars.com/api/?name='+name+'&background=0D8ABC&color=fff'}" alt="Avatar">
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${name}</div>
+                                <div class="text-xs text-gray-500 font-mono mt-1">ID: ${user._id}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                            ${isBanned ? 'Đã khóa' : 'Hoạt động'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${date}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="toggleBan('${user._id}', ${isBanned})" class="px-3 py-1 rounded border ${isBanned ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} transition">
+                            ${isBanned ? 'Mở khóa' : 'Khóa (Ban)'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function toggleBan(userId, currentStatus) {
+            if(!confirm(`Bạn có chắc muốn ${currentStatus ? 'mở khóa' : 'khóa'} tài khoản này?`)) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/admin/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ isBanned: !currentStatus })
+                });
+                if (res.ok) {
+                    showToast(!currentStatus ? 'Đã khóa tài khoản' : 'Đã mở khóa', 'success');
+                    loadUsers(); // Cập nhật lại giao diện
+                }
+            } catch (err) {
+                showToast('Lỗi thực thi lệnh', 'error');
+            }
+        }
+
+        // HIỂN THỊ THÔNG BÁO (TOAST)
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            
+            const icon = document.getElementById('toastIcon');
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle text-green-400 w-5';
+            } else {
+                icon.className = 'fas fa-exclamation-circle text-red-400 w-5';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
