@@ -9,7 +9,8 @@ export class HuggingFaceProvider implements IAiProvider {
   private readonly logger = new Logger(HuggingFaceProvider.name);
   private readonly apiKey: string;
   // Đổi sang model Qwen 2.5 7B: Rất nhẹ, khởi động nhanh trên bản Free và cực kỳ giỏi tiếng Việt
-  private readonly endpoint = 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct'; 
+  private readonly endpoint = 'https://router.huggingface.co/hf-inference/v1/chat/completions'; 
+  private readonly modelId = 'Qwen/Qwen2.5-7B-Instruct';
 
   constructor() {
     this.apiKey = process.env.HUGGINGFACE_API_KEY || '';
@@ -33,8 +34,10 @@ export class HuggingFaceProvider implements IAiProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: { return_full_text: false, max_new_tokens: 500, temperature: 0.7 }
+          model: this.modelId,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 500,
+          temperature: 0.7
         })
       }).then(async res => {
         if (!res.ok) {
@@ -47,8 +50,8 @@ export class HuggingFaceProvider implements IAiProvider {
 
       const result: any = await Promise.race([fetchPromise, timeoutPromise]);
       
-      const rawText = (Array.isArray(result) && result.length > 0) ? result[0].generated_text : result.generated_text;
-      return { rawText: rawText || '' };
+      const rawText = result.choices?.[0]?.message?.content || '';
+      return { rawText };
     } catch (error: any) {
       throw error;
     }
