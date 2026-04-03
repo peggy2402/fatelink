@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IAiProvider, AiProviderResponse } from './ai-provider.interface';
 
-const API_TIMEOUT = 15000;
+const API_TIMEOUT = 60000; // Tăng lên 60 giây để chờ Hugging Face nạp model (Cold Start)
 
 @Injectable()
 export class HuggingFaceProvider implements IAiProvider {
@@ -9,7 +9,7 @@ export class HuggingFaceProvider implements IAiProvider {
   private readonly logger = new Logger(HuggingFaceProvider.name);
   private readonly apiKey: string;
   // Đổi sang model Qwen 2.5 7B: Rất nhẹ, khởi động nhanh trên bản Free và cực kỳ giỏi tiếng Việt
-  private readonly endpoint = 'https://router.huggingface.co/hf-inference/v1/chat/completions'; 
+  private readonly endpoint = 'https://router.huggingface.co/v1/chat/completions'; 
   private readonly modelId = 'Qwen/Qwen2.5-7B-Instruct';
 
   constructor() {
