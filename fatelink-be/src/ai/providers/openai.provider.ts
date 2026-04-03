@@ -38,7 +38,7 @@ export class OpenAiProvider implements IAiProvider {
       // Chạy đua giữa lời gọi API và timeout
       const response = await Promise.race([
         this.openai.chat.completions.create({
-          model: 'llama3-8b-8192', // Gọi model Llama 3 8B của Groq
+          model: 'llama-3.1-8b-instant', // Đã cập nhật sang model mới nhất của Groq
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
         }),
