@@ -12,7 +12,7 @@ import { join } from 'path';
 import { AiModule } from './ai/ai.module';
 import { MessageModule } from './message/message.module';
 import { MatchmakingModule } from './matchmaking/matchmaking.module';
-
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -41,6 +41,7 @@ import { MatchmakingModule } from './matchmaking/matchmaking.module';
       rootPath: join(process.cwd(), 'public'),
     }),
     MatchmakingModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
