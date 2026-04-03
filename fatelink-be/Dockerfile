@@ -1,10 +1,9 @@
-FROM node:18-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
 COPY package*.json ./
 
-# 🔥 CÀI FULL (KHÔNG omit dev)
 RUN npm install
 
 COPY . .
