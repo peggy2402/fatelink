@@ -6,6 +6,8 @@
     <title>FateLink Admin Dashboard</title>
     <!-- Sử dụng Tailwind CSS qua CDN cho giao diện hiện đại -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Thư viện Chart.js để vẽ Biểu đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Thêm icon từ FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -104,6 +106,21 @@
 
                 <!-- TAB 2: QUẢN LÝ USERS -->
                 <div id="usersTab" class="hidden bg-white rounded-xl shadow-sm overflow-hidden">
+                    <!-- Biểu đồ & Thống kê -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border-b border-gray-200 bg-gray-50">
+                        <div class="md:col-span-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                            <h4 class="text-xs font-bold text-gray-500 mb-3 text-center uppercase tracking-wider">Phân bổ Cảm xúc</h4>
+                            <div class="relative h-40"><canvas id="emotionChart"></canvas></div>
+                        </div>
+                        <div class="md:col-span-2 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-center">
+                            <h4 class="text-xs font-bold text-gray-500 mb-4 text-center uppercase tracking-wider">Tổng quan Cộng đồng</h4>
+                            <div class="flex justify-around text-center">
+                                <div><p class="text-4xl font-black text-blue-600" id="statTotalUsers">0</p><p class="text-xs text-gray-500 mt-2 font-medium">TỔNG USERS</p></div>
+                                <div><p class="text-4xl font-black text-green-500" id="statActiveUsers">0</p><p class="text-xs text-gray-500 mt-2 font-medium">ĐANG HOẠT ĐỘNG</p></div>
+                                <div><p class="text-4xl font-black text-red-500" id="statBannedUsers">0</p><p class="text-xs text-gray-500 mt-2 font-medium">BỊ KHÓA</p></div>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Thanh công cụ Search & Filter -->
                     <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <h3 class="text-lg font-medium text-gray-700">Danh sách người dùng</h3>
@@ -116,8 +133,8 @@
                             </select>
                         </div>
                     </div>
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 block sm:table">
+                        <thead class="bg-gray-50 hidden sm:table-header-group">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người dùng</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
@@ -125,10 +142,38 @@
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                             </tr>
                         </thead>
-                        <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                        <tbody id="usersTableBody" class="bg-gray-50 sm:bg-white divide-y divide-gray-200 block sm:table-row-group p-4 sm:p-0 space-y-4 sm:space-y-0">
                             <!-- Dữ liệu User sẽ được Javascript đổ vào đây -->
                         </tbody>
                     </table>
+                    <!-- Phân trang -->
+                    <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-700">Hiển thị:</span>
+                            <select id="itemsPerPage" onchange="changeItemsPerPage()" class="border-gray-300 rounded-md text-sm py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-pointer">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span class="text-sm text-gray-700">dòng</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="text-sm text-gray-700">
+                                Trang <span id="currentPageDisplay" class="font-bold text-gray-900">1</span> / <span id="totalPagesDisplay" class="font-bold text-gray-900">1</span>
+                                (Tổng: <span id="totalUsersDisplay" class="font-bold text-gray-900">0</span>)
+                            </div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <button onclick="prevPage()" id="btnPrevPage" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
+                                    <i class="fas fa-chevron-left text-xs"></i>
+                                </button>
+                                <button onclick="nextPage()" id="btnNextPage" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
+                                    <i class="fas fa-chevron-right text-xs"></i>
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- TAB 3: QUẢN LÝ AI MODELS (GỘP TRẠNG THÁI) -->
@@ -145,9 +190,20 @@
                         </div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 flex-1 flex flex-col border border-gray-200">
+                        <!-- Thanh công cụ Search & Filter cho Models -->
+                        <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div class="flex space-x-2 w-full sm:w-auto">
+                                <input type="text" id="modelSearch" onkeyup="filterModels()" placeholder="Tìm tên, ID..." class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                                <select id="modelFilter" onchange="filterModels()" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                                    <option value="all">Tất cả</option>
+                                    <option value="enabled">Đang bật</option>
+                                    <option value="disabled">Đã tắt</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="overflow-y-auto flex-1">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                            <table class="min-w-full divide-y divide-gray-200 block sm:table">
+                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm hidden sm:table-header-group">
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên Model</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cấu hình</th>
@@ -155,10 +211,36 @@
                                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody id="modelsTableBody" class="bg-white divide-y divide-gray-200">
+                                <tbody id="modelsTableBody" class="bg-gray-50 sm:bg-white divide-y divide-gray-200 block sm:table-row-group p-4 sm:p-0 space-y-4 sm:space-y-0">
                                     <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Phân trang Models -->
+                        <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-700">Hiển thị:</span>
+                                <select id="modelsPerPage" onchange="changeModelsPerPage()" class="border-gray-300 rounded-md text-sm py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-pointer">
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="20" selected>20</option>
+                                </select>
+                                <span class="text-sm text-gray-700">dòng</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="text-sm text-gray-700">
+                                    Trang <span id="currentModelPageDisplay" class="font-bold text-gray-900">1</span> / <span id="totalModelPagesDisplay" class="font-bold text-gray-900">1</span>
+                                    (Tổng: <span id="totalModelsDisplay" class="font-bold text-gray-900">0</span>)
+                                </div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    <button onclick="prevModelPage()" id="btnPrevModelPage" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
+                                        <i class="fas fa-chevron-left text-xs"></i>
+                                    </button>
+                                    <button onclick="nextModelPage()" id="btnNextModelPage" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
+                                        <i class="fas fa-chevron-right text-xs"></i>
+                                    </button>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                     <!-- Bảng Terminal Logs -->
@@ -166,7 +248,7 @@
                         <div class="p-3 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
                             <h3 class="text-sm font-semibold text-gray-300"><i class="fas fa-terminal mr-2"></i>Logs Hệ thống</h3>
                         </div>
-                        <div id="aiStatusContainer" class="p-4 space-y-2 text-gray-300 font-mono text-[13px] overflow-y-auto flex-1">
+                        <div id="aiStatusContainer" class="p-4 space-y-3 text-gray-300 font-mono text-[13px] overflow-y-auto flex-1">
                             <p class="text-gray-500 italic">Nhấn "Cập nhật trạng thái" ở trên để gửi gói tin Ping tới các Model...</p>
                         </div>
                     </div>
@@ -231,10 +313,35 @@
     </div>
 
     <script>
+        // --- HELPER: GHI LOG TERMINAL CHUYÊN NGHIỆP ---
+        function addTerminalLog(message, type = 'INFO') {
+            const container = document.getElementById('aiStatusContainer');
+            const time = new Date().toLocaleTimeString('vi-VN');
+            let colorClass = 'text-blue-400';
+            if (type === 'SUCCESS') colorClass = 'text-green-400';
+            if (type === 'ERROR') colorClass = 'text-red-400';
+            if (type === 'WARN') colorClass = 'text-yellow-400';
+            
+            const placeholder = container.querySelector('.italic');
+            if (placeholder) placeholder.remove();
+            
+            container.innerHTML += `<p class="border-l-2 border-gray-600 pl-3"><span class="${colorClass} font-bold">[${time}] [${type}]</span> <span class="text-gray-300 ml-1 leading-relaxed">${message}</span></p>`;
+            container.scrollTop = container.scrollHeight;
+        }
+
         // Code xử lý Logic Giao diện & Gọi API
         const API_URL = '/api'; // Thêm /api vì backend NestJS của bạn đang sử dụng Global Prefix
         let token = localStorage.getItem('admin_token');
         let allUsersData = []; // Biến lưu toàn bộ user để phục vụ việc Filter
+        let filteredUsersData = []; // Dữ liệu user sau khi lọc
+        let currentPage = 1;
+        let itemsPerPage = 5;
+
+        // Biến phân trang cho Models
+        let allModelsData = [];
+        let filteredModelsData = [];
+        let currentModelPage = 1;
+        let modelsPerPage = 20;
 
         const loginScreen = document.getElementById('loginScreen');
         const dashboardScreen = document.getElementById('dashboardScreen');
@@ -359,6 +466,36 @@
             }
         }
 
+        // HÀM VẼ BIỂU ĐỒ (PIE CHART)
+        let emotionChartInstance = null;
+        function updateDashboardStats(users) {
+            document.getElementById('statTotalUsers').innerText = users.length;
+            document.getElementById('statActiveUsers').innerText = users.filter(u => !u.isBanned).length;
+            document.getElementById('statBannedUsers').innerText = users.filter(u => u.isBanned).length;
+
+            const emotions = {};
+            users.forEach(u => {
+                const emo = u.latestEmotion || 'Chưa cập nhật';
+                emotions[emo] = (emotions[emo] || 0) + 1;
+            });
+
+            const ctx = document.getElementById('emotionChart').getContext('2d');
+            if (emotionChartInstance) emotionChartInstance.destroy();
+            
+            emotionChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(emotions),
+                    datasets: [{
+                        data: Object.values(emotions),
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#6b7280', '#ec4899'],
+                        borderWidth: 0, cutout: '70%'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } } }
+            });
+        }
+
         // CALL API: QUẢN LÝ NGƯỜI DÙNG
         async function loadUsers() {
             try {
@@ -368,6 +505,7 @@
                 if (res.ok) {
                     allUsersData = await res.json();
                     filterUsers(); // Gọi hàm lọc ngay sau khi lấy data
+                    updateDashboardStats(allUsersData);
                 }
             } catch (err) {
                 showToast('Lỗi tải danh sách users', 'error');
@@ -379,7 +517,7 @@
             const filterValue = document.getElementById('userFilter').value;
             const searchValue = document.getElementById('userSearch').value.toLowerCase();
             
-            let filtered = allUsersData.filter(u => {
+            filteredUsersData = allUsersData.filter(u => {
                 const name = (u.name || u.email || 'Người dùng ẩn danh').toLowerCase();
                 const matchesSearch = name.includes(searchValue) || (u._id && u._id.includes(searchValue));
                 
@@ -388,7 +526,47 @@
                 
                 return matchesSearch && matchesStatus;
             });
-            renderUsers(filtered);
+            currentPage = 1;
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalUsers = filteredUsersData.length;
+            const totalPages = Math.ceil(totalUsers / itemsPerPage) || 1;
+            
+            document.getElementById('totalUsersDisplay').innerText = totalUsers;
+            document.getElementById('totalPagesDisplay').innerText = totalPages;
+            document.getElementById('currentPageDisplay').innerText = currentPage;
+            
+            document.getElementById('btnPrevPage').disabled = currentPage === 1;
+            document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+            
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const currentUsers = filteredUsersData.slice(startIdx, endIdx);
+            
+            renderUsers(currentUsers);
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPagination();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredUsersData.length / itemsPerPage) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPagination();
+            }
+        }
+
+        function changeItemsPerPage() {
+            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value, 10);
+            currentPage = 1;
+            renderPagination();
         }
 
         function renderUsers(users) {
@@ -402,29 +580,33 @@
                 const name = user.name || user.email || 'Người dùng ẩn danh';
                 const date = new Date(user.createdAt || Date.now()).toLocaleDateString('vi-VN');
                 
+                tr.className = "block sm:table-row border border-gray-200 sm:border-none mb-4 sm:mb-0 bg-white sm:bg-transparent shadow-sm sm:shadow-none rounded-xl sm:rounded-none hover:bg-gray-50 transition-colors";
                 tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-10 w-10">
-                                <img class="h-10 w-10 rounded-full object-cover shadow-sm" src="${user.avatarUrl || 'https://ui-avatars.com/api/?name='+name+'&background=0D8ABC&color=fff'}" alt="Avatar">
+                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                        <div class="flex items-center justify-between sm:justify-start">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <img class="h-10 w-10 rounded-full object-cover shadow-sm" src="${user.avatarUrl || 'https://ui-avatars.com/api/?name='+name+'&background=0D8ABC&color=fff'}" alt="Avatar">
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${name}</div>
+                                    <div class="text-xs text-gray-500 font-mono mt-1">ID: ${user._id}</div>
+                                </div>
                             </div>
-                            <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">${name}</div>
-                                <div class="text-xs text-gray-500 font-mono mt-1">ID: ${user._id}</div>
-                            </div>
+                            <span class="sm:hidden px-2 py-1 inline-flex text-[10px] leading-5 font-bold rounded-full ${isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${isBanned ? 'Đã khóa' : 'Hoạt động'}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
+                    <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                         <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                             ${isBanned ? 'Đã khóa' : 'Hoạt động'}
                         </span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${date}
+                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-500 flex justify-between sm:table-cell border-t border-gray-100 sm:border-none">
+                        <span class="sm:hidden font-semibold text-gray-600">Ngày tham gia:</span> <span>${date}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onclick="toggleBan('${user._id}', ${isBanned})" class="px-3 py-1 rounded border ${isBanned ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} transition">
-                            ${isBanned ? 'Mở khóa' : 'Khóa (Ban)'}
+                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium border-t border-gray-100 sm:border-none">
+                        <button onclick="toggleBan('${user._id}', ${isBanned})" class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 rounded border ${isBanned ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} transition shadow-sm font-bold sm:font-normal">
+                            ${isBanned ? 'MỞ KHÓA TÀI KHOẢN' : 'KHÓA (BAN)'}
                         </button>
                     </td>
                 `;
@@ -496,6 +678,7 @@
                 });
                 if (res.ok) {
                     showToast(id ? 'Cập nhật thành công!' : 'Thêm model thành công!', 'success');
+                    addTerminalLog(`Đã ${id ? 'cập nhật' : 'thêm mới'} Model <b class="text-white">${dto.displayName}</b> (${dto.modelId}) của nhà cung cấp ${dto.providerName}.`, 'SUCCESS');
                     hideModelModal();
                     loadAiModels();
                 }
@@ -508,37 +691,98 @@
             try {
                 const res = await fetch(`${API_URL}/admin/models`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (res.ok) {
-                    const models = await res.json();
-                    const tbody = document.getElementById('modelsTableBody');
-                    tbody.innerHTML = '';
-                    models.forEach(model => {
-                        const tr = document.createElement('tr');
-                        tr.draggable = true;
-                        tr.dataset.id = model._id;
-                        tr.className = "hover:bg-gray-50 cursor-move transition-colors";
-                        const isEnabled = model.isEnabled !== false;
-                        
-                        tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center text-sm font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3 hover:text-gray-600"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2">(Tắt)</span>' : ''}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span class="font-bold text-gray-700">${model.providerName}</span><br><span class="text-[11px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">${model.modelId}</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm" id="status-${model._id}" data-provider="${model.providerName}">
-                                <span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500">Chưa cập nhật</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                <button onclick='showModelModal(${JSON.stringify(model)})' class="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"><i class="fas fa-pen text-xs"></i></button>
-                                <button onclick="deleteAiModel('${model._id}')" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"><i class="fas fa-trash text-xs"></i></button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                    initDragAndDrop(tbody);
+                    allModelsData = await res.json();
+                    filterModels();
                 }
             } catch (err) {
                 showToast('Lỗi tải danh sách models', 'error');
+            }
+        }
+
+        function filterModels() {
+            const filterValue = document.getElementById('modelFilter').value;
+            const searchValue = document.getElementById('modelSearch').value.toLowerCase();
+            
+            filteredModelsData = allModelsData.filter(m => {
+                const textStr = (m.displayName + ' ' + m.modelId + ' ' + m.providerName).toLowerCase();
+                const matchesSearch = textStr.includes(searchValue);
+                const isEnabled = m.isEnabled !== false;
+                const matchesStatus = filterValue === 'all' ? true : (filterValue === 'enabled' ? isEnabled : !isEnabled);
+                return matchesSearch && matchesStatus;
+            });
+            currentModelPage = 1;
+            renderModelPagination();
+        }
+
+        function renderModelPagination() {
+            const totalModels = filteredModelsData.length;
+            const totalPages = Math.ceil(totalModels / modelsPerPage) || 1;
+            
+            document.getElementById('totalModelsDisplay').innerText = totalModels;
+            document.getElementById('totalModelPagesDisplay').innerText = totalPages;
+            document.getElementById('currentModelPageDisplay').innerText = currentModelPage;
+            
+            document.getElementById('btnPrevModelPage').disabled = currentModelPage === 1;
+            document.getElementById('btnNextModelPage').disabled = currentModelPage === totalPages;
+            
+            const startIdx = (currentModelPage - 1) * modelsPerPage;
+            const endIdx = startIdx + modelsPerPage;
+            const currentModels = filteredModelsData.slice(startIdx, endIdx);
+            
+            renderModels(currentModels);
+        }
+
+        function prevModelPage() { if (currentModelPage > 1) { currentModelPage--; renderModelPagination(); } }
+        function nextModelPage() { const t = Math.ceil(filteredModelsData.length / modelsPerPage) || 1; if (currentModelPage < t) { currentModelPage++; renderModelPagination(); } }
+        function changeModelsPerPage() { modelsPerPage = parseInt(document.getElementById('modelsPerPage').value, 10); currentModelPage = 1; renderModelPagination(); }
+
+        function renderModels(models) {
+            const tbody = document.getElementById('modelsTableBody');
+            tbody.innerHTML = '';
+            models.forEach(model => {
+                const tr = document.createElement('tr');
+                tr.draggable = true;
+                tr.dataset.id = model._id;
+                tr.className = "block sm:table-row border border-gray-200 sm:border-none mb-4 sm:mb-0 bg-white sm:bg-transparent shadow-sm sm:shadow-none rounded-xl sm:rounded-none hover:bg-gray-50 cursor-move transition-colors";
+                const isEnabled = model.isEnabled !== false;
+                
+                tr.innerHTML = `
+                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                        <div class="flex items-center text-sm font-bold sm:font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3 hover:text-gray-600" title="Kéo thả để đổi độ ưu tiên"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2 font-bold bg-red-50 px-2 py-0.5 rounded">(Đã Tắt)</span>' : ''}</div>
+                    </td>
+                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-500 flex justify-between sm:table-cell border-t border-gray-100 sm:border-none">
+                        <span class="sm:hidden font-semibold text-gray-600">Cấu hình:</span>
+                        <div class="text-right sm:text-left"><span class="font-bold text-gray-700">${model.providerName}</span><br><span class="text-[11px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded border border-gray-200 mt-1 inline-block">${model.modelId}</span></div>
+                    </td>
+                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm flex justify-between items-center sm:table-cell border-t border-gray-100 sm:border-none" id="status-${model._id}" data-model="${model.modelId}">
+                        <span class="sm:hidden font-semibold text-gray-600">Trạng thái:</span>
+                        <span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500"><i class="fas fa-question-circle mr-1 mt-0.5"></i> Chưa kiểm tra</span>
+                    </td>
+                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium border-t border-gray-100 sm:border-none">
+                        <div class="flex justify-end space-x-2 sm:space-x-3 w-full">
+                            <button onclick="toggleAiModel('${model._id}', ${isEnabled})" class="flex-1 sm:flex-none ${isEnabled ? 'text-orange-600 hover:text-orange-900 bg-orange-50 border border-orange-200' : 'text-green-600 hover:text-green-900 bg-green-50 border border-green-200'} px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm" title="${isEnabled ? 'Tắt Model' : 'Bật Model'}"><i class="fas ${isEnabled ? 'fa-pause' : 'fa-play'} sm:mr-0 mr-2"></i><span class="sm:hidden">${isEnabled ? 'TẠM DỪNG' : 'BẬT LÊN'}</span></button>
+                            <button onclick='showModelModal(${JSON.stringify(model).replace(/'/g, "\\'")})' class="flex-1 sm:flex-none text-blue-600 hover:text-blue-900 bg-blue-50 border border-blue-200 px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm"><i class="fas fa-pen sm:mr-0 mr-2"></i><span class="sm:hidden">SỬA</span></button>
+                            <button onclick="deleteAiModel('${model._id}')" class="flex-1 sm:flex-none text-red-600 hover:text-red-900 bg-red-50 border border-red-200 px-4 py-2 sm:px-3 sm:py-1 rounded font-bold sm:font-normal shadow-sm"><i class="fas fa-trash sm:mr-0 mr-2"></i><span class="sm:hidden">XÓA</span></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            initDragAndDrop(tbody);
+        }
+
+        async function toggleAiModel(id, currentStatus) {
+            try {
+                await fetch(`${API_URL}/admin/models/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isEnabled: !currentStatus })
+                });
+                showToast(!currentStatus ? 'Đã BẬT Model!' : 'Đã TẮT Model!', 'success');
+                addTerminalLog(`Hệ thống đã ${!currentStatus ? 'KÍCH HOẠT' : 'VÔ HIỆU HÓA'} model (ID Database: ${id})`, 'WARN');
+                loadAiModels(); // Refresh
+            } catch(e) {
+                showToast('Lỗi khi đổi trạng thái', 'error');
             }
         }
 
@@ -547,6 +791,7 @@
             try {
                 await fetch(`${API_URL}/admin/models/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
                 showToast('Xóa model thành công!', 'success');
+                addTerminalLog(`Đã xóa vĩnh viễn model khỏi cơ sở dữ liệu (ID: ${id})`, 'WARN');
                 loadAiModels();
             } catch (err) {
                 showToast('Lỗi khi xóa', 'error');
@@ -579,15 +824,18 @@
                     // Viết log terminal
                     statuses.forEach(item => {
                         const isOnline = item.status.includes('Online');
-                        container.innerHTML += isOnline 
-                            ? `<p><span class="text-green-400">[${time}] [SUCCESS]</span> Provider <b class="text-white">${item.provider}</b>: Phản hồi trong ${item.ping}</p>`
-                            : `<p><span class="text-red-400">[${time}] [ERROR]</span> Provider <b class="text-white">${item.provider}</b>: ${item.error}</p>`;
+                        const modelNameDisplay = item.displayName || item.modelId || 'N/A';
+                        if (isOnline) {
+                            addTerminalLog(`Provider <b class="text-white">${item.provider}</b> (Model: <span class="text-blue-300">${modelNameDisplay}</span>) -> Phản hồi siêu tốc trong ${item.ping}`, 'SUCCESS');
+                        } else {
+                            addTerminalLog(`Provider <b class="text-white">${item.provider}</b> (Model: <span class="text-blue-300">${modelNameDisplay}</span>) -> BÁO LỖI: ${item.error}`, 'ERROR');
+                        }
                     });
 
                     // Cập nhật trạng thái Badge trên bảng
                     allStatusCells.forEach(cell => {
-                        const providerName = cell.getAttribute('data-provider').toLowerCase();
-                        const statusObj = statuses.find(s => s.provider.toLowerCase().includes(providerName) || providerName.includes(s.provider.toLowerCase()));
+                        const modelId = cell.getAttribute('data-model');
+                        const statusObj = statuses.find(s => s.modelId === modelId || s.provider === modelId);
                         
                         if (statusObj) {
                             const isOnline = statusObj.status.includes('Online');
@@ -595,13 +843,13 @@
                                 ? `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-green-300 bg-green-100 text-green-800">Sẵn sàng 🟢 (${statusObj.ping})</span>`
                                 : `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-red-300 bg-red-100 text-red-800" title="${statusObj.error}">Lỗi 🔴 Offline</span>`;
                         } else {
-                            cell.innerHTML = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500">Chưa xác định</span>`;
+                            cell.innerHTML = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500" title="Model có thể chưa được cấu hình đúng">Không phản hồi</span>`;
                         }
                     });
                 }
             } catch (err) {
                 showToast('Lỗi khi kiểm tra trạng thái AI', 'error');
-                container.innerHTML = '<p class="text-red-500 italic">> Lỗi kết nối mạng hoặc máy chủ không phản hồi.</p>';
+                addTerminalLog(`Gặp sự cố kết nối mạng nghiêm trọng, không thể lấy dữ liệu từ máy chủ.`, 'ERROR');
             } finally {
                 btn.disabled = false;
                 btnText.innerText = 'Cập nhật trạng thái';

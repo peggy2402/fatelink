@@ -8,6 +8,8 @@ import { AiModel, AiModelDocument } from '../admin/schemas/ai-model.schema';
 
 export interface ProviderStatusResult {
   provider: string;
+  modelId?: string;
+  displayName?: string;
   status: string;
   ping?: string;
   error?: string;
@@ -95,18 +97,37 @@ export class AiService {
     const results: ProviderStatusResult[] = [];
     const testPrompt = 'Chỉ trả về chuỗi JSON sau: {"reply": "OK", "latestEmotion": "Bình tĩnh", "detected_emotions": {}, "detected_personality": {}, "is_ready_to_match": false}';
     
-    for (const provider of this.providers) {
+    // Quét toàn bộ model đang có trong Database thay vì quét chung chung theo Provider
+    const dbModels = await this.aiModelModel.find().exec();
+
+    for (const dbModel of dbModels) {
+      const provider = this.providers.find(p => p.providerName === dbModel.providerName);
+      if (!provider) {
+        results.push({
+          provider: dbModel.providerName,
+          modelId: dbModel.modelId,
+          displayName: dbModel.displayName,
+          status: 'Offline 🔴',
+          error: 'Không tìm thấy Provider plugin tương ứng trong hệ thống.'
+        });
+        continue;
+      }
+
       const start = Date.now();
       try {
-        await provider.generateContent(testPrompt);
+        await provider.generateContent(testPrompt, dbModel.modelId);
         results.push({
-          provider: provider.providerName,
+          provider: dbModel.providerName,
+          modelId: dbModel.modelId,
+          displayName: dbModel.displayName,
           status: 'Online 🟢',
           ping: `${Date.now() - start}ms`
         });
       } catch (error: any) {
         results.push({
-          provider: provider.providerName,
+          provider: dbModel.providerName,
+          modelId: dbModel.modelId,
+          displayName: dbModel.displayName,
           status: 'Offline 🔴',
           error: error.message
         });

@@ -7,6 +7,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
   app.setGlobalPrefix('api'); // Thêm tiền tố 'api' cho tất cả các route
+  
+  // Cấu hình CORS bảo mật
+  app.enableCors({
+    origin: ['http://localhost:3000', 'https://fatelink-be.fly.dev', 'http://10.0.2.2:3000'], // Bạn có thể thêm Domain của Frontend Flutter Web vào đây
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
+
   await app.listen(process.env.PORT ?? 3000);
 
   if (module.hot) {
