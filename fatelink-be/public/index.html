@@ -328,6 +328,13 @@
             
             container.innerHTML += `<p class="border-l-2 border-gray-600 pl-3"><span class="${colorClass} font-bold">[${time}] [${type}]</span> <span class="text-gray-300 ml-1 leading-relaxed">${message}</span></p>`;
             container.scrollTop = container.scrollHeight;
+
+            // Gọi API lưu xuống file .txt trên Server
+            fetch(`${API_URL}/admin/logs`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, type })
+            }).catch(e => console.error("Lỗi lưu log server", e));
         }
 
         function clearTerminalLogs() {
@@ -824,31 +831,51 @@
                 if (res.ok) {
                     const statuses = await res.json();
                     container.innerHTML = '';
-                    const time = new Date().toLocaleTimeString('vi-VN');
 
-                    // Viết log terminal
-                    statuses.forEach(item => {
-                        const isOnline = item.status.includes('Online');
-                        const modelNameDisplay = item.displayName || item.modelId || 'N/A';
-                        if (isOnline) {
-                            addTerminalLog(`Provider <b class="text-white">${item.provider}</b> (Model: <span class="text-blue-300">${modelNameDisplay}</span>) -> Phản hồi siêu tốc trong ${item.ping}`, 'SUCCESS');
-                        } else {
-                            addTerminalLog(`Provider <b class="text-white">${item.provider}</b> (Model: <span class="text-blue-300">${modelNameDisplay}</span>) -> BÁO LỖI: ${item.error}`, 'ERROR');
+                    // Gom nhóm dữ liệu theo Provider (Quan hệ 1-N)
+                    const groupedData = statuses.reduce((acc, current) => {
+                        const provider = current.provider || 'Unknown Provider';
+                        if (!acc[provider]) acc[provider] = [];
+                        if (current.modelId || current.displayName) {
+                            acc[provider].push(current);
                         }
-                    });
+                        return acc;
+                    }, {});
+
+                    addTerminalLog(`=== BÁO CÁO TRẠNG THÁI AI PROVIDERS ===`, 'INFO');
+
+                    for (const [provider, models] of Object.entries(groupedData)) {
+                        addTerminalLog(`📦 Provider: <b class="text-white">${provider}</b>`, 'INFO');
+                        
+                        if (models.length === 0) {
+                             addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ Models: N/A (Chưa cấu hình model nào)`, 'WARN');
+                        } else {
+                            models.forEach((m, index) => {
+                                const validName = m.displayName || m.modelId || "Model ẩn danh";
+                                const isOnline = m.status === 'SUCCESS';
+                                const validStatus = isOnline ? 'Thành công' : 'Lỗi';
+                                
+                                if (isOnline) {
+                                    addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ ${index + 1}. Model: <span class="text-blue-300">[${validName}]</span> -> Trạng thái: ${validStatus} (${m.ping})`, 'SUCCESS');
+                                } else {
+                                    addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ ${index + 1}. Model: <span class="text-blue-300">[${validName}]</span> -> Trạng thái: ${validStatus} - ${m.error}`, 'ERROR');
+                                }
+                            });
+                        }
+                    }
 
                     // Cập nhật trạng thái Badge trên bảng
                     allStatusCells.forEach(cell => {
                         const modelId = cell.getAttribute('data-model');
-                        const statusObj = statuses.find(s => s.modelId === modelId || s.provider === modelId);
+                        const statusObj = statuses.find(s => s.modelId === modelId);
                         
                         if (statusObj) {
-                            const isOnline = statusObj.status.includes('Online');
+                            const isOnline = statusObj.status === 'SUCCESS';
                             cell.innerHTML = isOnline 
-                                ? `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-green-300 bg-green-100 text-green-800">Sẵn sàng 🟢 (${statusObj.ping})</span>`
-                                : `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-red-300 bg-red-100 text-red-800" title="${statusObj.error}">Lỗi 🔴 Offline</span>`;
+                                ? `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-green-300 bg-green-100 text-green-800">Thành công (${statusObj.ping})</span>`
+                                : `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-red-300 bg-red-100 text-red-800" title="${statusObj.error}">Lỗi 🔴</span>`;
                         } else {
-                            cell.innerHTML = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500" title="Model có thể chưa được cấu hình đúng">Không phản hồi</span>`;
+                            cell.innerHTML = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500" title="Không có dữ liệu Ping">Chưa xác định</span>`;
                         }
                     });
                 }

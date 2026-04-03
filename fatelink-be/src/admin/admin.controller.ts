@@ -3,6 +3,8 @@ import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { AiService } from '../ai/ai.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('admin')
 export class AdminController {
@@ -83,5 +85,15 @@ export class AdminController {
   testAiChat(@Body('message') message: string) {
     // Gọi hàm chat của AI, lịch sử truyền rỗng để tập trung test System Prompt
     return this.aiService.sendMessage(message, []);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('logs')
+  saveLog(@Body('message') message: string, @Body('type') type: string) {
+    const logLine = `[${new Date().toISOString()}] [${type}] ${message}\n`;
+    const logPath = path.join(process.cwd(), 'admin_logs.txt');
+    // Ghi nối tiếp vào cuối file
+    fs.appendFileSync(logPath, logLine);
+    return { success: true };
   }
 }

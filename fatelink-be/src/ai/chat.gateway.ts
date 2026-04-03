@@ -90,12 +90,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const aiResponseRaw = await this.aiService.sendMessage(payload.text, formattedHistory);
 
       let aiText = aiResponseRaw;
+      let isReadyToMatch = false;
       try {
         // Đảm bảo loại bỏ markdown code block nếu AI cố tình trả về markdown
         const cleanJsonString = aiResponseRaw.replace(/```json/gi, '').replace(/```/g, '').trim();
         const parsedData = JSON.parse(cleanJsonString);
         
         if (parsedData.reply) aiText = parsedData.reply;
+        if (parsedData.is_ready_to_match) isReadyToMatch = true;
 
         // Cập nhật Cảm xúc & Tính cách vào DB
         if (parsedData.detected_emotions || parsedData.detected_personality) {
@@ -121,6 +123,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         isSentByMe: false,
         timestamp: new Date().toISOString(),
       });
+
+      // 6. Nếu AI báo đã sẵn sàng ghép cặp (Kích hoạt Phase 2)
+      if (isReadyToMatch) {
+        client.emit('matchReady', { message: 'Faye đã hiểu bạn! Đang tìm kiếm định mệnh...' });
+      }
     } catch (error: any) { // Khắc phục lỗi 'error' is of type 'unknown'
       console.error('❌ Lỗi khi xử lý tin nhắn trong ChatGateway:', error.stack || error.message);
       client.emit('errorMessage', {

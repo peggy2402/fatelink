@@ -97,40 +97,46 @@ export class AiService {
     const results: ProviderStatusResult[] = [];
     const testPrompt = 'Chỉ trả về chuỗi JSON sau: {"reply": "OK", "latestEmotion": "Bình tĩnh", "detected_emotions": {}, "detected_personality": {}, "is_ready_to_match": false}';
     
-    // Quét toàn bộ model đang có trong Database thay vì quét chung chung theo Provider
     const dbModels = await this.aiModelModel.find().exec();
 
-    for (const dbModel of dbModels) {
-      const provider = this.providers.find(p => p.providerName === dbModel.providerName);
-      if (!provider) {
+    // Duyệt qua tất cả các Provider đang có trong hệ thống
+    for (const provider of this.providers) {
+      // Lấy tất cả các model thuộc provider này từ Database
+      const providerModels = dbModels.filter(m => m.providerName === provider.providerName);
+
+      if (providerModels.length === 0) {
+        // Nếu provider không có model nào được cấu hình
         results.push({
-          provider: dbModel.providerName,
-          modelId: dbModel.modelId,
-          displayName: dbModel.displayName,
-          status: 'Offline 🔴',
-          error: 'Không tìm thấy Provider plugin tương ứng trong hệ thống.'
+          provider: provider.providerName,
+          modelId: undefined,
+          displayName: undefined,
+          status: 'N/A',
+          error: 'Chưa cấu hình model nào'
         });
         continue;
       }
 
-      const start = Date.now();
-      try {
-        await provider.generateContent(testPrompt, dbModel.modelId);
-        results.push({
-          provider: dbModel.providerName,
-          modelId: dbModel.modelId,
-          displayName: dbModel.displayName,
-          status: 'Online 🟢',
-          ping: `${Date.now() - start}ms`
-        });
-      } catch (error: any) {
-        results.push({
-          provider: dbModel.providerName,
-          modelId: dbModel.modelId,
-          displayName: dbModel.displayName,
-          status: 'Offline 🔴',
-          error: error.message
-        });
+      // Nếu có model, tiến hành ping từng model một
+      for (const dbModel of providerModels) {
+        const start = Date.now();
+        try {
+          await provider.generateContent(testPrompt, dbModel.modelId);
+          results.push({
+            provider: dbModel.providerName,
+            modelId: dbModel.modelId,
+            displayName: dbModel.displayName,
+            status: 'SUCCESS',
+            ping: `${Date.now() - start}ms`
+          });
+        } catch (error: any) {
+          results.push({
+            provider: dbModel.providerName,
+            modelId: dbModel.modelId,
+            displayName: dbModel.displayName,
+            status: 'ERROR',
+            error: error.message
+          });
+        }
       }
     }
     return results;
