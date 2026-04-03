@@ -1,0 +1,14 @@
+{
+    "Home": "Home",
+    "Matches": "Matches",
+    "Profile": "Profile",
+    "Chat": "Chat",
+    "Support": "Support",
+    "Settings": "Settings",
+    "Logout": "Logout",
+    "chat_input_hint": "Type your message...",
+    "language": "Language",
+    "matches_title": "Your Fates",
+    "matches_subtitle": "Fates that match you",
+    "matches_cancelled": "Cancelled connection with "
+}

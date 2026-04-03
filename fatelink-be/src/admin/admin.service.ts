@@ -7,6 +7,7 @@ import { SystemConfig, SystemConfigDocument } from './schemas/system-config.sche
 export class AdminService {
   constructor(
     @InjectModel(SystemConfig.name) private configModel: Model<SystemConfigDocument>,
+    @InjectModel('User') private userModel: Model<any>, // Đảm bảo AdminModule đã import MongooseModule.forFeature([{ name: 'User', schema: UserSchema }])
   ) {}
 
   // Lấy cấu hình hiện tại (nếu chưa có thì tạo mặc định 1 bản ghi duy nhất)
@@ -34,5 +35,15 @@ export class AdminService {
       return { accessToken: 'admin-super-secret-token', role: 'admin' };
     }
     throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu quản trị viên!');
+  }
+
+  // Lấy danh sách người dùng
+  async getUsers() {
+    return this.userModel.find().select('-password').sort({ createdAt: -1 }).exec();
+  }
+
+  // Khóa / Mở khóa tài khoản
+  async banUser(userId: string, isBanned: boolean) {
+    return this.userModel.findByIdAndUpdate(userId, { isBanned }, { new: true }).exec();
   }
 }
