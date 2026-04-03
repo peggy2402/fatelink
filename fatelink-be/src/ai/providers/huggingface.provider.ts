@@ -8,8 +8,8 @@ export class HuggingFaceProvider implements IAiProvider {
   readonly providerName = 'HuggingFace';
   private readonly logger = new Logger(HuggingFaceProvider.name);
   private readonly apiKey: string;
-  // Sử dụng một model text-generation xuất sắc mã nguồn mở (có thể thay đổi URL)
-  private readonly endpoint = 'https://router.huggingface.co/hf-inference/models/mistralai/Mixtral-8x7B-Instruct-v0.1'; 
+  // Đổi sang model Qwen 2.5 7B: Rất nhẹ, khởi động nhanh trên bản Free và cực kỳ giỏi tiếng Việt
+  private readonly endpoint = 'https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct'; 
 
   constructor() {
     this.apiKey = process.env.HUGGINGFACE_API_KEY || '';
