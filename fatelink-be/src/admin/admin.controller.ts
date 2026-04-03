@@ -1,14 +1,16 @@
-import { Controller, Get, Put, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
+import { AdminLoginDto } from './dto/admin-login.dto';
 
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post('login')
-  login(@Body() body: any) {
-    return this.adminService.login(body.username, body.password);
+  @HttpCode(HttpStatus.OK) // Thay đổi mặc định 201 Created thành 200 OK
+  login(@Body() loginDto: AdminLoginDto) {
+    return this.adminService.login(loginDto.username, loginDto.password);
   }
 
   @UseGuards(AdminGuard)

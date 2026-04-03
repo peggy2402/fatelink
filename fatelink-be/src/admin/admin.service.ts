@@ -2,12 +2,14 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SystemConfig, SystemConfigDocument } from './schemas/system-config.schema';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AdminService {
   constructor(
     @InjectModel(SystemConfig.name) private configModel: Model<SystemConfigDocument>,
     @InjectModel('User') private userModel: Model<any>, // Đảm bảo AdminModule đã import MongooseModule.forFeature([{ name: 'User', schema: UserSchema }])
+    private jwtService: JwtService,
   ) {}
 
   // Lấy cấu hình hiện tại (nếu chưa có thì tạo mặc định 1 bản ghi duy nhất)
@@ -27,12 +29,17 @@ export class AdminService {
 
   // Đăng nhập Admin (Hardcode bảo mật qua Biến môi trường)
   login(username: string, pass: string) {
-    const envUsername = process.env.ADMIN_USERNAME;
-    const envPassword = process.env.ADMIN_PASSWORD; // Đổi mật khẩu này trong file .env
+    const envUsername = process.env.ADMIN_USERNAME || 'admin';
+    const envPassword = process.env.ADMIN_PASSWORD || '123456'; 
 
     if (username === envUsername && pass === envPassword) {
-      // Ở mức production, bạn nên dùng JwtService để sinh ra token JWT chuẩn, ở đây làm ví dụ nhanh:
-      return { accessToken: 'admin-super-secret-token', role: 'admin' };
+      // Ký payload thành mã JWT thực sự
+      const payload = { username, role: 'admin' };
+      const accessToken = this.jwtService.sign(payload, {
+        secret: process.env.JWT_SECRET || 'fallback-secret-key', // Dùng biến JWT_SECRET từ .env
+        expiresIn: '7d', // Có hiệu lực trong 7 ngày
+      });
+      return { accessToken, role: 'admin' };
     }
     throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu quản trị viên!');
   }
