@@ -52,9 +52,6 @@
                 <button onclick="switchTab('modelsTab')" id="btn-modelsTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-cogs w-5"></i> <span>Quản lý AI Models</span>
                 </button>
-                <button onclick="switchTab('checkAiTab')" id="btn-checkAiTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
-                    <i class="fas fa-stethoscope w-5"></i> <span>Trạng thái Model</span>
-                </button>
                 <button onclick="switchTab('testChatTab')" id="btn-testChatTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-comments w-5"></i> <span>Test AI Chat</span>
                 </button>
@@ -134,45 +131,48 @@
                     </table>
                 </div>
 
-                <!-- TAB 3: TRẠNG THÁI MODEL AI -->
-                <div id="checkAiTab" class="hidden bg-white rounded-xl shadow-sm p-6 max-w-4xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-semibold text-gray-800">Tình trạng kết nối các Provider AI</h3>
-                        <button onclick="checkAiModels()" id="btnCheckAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2">
-                            <i class="fas fa-sync-alt"></i> <span id="btnCheckAiText">Kiểm tra ngay</span>
-                        </button>
-                    </div>
-                    <div id="aiStatusContainer" class="space-y-4">
-                        <p class="text-gray-500 italic flex items-center space-x-2"><i class="fas fa-info-circle"></i> <span>Bấm "Kiểm tra ngay" để ping đến tất cả các model AI đang có trong luồng dự phòng...</span></p>
-                    </div>
-                </div>
-
-                <!-- TAB 4: QUẢN LÝ AI MODELS -->
-                <div id="modelsTab" class="hidden">
-                     <div class="flex justify-between items-center mb-6">
+                <!-- TAB 3: QUẢN LÝ AI MODELS (GỘP TRẠNG THÁI) -->
+                <div id="modelsTab" class="hidden flex-col h-[75vh]">
+                     <div class="flex justify-between items-center mb-6 shrink-0">
                         <h3 class="text-lg font-semibold text-gray-800">Danh sách Model (Kéo & Thả để sắp xếp ưu tiên)</h3>
-                        <button onclick="showModelModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
-                            <i class="fas fa-plus"></i> <span>Thêm Model Mới</span>
-                        </button>
+                        <div class="space-x-3 flex">
+                            <button onclick="checkAiModels()" id="btnCheckAi" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center space-x-2 shadow-sm font-medium">
+                                <i class="fas fa-stethoscope"></i> <span id="btnCheckAiText">Cập nhật trạng thái</span>
+                            </button>
+                            <button onclick="showModelModal()" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2 shadow-sm font-medium">
+                                <i class="fas fa-plus"></i> <span>Thêm Model</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên Model</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model ID</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody id="modelsTableBody" class="bg-white divide-y divide-gray-200">
-                                <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
-                            </tbody>
-                        </table>
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 flex-1 flex flex-col border border-gray-200">
+                        <div class="overflow-y-auto flex-1">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên Model</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cấu hình</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái API</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modelsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Bảng Terminal Logs -->
+                    <div class="bg-gray-900 rounded-xl shadow-sm overflow-hidden border border-gray-700 shrink-0 h-48 flex flex-col">
+                        <div class="p-3 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
+                            <h3 class="text-sm font-semibold text-gray-300"><i class="fas fa-terminal mr-2"></i>Logs Hệ thống</h3>
+                        </div>
+                        <div id="aiStatusContainer" class="p-4 space-y-2 text-gray-300 font-mono text-[13px] overflow-y-auto flex-1">
+                            <p class="text-gray-500 italic">Nhấn "Cập nhật trạng thái" ở trên để gửi gói tin Ping tới các Model...</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- TAB 5: TEST AI CHAT -->
+                <!-- TAB 4: TEST AI CHAT -->
                 <div id="testChatTab" class="hidden h-[75vh] flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
                     <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                         <h3 class="text-lg font-medium text-gray-700">Chat thử nghiệm với Faye</h3>
@@ -290,7 +290,6 @@
             document.getElementById('configTab').classList.add('hidden');
             document.getElementById('usersTab').classList.add('hidden');
             document.getElementById('modelsTab').classList.add('hidden');
-            document.getElementById('checkAiTab').classList.add('hidden');
             document.getElementById('testChatTab').classList.add('hidden');
             
             document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
@@ -299,8 +298,6 @@
             document.getElementById('btn-usersTab').classList.remove('text-white');
             document.getElementById('btn-modelsTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-modelsTab').classList.remove('text-white');
-            document.getElementById('btn-checkAiTab').classList.replace('bg-gray-800', 'text-gray-400');
-            document.getElementById('btn-checkAiTab').classList.remove('text-white');
             document.getElementById('btn-testChatTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-testChatTab').classList.remove('text-white');
 
@@ -320,8 +317,6 @@
                 loadAiModels();
             } else if (tabId === 'testChatTab') {
                 document.getElementById('pageTitle').innerText = 'Test AI Chat';
-            } else {
-                document.getElementById('pageTitle').innerText = 'Kiểm tra trạng thái AI';
             }
         }
 
@@ -458,45 +453,6 @@
             }
         }
 
-        // CALL API: KIỂM TRA TRẠNG THÁI AI MODELS
-        async function checkAiModels() {
-            const btn = document.getElementById('btnCheckAi');
-            const btnText = document.getElementById('btnCheckAiText');
-            const container = document.getElementById('aiStatusContainer');
-            
-            btn.disabled = true;
-            btnText.innerText = 'Đang kiểm tra...';
-            container.innerHTML = '<p class="text-gray-500 italic animate-pulse">Đang gửi request test đến các provider, có thể mất đến 15 giây, vui lòng chờ...</p>';
-
-            try {
-                const res = await fetch(`${API_URL}/admin/ai-status`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    container.innerHTML = '';
-                    data.forEach(item => {
-                        const isOnline = item.status.includes('Online');
-                        container.innerHTML += `
-                            <div class="p-4 border rounded-lg shadow-sm ${isOnline ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
-                                <div class="flex justify-between items-center">
-                                    <strong class="text-lg ${isOnline ? 'text-green-800' : 'text-red-800'}"><i class="fas ${isOnline ? 'fa-check-circle' : 'fa-times-circle'} mr-2"></i>${item.provider}</strong>
-                                    <span class="px-3 py-1 rounded-full text-sm font-mono font-bold ${isOnline ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${isOnline ? 'Ping: ' + item.ping : item.status}</span>
-                                </div>
-                                ${!isOnline ? `<p class="text-sm text-red-600 mt-2 bg-red-100 p-2 rounded border border-red-200 font-mono overflow-auto">${item.error}</p>` : ''}
-                            </div>
-                        `;
-                    });
-                }
-            } catch (err) {
-                showToast('Lỗi khi kiểm tra trạng thái AI', 'error');
-                container.innerHTML = '<p class="text-red-500 italic">Kiểm tra thất bại do lỗi kết nối mạng.</p>';
-            } finally {
-                btn.disabled = false;
-                btnText.innerText = 'Kiểm tra ngay';
-            }
-        }
-
         // --- LOGIC CRUD AI MODELS ---
         const modelModal = document.getElementById('modelModal');
         const modelForm = document.getElementById('modelForm');
@@ -563,12 +519,18 @@
                         const isEnabled = model.isEnabled !== false;
                         
                         tr.innerHTML = `
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2">(Tắt)</span>' : ''}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${model.providerName}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${model.modelId}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                <button onclick='showModelModal(${JSON.stringify(model)})' class="text-indigo-600 hover:text-indigo-900">Sửa</button>
-                                <button onclick="deleteAiModel('${model._id}')" class="text-red-600 hover:text-red-900">Xóa</button>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center text-sm font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3 hover:text-gray-600"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2">(Tắt)</span>' : ''}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="font-bold text-gray-700">${model.providerName}</span><br><span class="text-[11px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">${model.modelId}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm" id="status-${model._id}" data-provider="${model.providerName}">
+                                <span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500">Chưa cập nhật</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                <button onclick='showModelModal(${JSON.stringify(model)})' class="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded"><i class="fas fa-pen text-xs"></i></button>
+                                <button onclick="deleteAiModel('${model._id}')" class="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded"><i class="fas fa-trash text-xs"></i></button>
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -588,6 +550,61 @@
                 loadAiModels();
             } catch (err) {
                 showToast('Lỗi khi xóa', 'error');
+            }
+        }
+
+        // CALL API: KIỂM TRA TRẠNG THÁI AI MODELS TRỰC TIẾP TRÊN BẢNG
+        async function checkAiModels() {
+            const btn = document.getElementById('btnCheckAi');
+            const btnText = document.getElementById('btnCheckAiText');
+            const container = document.getElementById('aiStatusContainer');
+            
+            btn.disabled = true;
+            btnText.innerText = 'Đang quét...';
+            container.innerHTML = '<p class="text-blue-400 animate-pulse">> Đang gửi gói tin ping đến các máy chủ AI, vui lòng chờ...</p>';
+
+            // Hiện loading spinner trên từng dòng của bảng
+            const allStatusCells = document.querySelectorAll('[id^="status-"]');
+            allStatusCells.forEach(cell => {
+                cell.innerHTML = '<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-blue-200 bg-blue-50 text-blue-600"><i class="fas fa-spinner fa-spin mr-1 mt-0.5"></i> Đang test</span>';
+            });
+
+            try {
+                const res = await fetch(`${API_URL}/admin/ai-status`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const statuses = await res.json();
+                    container.innerHTML = '';
+                    const time = new Date().toLocaleTimeString('vi-VN');
+
+                    // Viết log terminal
+                    statuses.forEach(item => {
+                        const isOnline = item.status.includes('Online');
+                        container.innerHTML += isOnline 
+                            ? `<p><span class="text-green-400">[${time}] [SUCCESS]</span> Provider <b class="text-white">${item.provider}</b>: Phản hồi trong ${item.ping}</p>`
+                            : `<p><span class="text-red-400">[${time}] [ERROR]</span> Provider <b class="text-white">${item.provider}</b>: ${item.error}</p>`;
+                    });
+
+                    // Cập nhật trạng thái Badge trên bảng
+                    allStatusCells.forEach(cell => {
+                        const providerName = cell.getAttribute('data-provider').toLowerCase();
+                        const statusObj = statuses.find(s => s.provider.toLowerCase().includes(providerName) || providerName.includes(s.provider.toLowerCase()));
+                        
+                        if (statusObj) {
+                            const isOnline = statusObj.status.includes('Online');
+                            cell.innerHTML = isOnline 
+                                ? `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-green-300 bg-green-100 text-green-800">Sẵn sàng 🟢 (${statusObj.ping})</span>`
+                                : `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-red-300 bg-red-100 text-red-800" title="${statusObj.error}">Lỗi 🔴 Offline</span>`;
+                        } else {
+                            cell.innerHTML = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500">Chưa xác định</span>`;
+                        }
+                    });
+                }
+            } catch (err) {
+                showToast('Lỗi khi kiểm tra trạng thái AI', 'error');
+                container.innerHTML = '<p class="text-red-500 italic">> Lỗi kết nối mạng hoặc máy chủ không phản hồi.</p>';
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = 'Cập nhật trạng thái';
             }
         }
 
