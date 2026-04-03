@@ -67,6 +67,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false; // Trạng thái AI đang xử lý
   bool _isLoadingHistory = true; // Thêm biến trạng thái loading
   bool _isInputEmpty = true; // Theo dõi trạng thái rỗng của input
+  bool _showEmotionSuggestions = false; // Biến hiển thị gợi ý cảm xúc
 
   @override
   void initState() {
@@ -113,16 +114,31 @@ class ChatScreenState extends State<ChatScreen> {
 
       if (response.statusCode == 200 && mounted) {
         final List<dynamic> data = jsonDecode(response.body);
-        final history = data
-            .map(
-              (msg) => ChatMessage(
-                text: msg['text'],
-                isSentByMe: msg['isSentByMe'],
-                timestamp: DateTime.parse(msg['timestamp']).toLocal(),
+
+        if (data.isEmpty) {
+          // Nếu lịch sử trống, hiển thị câu chào mặc định và bật gợi ý cảm xúc
+          setState(() {
+            _messages.add(
+              ChatMessage(
+                text: "Hôm nay tâm trạng của bạn đang như thế nào? 🍂",
+                isSentByMe: false,
+                timestamp: DateTime.now(),
               ),
-            )
-            .toList();
-        if (mounted) setState(() => _messages.addAll(history));
+            );
+            _showEmotionSuggestions = true;
+          });
+        } else {
+          final history = data
+              .map(
+                (msg) => ChatMessage(
+                  text: msg['text'],
+                  isSentByMe: msg['isSentByMe'],
+                  timestamp: DateTime.parse(msg['timestamp']).toLocal(),
+                ),
+              )
+              .toList();
+          setState(() => _messages.addAll(history));
+        }
       }
     } catch (e) {
       debugPrint('Lỗi khi tải lịch sử chat: $e');
@@ -197,6 +213,7 @@ class ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       _messages.add(userMessage);
+      _showEmotionSuggestions = false; // Tắt nút gợi ý khi user đã gửi tin
       _isTyping = true; // Bật trạng thái AI đang gõ
     });
     _scrollToBottom();
@@ -258,13 +275,19 @@ class ChatScreenState extends State<ChatScreen> {
                           top: 16.0,
                           bottom: 120.0,
                         ), // Tạo khoảng trống để không bị che bởi ChatInputBar nổi
-                        itemCount: _messages.length + (_isTyping ? 1 : 0),
+                        itemCount:
+                            _messages.length +
+                            (_showEmotionSuggestions ? 1 : 0) +
+                            (_isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == _messages.length && _isTyping) {
-                            return _buildTypingIndicator(); // Widget hiển thị "Đang gõ"
+                          if (index < _messages.length) {
+                            return _buildMessageBubble(_messages[index]);
+                          } else if (index == _messages.length &&
+                              _showEmotionSuggestions) {
+                            return _buildEmotionSuggestions(); // Hiện nút cảm xúc
+                          } else {
+                            return _buildTypingIndicator();
                           }
-                          final message = _messages[index];
-                          return _buildMessageBubble(message);
                         },
                       ),
                     ),
@@ -477,6 +500,36 @@ class ChatScreenState extends State<ChatScreen> {
             child: const TypingIndicator(), // Sử dụng widget mới
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget hiển thị danh sách gợi ý cảm xúc cho người dùng chọn nhanh
+  Widget _buildEmotionSuggestions() {
+    final emotions = ['Bình yên 🍃', 'Áp lực 🌪️', 'Cô đơn 🌧️', 'Vui vẻ ✨'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Wrap(
+        spacing: 8.0,
+        runSpacing: 8.0,
+        alignment: WrapAlignment.end,
+        children: emotions
+            .map(
+              (emotion) => ActionChip(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                side: BorderSide(
+                  color: const Color(0xFF0D47A1).withOpacity(0.5),
+                ),
+                label: Text(
+                  emotion,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onPressed: () {
+                  sendMessage(emotion); // Gửi tin nhắn đi khi bấm
+                },
+              ),
+            )
+            .toList(),
       ),
     );
   }

@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminGuard } from './guards/admin.guard';
 import { AdminLoginDto } from './dto/admin-login.dto';
@@ -45,5 +45,30 @@ export class AdminController {
   @Get('ai-status')
   checkAiStatus() {
     return this.aiService.checkProvidersStatus();
+  }
+
+  // --- API CRUD cho AI Models ---
+  @UseGuards(AdminGuard)
+  @Get('models')
+  getAiModels() {
+    return this.adminService.getAiModels();
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('models')
+  createAiModel(@Body() dto: any) {
+    return this.adminService.createAiModel(dto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Put('models/:id')
+  updateAiModel(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateAiModel(id, dto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete('models/:id')
+  deleteAiModel(@Param('id') id: string) {
+    return this.adminService.deleteAiModel(id);
   }
 }

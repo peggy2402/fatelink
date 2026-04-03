@@ -49,6 +49,9 @@
                 <button onclick="switchTab('usersTab')" id="btn-usersTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-users w-5"></i> <span>Quản lý Users</span>
                 </button>
+                <button onclick="switchTab('modelsTab')" id="btn-modelsTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
+                    <i class="fas fa-cogs w-5"></i> <span>Quản lý AI Models</span>
+                </button>
                 <button onclick="switchTab('checkAiTab')" id="btn-checkAiTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-stethoscope w-5"></i> <span>Trạng thái Model</span>
                 </button>
@@ -151,6 +154,31 @@
                     </div>
                 </div>
 
+                <!-- TAB 4: QUẢN LÝ AI MODELS -->
+                <div id="modelsTab" class="hidden">
+                     <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Danh sách các Model AI</h3>
+                        <button onclick="showModelModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2">
+                            <i class="fas fa-plus"></i> <span>Thêm Model Mới</span>
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên Model</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Provider</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model ID</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modelsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </main>
         </div>
     </div>
@@ -159,6 +187,37 @@
     <div id="toast" class="fixed bottom-5 right-5 transform transition-all duration-300 translate-y-20 opacity-0 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 z-50">
         <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
         <span id="toastMsg">Thành công!</span>
+    </div>
+
+    <!-- MODAL THÊM/SỬA MODEL -->
+    <div id="modelModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg">
+            <h2 id="modelModalTitle" class="text-2xl font-bold mb-6">Thêm Model AI Mới</h2>
+            <form id="modelForm" class="space-y-4">
+                <input type="hidden" id="modelIdField">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tên hiển thị</label>
+                    <input type="text" id="displayName" placeholder="Ví dụ: Qwen 2.5 7B (Tiếng Việt)" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Provider</label>
+                    <select id="providerName" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                        <option value="Gemini">Gemini</option>
+                        <option value="OpenAI">OpenAI / Groq</option>
+                        <option value="HuggingFace">HuggingFace</option>
+                        <option value="LlamaLocal">Llama (Local)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Model ID</label>
+                    <input type="text" id="modelIdentifier" placeholder="Ví dụ: gemini-2.0-flash hoặc Qwen/Qwen2.5-7B-Instruct" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="hideModelModal()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg">Hủy</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg">Lưu Model</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -220,12 +279,15 @@
         function switchTab(tabId) {
             document.getElementById('configTab').classList.add('hidden');
             document.getElementById('usersTab').classList.add('hidden');
+            document.getElementById('modelsTab').classList.add('hidden');
             document.getElementById('checkAiTab').classList.add('hidden');
             
             document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-configTab').classList.remove('text-white');
             document.getElementById('btn-usersTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-usersTab').classList.remove('text-white');
+            document.getElementById('btn-modelsTab').classList.replace('bg-gray-800', 'text-gray-400');
+            document.getElementById('btn-modelsTab').classList.remove('text-white');
             document.getElementById('btn-checkAiTab').classList.replace('bg-gray-800', 'text-gray-400');
             document.getElementById('btn-checkAiTab').classList.remove('text-white');
 
@@ -240,6 +302,9 @@
             } else if (tabId === 'usersTab') {
                 document.getElementById('pageTitle').innerText = 'Quản lý Users';
                 loadUsers();
+            } else if (tabId === 'modelsTab') {
+                document.getElementById('pageTitle').innerText = 'Quản lý AI Models';
+                loadAiModels();
             } else {
                 document.getElementById('pageTitle').innerText = 'Kiểm tra trạng thái AI';
             }
@@ -449,6 +514,94 @@
             } finally {
                 btn.disabled = false;
                 btnText.innerText = 'Kiểm tra ngay';
+            }
+        }
+
+        // --- LOGIC CRUD AI MODELS ---
+        const modelModal = document.getElementById('modelModal');
+        const modelForm = document.getElementById('modelForm');
+
+        function showModelModal(model = null) {
+            modelForm.reset();
+            if (model) {
+                document.getElementById('modelModalTitle').innerText = 'Chỉnh sửa Model AI';
+                document.getElementById('modelIdField').value = model._id;
+                document.getElementById('displayName').value = model.displayName;
+                document.getElementById('providerName').value = model.providerName;
+                document.getElementById('modelIdentifier').value = model.modelId;
+            } else {
+                document.getElementById('modelModalTitle').innerText = 'Thêm Model AI Mới';
+                document.getElementById('modelIdField').value = '';
+            }
+            modelModal.classList.remove('hidden');
+        }
+
+        function hideModelModal() {
+            modelModal.classList.add('hidden');
+        }
+
+        modelForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('modelIdField').value;
+            const dto = {
+                displayName: document.getElementById('displayName').value,
+                providerName: document.getElementById('providerName').value,
+                modelId: document.getElementById('modelIdentifier').value,
+            };
+
+            const url = id ? `${API_URL}/admin/models/${id}` : `${API_URL}/admin/models`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dto)
+                });
+                if (res.ok) {
+                    showToast(id ? 'Cập nhật thành công!' : 'Thêm model thành công!', 'success');
+                    hideModelModal();
+                    loadAiModels();
+                }
+            } catch (err) {
+                showToast('Lỗi thực thi', 'error');
+            }
+        });
+
+        async function loadAiModels() {
+            try {
+                const res = await fetch(`${API_URL}/admin/models`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (res.ok) {
+                    const models = await res.json();
+                    const tbody = document.getElementById('modelsTableBody');
+                    tbody.innerHTML = '';
+                    models.forEach(model => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${model.displayName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${model.providerName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${model.modelId}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                <button onclick='showModelModal(${JSON.stringify(model)})' class="text-indigo-600 hover:text-indigo-900">Sửa</button>
+                                <button onclick="deleteAiModel('${model._id}')" class="text-red-600 hover:text-red-900">Xóa</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                showToast('Lỗi tải danh sách models', 'error');
+            }
+        }
+
+        async function deleteAiModel(id) {
+            if (!confirm('Bạn có chắc muốn xóa model này?')) return;
+            try {
+                await fetch(`${API_URL}/admin/models/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                showToast('Xóa model thành công!', 'success');
+                loadAiModels();
+            } catch (err) {
+                showToast('Lỗi khi xóa', 'error');
             }
         }
 

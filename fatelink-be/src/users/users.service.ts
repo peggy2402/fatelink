@@ -94,4 +94,13 @@ export class UsersService {
       latestEmotion: user.latestEmotion,
     }).limit(20).exec(); 
   }
+
+  async updateFcmToken(userId: string, fcmToken: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId, 
+      { fcmToken }, 
+      { new: true }
+    ).exec();
+  }
+
 }

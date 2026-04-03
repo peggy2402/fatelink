@@ -9,6 +9,7 @@ export class AdminService {
   constructor(
     @InjectModel(SystemConfig.name) private configModel: Model<SystemConfigDocument>,
     @InjectModel('User') private userModel: Model<any>, // Đảm bảo AdminModule đã import MongooseModule.forFeature([{ name: 'User', schema: UserSchema }])
+    @InjectModel('AiModel') private aiModel: Model<any>,
     private jwtService: JwtService,
   ) {}
 
@@ -53,4 +54,23 @@ export class AdminService {
   async banUser(userId: string, isBanned: boolean) {
     return this.userModel.findByIdAndUpdate(userId, { isBanned }, { new: true }).exec();
   }
+
+  // --- CRUD cho AI Models ---
+  async getAiModels() {
+    return this.aiModel.find().sort({ priority: 1 }).exec();
+  }
+
+  async createAiModel(dto: any) {
+    const newModel = new this.aiModel(dto);
+    return newModel.save();
+  }
+
+  async updateAiModel(id: string, dto: any) {
+    return this.aiModel.findByIdAndUpdate(id, dto, { new: true }).exec();
+  }
+
+  async deleteAiModel(id: string) {
+    return this.aiModel.findByIdAndDelete(id).exec();
+  }
+
 }
