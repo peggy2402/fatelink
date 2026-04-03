@@ -17,7 +17,8 @@ export class GeminiProvider implements IAiProvider {
       this.logger.warn('Chưa cấu hình GEMINI_API_KEY, GeminiProvider sẽ không hoạt động.');
     }
     this.ai = new GoogleGenAI({
-      apiKey: apiKey || 'DUMMY_KEY'
+      apiKey: apiKey || 'DUMMY_KEY', 
+      httpOptions: { apiVersion: 'v1beta' }
     });
   }
 
@@ -26,7 +27,7 @@ export class GeminiProvider implements IAiProvider {
       throw new Error('Gemini API Key chưa được cấu hình.');
     }
 
-    let currentModelName = modelName || 'gemini-2.0-flash'; // Sử dụng model từ tham số truyền vào
+    let currentModelName = modelName || 'gemini-2.0-flash-exp'; // Ưu tiên sử dụng versioned name
     let retries = 3;
     let delayMs = 1000;
 
@@ -54,8 +55,8 @@ export class GeminiProvider implements IAiProvider {
         const errorMessage = apiError?.message || '';
 
         if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-          this.logger.warn(`Model ${currentModelName} bị 404. Tự động đổi sang gemini-1.5-pro (Lần thử ${attempt})...`);
-          currentModelName = 'gemini-1.5-pro';
+          this.logger.warn(`Model ${currentModelName} bị 404. Tự động đổi sang gemini-1.5-pro-002 (Lần thử ${attempt})...`);
+          currentModelName = 'gemini-1.5-pro-002'; // Fallback về model version cụ thể để tránh 404
           continue;
         }
 
