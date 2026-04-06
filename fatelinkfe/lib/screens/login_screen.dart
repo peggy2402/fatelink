@@ -1,3 +1,4 @@
+import 'package:fatelinkfe/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
@@ -33,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen>
   // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
   // Môi trường test (máy ảo iOS/Web): 'http://localhost:3000'
   // Môi trường máy Android thật: 'http://192.168.1.8:3000'
-  static const String _baseUrl = 'https://fatelink-be.fly.dev';
   // static const String _baseUrl = 'http://10.0.2.2:3000';
 
   bool _agreedToTerms = true; // Biến lưu trạng thái auto-check điều khoản
@@ -169,11 +169,11 @@ class _LoginScreenState extends State<LoginScreen>
         // 3. Gửi Token lên Backend NestJS
         // LƯU Ý: Nếu bạn chạy bằng máy ảo Android (Emulator), phải dùng 10.0.2.2 thay vì localhost
         // Nếu chạy trên Web hoặc iOS Simulator, dùng localhost
-        final url = '$_baseUrl/auth/google/login';
+        final url = Uri.parse('${AppConstants.baseUrl}/auth/google/login');
         _writeLog('🌐 Chuẩn bị gửi POST request tới: $url');
 
         final response = await http.post(
-          Uri.parse(url),
+          url,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'token': idToken}),
         );
@@ -330,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen>
                     // Icon Support
                     GestureDetector(
                       onTap: () {
-                        _launchURL('$_baseUrl/support.html');
+                        _launchURL('${AppConstants.serverUrl}/support.html');
                       },
                       child: Image.asset(
                         'assets/icon/icon-support.png',
@@ -573,7 +573,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
-                                          _launchURL('$_baseUrl/terms.html');
+                                          _launchURL(
+                                            '${AppConstants.serverUrl}/terms.html',
+                                          );
                                         },
                                     ),
                                     const TextSpan(text: ' & '),
@@ -584,7 +586,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
-                                          _launchURL('$_baseUrl/privacy.html');
+                                          _launchURL(
+                                            '${AppConstants.serverUrl}/privacy.html',
+                                          );
                                         },
                                     ),
                                     const TextSpan(text: ' & '),
@@ -595,7 +599,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
-                                          _launchURL('$_baseUrl/cookies.html');
+                                          _launchURL(
+                                            '${AppConstants.serverUrl}/cookies.html',
+                                          );
                                         },
                                     ),
                                     const TextSpan(text: ' & '),
@@ -606,7 +612,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
-                                          _launchURL('$_baseUrl/rules.html');
+                                          _launchURL(
+                                            '${AppConstants.serverUrl}/rules.html',
+                                          );
                                         },
                                     ),
                                     const TextSpan(text: ' & '),
@@ -618,7 +626,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           _launchURL(
-                                            '$_baseUrl/child-safety.html',
+                                            '${AppConstants.serverUrl}/child-safety.html',
                                           );
                                         },
                                     ),

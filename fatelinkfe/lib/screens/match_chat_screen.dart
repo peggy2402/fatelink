@@ -1,11 +1,12 @@
+import 'package:fatelinkfe/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/widgets/chat_input_bar.dart';
 import 'package:fatelinkfe/widgets/floating_ai_bubble.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/widgets/typing_indicator.dart';
+import 'package:fatelinkfe/services/api_service.dart';
 
 class MatchChatScreen extends StatefulWidget {
   final String partnerName;
@@ -28,42 +29,21 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   // TODO: Khai báo List<ChatMessage> _messages = []; giống hệt bên ChatScreen
 
   Future<void> _handleUnmatch() async {
-    // Hiện dialog loading mờ màn hình
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFFBD114A)),
-      ),
-    );
-
     try {
       final token = await _secureStorage.read(key: 'accessToken');
-      final url = Uri.parse(
-        'https://fatelink-be.fly.dev/matches/${widget.partnerId}/unmatch',
-      );
-      final response = await http.delete(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final url = '${AppConstants.baseUrl}/matches/${widget.partnerId}/unmatch';
+
+      // Gọi API với cờ showLoading: true, hệ thống sẽ tự động hiện Spinner và tự tắt
+      await ApiService.delete(url, context, token: token, showLoading: true);
 
       if (!mounted) return;
-      Navigator.pop(context); // Tắt loading dialog
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã hủy ghép đôi thành công')),
-        );
-        // Trở về màn hình trước (MatchesScreen) và trả về "true" để yêu cầu reload danh sách
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể hủy ghép đôi lúc này')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã hủy ghép đôi thành công')),
+      );
+      // Trở về màn hình trước (MatchesScreen) và trả về "true" để yêu cầu reload danh sách
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Tắt loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lỗi kết nối mạng. Vui lòng thử lại!')),
       );

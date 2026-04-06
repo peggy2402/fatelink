@@ -1,4 +1,6 @@
 {
+    "FateLink": "FateLink",
+    "FateLink_description": "Connect with those who share your fate",
     "Home": "Home",
     "Matches": "Matches",
     "Profile": "Profile",
@@ -10,5 +12,6 @@
     "language": "Language",
     "matches_title": "Your Fates",
     "matches_subtitle": "Fates that match you",
-    "matches_cancelled": "Cancelled connection with "
+    "matches_cancelled": "Cancelled connection with ",
+    "TalkWithFaye": "Chat more with Faye\nto find compatible pieces."
 }

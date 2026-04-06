@@ -1,11 +1,13 @@
+import 'package:fatelinkfe/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/widgets/onboarding_modal.dart';
 import 'package:fatelinkfe/widgets/shimmer_user_card.dart';
 import 'package:fatelinkfe/screens/user_detail_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'package:fatelinkfe/services/api_service.dart';
 
 // Model đơn giản cho User Card
 class MatchUser {
@@ -103,22 +105,20 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    final url = Uri.parse(
-      'https://fatelink-be.fly.dev/matchmaking/recommendations',
-    );
-    final response = await http.get(
-      url,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200 && mounted) {
-      final List<dynamic> data = jsonDecode(response.body);
-      setState(() {
-        _matchedUsers = data.map((json) => MatchUser.fromJson(json)).toList();
-        _isLoadingMatches = false;
-      });
-    } else {
-      setState(() => _isLoadingMatches = false);
+    final url = '${AppConstants.baseUrl}/matchmaking/recommendations';
+    try {
+      final data = await ApiService.get(url, context, token: token);
+      if (mounted) {
+        setState(() {
+          _matchedUsers = (data as List)
+              .map((json) => MatchUser.fromJson(json))
+              .toList();
+          _isLoadingMatches = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Lỗi tải danh sách tương hợp: $e');
+      if (mounted) setState(() => _isLoadingMatches = false);
     }
   }
 
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ? Expanded(
                           child: Center(
                             child: Text(
-                              'Trò chuyện thêm với Faye\nđể tìm những mảnh ghép tương hợp nhé.',
+                              'TalkWithFaye'.tr(),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white54,
@@ -228,11 +228,25 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         )
                       : Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 100, top: 8),
-                            itemCount: _matchedUsers.length,
-                            itemBuilder: (context, index) =>
-                                _buildUserCard(_matchedUsers[index]),
+                          child: RefreshIndicator(
+                            color: const Color(
+                              0xFFBD114A,
+                            ), // Màu vòng xoay (Fatelink tone)
+                            backgroundColor: const Color(
+                              0xFF001520,
+                            ), // Màu nền của vòng xoay
+                            onRefresh: _fetchMatches, // Hàm được gọi khi kéo
+                            child: ListView.builder(
+                              physics:
+                                  const AlwaysScrollableScrollPhysics(), // Đảm bảo luôn kéo được
+                              padding: const EdgeInsets.only(
+                                bottom: 100,
+                                top: 8,
+                              ),
+                              itemCount: _matchedUsers.length,
+                              itemBuilder: (context, index) =>
+                                  _buildUserCard(_matchedUsers[index]),
+                            ),
                           ),
                         ),
                 ],

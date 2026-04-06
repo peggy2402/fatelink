@@ -78,7 +78,9 @@ class FcmService {
       if (accessToken == null) return; // Chưa đăng nhập thì không gửi
 
       final response = await http.post(
-        Uri.parse('https://fatelink-be.fly.dev/users/fcm-token'), // URL Backend
+        Uri.parse(
+          'https://fatelink-be.fly.dev/api/users/fcm-token',
+        ), // URL Backend
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',

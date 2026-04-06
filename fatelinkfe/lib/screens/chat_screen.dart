@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:fatelinkfe/utils/toast_utils.dart';
 import 'package:fatelinkfe/widgets/typing_indicator.dart';
+import 'package:fatelinkfe/services/api_service.dart';
+import 'package:fatelinkfe/utils/constants.dart';
 
 // Model đơn giản để chứa dữ liệu của một tin nhắn
 class ChatMessage {
@@ -104,18 +105,13 @@ class ChatScreenState extends State<ChatScreen> {
       final userId = _getUserIdFromToken(token);
       if (userId == null) throw Exception('Token không hợp lệ');
 
-      final url = Uri.parse(
-        'https://fatelink-be.fly.dev/messages/$userId?limit=50',
-      );
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final url = '${AppConstants.baseUrl}/messages/$userId?limit=50';
+      // KHÔNG dùng showLoading: true ở đây vì chúng ta đang dùng biến _isLoadingHistory để hiện một CircularProgressIndicator riêng ở giữa màn hình thay vì chặn thao tác của người dùng.
+      final data = await ApiService.get(url, context, token: token);
 
-      if (response.statusCode == 200 && mounted) {
-        final List<dynamic> data = jsonDecode(response.body);
-
-        if (data.isEmpty) {
+      if (mounted && data != null) {
+        final List<dynamic> historyData = data;
+        if (historyData.isEmpty) {
           // Nếu lịch sử trống, hiển thị câu chào mặc định và bật gợi ý cảm xúc
           setState(() {
             _messages.add(
@@ -128,7 +124,7 @@ class ChatScreenState extends State<ChatScreen> {
             _showEmotionSuggestions = true;
           });
         } else {
-          final history = data
+          final history = historyData
               .map(
                 (msg) => ChatMessage(
                   text: msg['text'],
@@ -138,6 +134,9 @@ class ChatScreenState extends State<ChatScreen> {
               )
               .toList();
           setState(() => _messages.addAll(history));
+          _scrollToBottom(
+            animated: false,
+          ); // Cuộn ngay xuống cuối không cần animation
         }
       }
     } catch (e) {
@@ -151,7 +150,7 @@ class ChatScreenState extends State<ChatScreen> {
     // LƯU Ý: Đổi URL này cho khớp với backend của bạn
     // Môi trường thật: 'https://fatelink-be.fly.dev'
     // Môi trường test (máy ảo Android): 'http://10.0.2.2:3000'
-    const String socketUrl = 'https://fatelink-be.fly.dev';
+    const String socketUrl = AppConstants.serverUrl;
 
     _socket = IO.io(
       socketUrl,
@@ -288,14 +287,18 @@ class ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (animated) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
       }
     });
   }

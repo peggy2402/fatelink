@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "918573554808",
-    "project_id": "fatelink-5a62b",
-    "storage_bucket": "fatelink-5a62b.firebasestorage.app"
+    "project_number": "244194531061",
+    "project_id": "todolist-b64bb",
+    "storage_bucket": "todolist-b64bb.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:918573554808:android:da9dbc0e381c84e018a18d",
+        "mobilesdk_app_id": "1:244194531061:android:fe07dbd6ad42af1d5fd7bc",
         "android_client_info": {
           "package_name": "com.example.fatelinkfe"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDHAg9GTVhAw22RqvoabjFze1x7iEIFfO4"
+          "current_key": "AIzaSyA6NsX5mJYuN7ONBAYkeU5tZ8zAmHQ5ezs"
         }
       ],
       "services": {

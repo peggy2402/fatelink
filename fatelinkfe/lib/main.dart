@@ -43,8 +43,8 @@ class MyApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (context) => MatchChatScreen(
               partnerId: partnerId,
-              partnerName:
-                  'Định mệnh', // Tên mặc định, có thể nâng cấp truyền Map sau
+              partnerName: 'FateLink'
+                  .tr(), // Tên mặc định, có thể nâng cấp truyền Map sau
             ),
           );
         }

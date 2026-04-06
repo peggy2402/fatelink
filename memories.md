@@ -212,6 +212,24 @@
 
 ---
 
+## 📅 Ngày: 03/04/2026 (Cập nhật lần 4)
+
+### 🎯 Trọng tâm: Tinh chỉnh Admin Dashboard (UI/UX) & Khắc phục lỗi AI Provider
+
+#### 1. Frontend (Admin Dashboard - HTML/JS)
+
+- **Nâng cấp Bảng AI Models**: Tách biệt rõ ràng cột "Provider" và "Model ID". Bổ sung tính năng Lọc (Filter) bằng Dropdown theo từng nhà cung cấp (Gemini, OpenAI, HuggingFace, LlamaLocal...).
+- **Tối ưu Mobile (Responsive)**:
+  - Áp dụng thiết kế Off-canvas Sidebar với nút Hamburger và màng che mờ (Overlay) cho thiết bị di động.
+  - Chuyển đổi linh hoạt các bảng dữ liệu (Table) thành dạng danh sách thẻ (Card List) khi xem trên màn hình nhỏ, các nút thao tác được mở rộng để dễ bấm chạm.
+- **Biểu đồ Thống kê (Data Visualization)**: Tích hợp thư viện `Chart.js` để vẽ biểu đồ tròn (Doughnut Chart) hiển thị trực quan tỷ lệ phân bổ trạng thái cảm xúc của toàn bộ người dùng trong hệ thống.
+
+#### 2. Backend (NestJS & AI Providers)
+
+- **Khắc phục lỗi Gemini 404**: Cập nhật `GeminiProvider`, thay đổi model mặc định thành các phiên bản định danh (versioned name) như `gemini-2.0-flash-exp` và cấu hình logic fallback an toàn về `gemini-1.5-pro-002` để triệt tiêu hoàn toàn lỗi Not Found từ API của Google.
+
+---
+
 ### 🚀 Việc cần làm tiếp theo (Next Steps):
 
 - [x] **Frontend**: Xây dựng màn hình chờ (Splash Screen) có logic auto-login.
@@ -227,3 +245,24 @@
 - [x] **Frontend**: Xây dựng UI chức năng Báo cáo người dùng (Report User) trong màn hình Match Chat.
 - [x] **Frontend & Backend**: Tích hợp Firebase Cloud Messaging (FCM) để gửi Push Notification khi có tin nhắn mới (lúc app chạy nền).
 - [x] **AI & Matchmaking**: Thiết kế luồng chuyển tiếp (Transition) từ Phase 1 (Onboarding) sang Phase 2 (Matchmaking) khi API trả về `is_ready_to_match: true`.
+
+---
+
+## 📅 Ngày: 06/04/2026
+
+### 🎯 Trọng tâm: Tối ưu Hệ thống Network, Global Error Handling & Fix Bugs
+
+#### 1. Frontend (Flutter)
+
+- **Sửa lỗi Đăng nhập Google (ApiException: 10)**: Xử lý dứt điểm lỗi OAuth do thiếu mã SHA-1 của máy tính (debug keystore) trên Firebase, đảm bảo sử dụng chính xác loại "Web application" Client ID trên cấu hình code Flutter.
+- **Tối ưu Network & Cấu hình môi trường**: Tạo file `utils/constants.dart` quản lý tập trung URL cấu hình cho toàn dự án. Đồng bộ hóa tiền tố `/api` cho tất cả các request HTTP REST để khắc phục triệt để lỗi 404 trả về trang HTML (FormatException).
+- **Global API Wrapper**: Triển khai class `ApiService` (HTTP Wrapper) nhằm:
+  - Tự động parse JSON cho mọi request.
+  - Bắt lỗi HTTP tập trung (thay vì văng lỗi Exception lắt nhắt).
+  - Tự động xóa token và chuyển hướng cưỡng chế về màn hình `LoginScreen` khi Token hết hạn hoặc không hợp lệ (Lỗi 401/403).
+- **Trải nghiệm Chat (Auto-scroll)**: Cải thiện UI/UX màn hình chat bằng cách lệnh cho `ScrollController` tự động nhảy thẳng (jumpTo) hoặc cuộn mượt (animateTo) xuống vị trí dưới cùng (`maxScrollExtent`) khi tải xong lịch sử tin nhắn hoặc có tin nhắn mới tới, tránh việc danh sách bị kẹt ở trên cùng.
+
+### 🚀 Việc cần làm tiếp theo (Next Steps):
+
+- [ ] **Frontend**: Xây dựng UI màn hình `EditProfileScreen` chi tiết để hỗ trợ tính năng Update Profile (sử dụng ApiService.put).
+- [ ] **Frontend**: Tích hợp cơ chế phân trang (Load more / Infinite scroll) cho danh sách người dùng trong `HomeScreen`.
