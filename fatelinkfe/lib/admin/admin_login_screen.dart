@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'admin_dashboard_screen.dart';
+import '../utils/constants.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   @override
@@ -19,7 +20,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     // Gọi API Login của NestJS
     final response = await http.post(
       Uri.parse(
-        'https://fatelink-be.fly.dev/admin/login',
+        '${AppConstants.baseUrl}/admin/login',
       ), // Thay bằng URL Fly.io khi deploy
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
