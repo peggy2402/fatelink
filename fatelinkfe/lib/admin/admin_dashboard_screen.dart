@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final String token;
@@ -24,7 +25,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _fetchConfig() async {
     final response = await http.get(
-      Uri.parse('https://fatelink-be.fly.dev/admin/config'),
+      Uri.parse('${AppConstants.baseUrl}/admin/config'),
       headers: {'Authorization': 'Bearer ${widget.token}'},
     );
     if (response.statusCode == 200) {
@@ -38,7 +39,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _saveConfig() async {
     final response = await http.put(
-      Uri.parse('https://fatelink-be.fly.dev/admin/config'),
+      Uri.parse('${AppConstants.baseUrl}/admin/config'),
       headers: {
         'Authorization': 'Bearer ${widget.token}',
         'Content-Type': 'application/json',
@@ -57,7 +58,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _fetchUsers() async {
     final response = await http.get(
-      Uri.parse('https://fatelink-be.fly.dev/admin/users'),
+      Uri.parse('${AppConstants.baseUrl}/admin/users'),
       headers: {'Authorization': 'Bearer ${widget.token}'},
     );
     if (response.statusCode == 200) {
@@ -69,7 +70,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _toggleBanUser(String userId, bool currentStatus) async {
     final response = await http.put(
-      Uri.parse('https://fatelink-be.fly.dev/admin/users/$userId/ban'),
+      Uri.parse('${AppConstants.baseUrl}/admin/users/$userId/ban'),
       headers: {
         'Authorization': 'Bearer ${widget.token}',
         'Content-Type': 'application/json',
