@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/screens/login_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../utils/constants.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -60,9 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (userId == null) return;
 
     try {
-      final url = Uri.parse(
-        'https://fatelink-be.fly.dev/users/$userId/profile',
-      );
+      final url = Uri.parse('${AppConstants.baseUrl}/users/$userId/profile');
       final response = await http.get(
         url,
         headers: {'Authorization': 'Bearer $token'},
