@@ -266,3 +266,31 @@
 
 - [ ] **Frontend**: Xây dựng UI màn hình `EditProfileScreen` chi tiết để hỗ trợ tính năng Update Profile (sử dụng ApiService.put).
 - [ ] **Frontend**: Tích hợp cơ chế phân trang (Load more / Infinite scroll) cho danh sách người dùng trong `HomeScreen`.
+
+---
+
+## 📅 Ngày: 08/04/2026
+
+### 🎯 Trọng tâm: Hoàn thiện Frontend (UI/UX), Phân trang, Đa ngôn ngữ & Xử lý Socket
+
+#### 1. Frontend (Flutter) - Màn hình Ghép đôi (MatchesScreen)
+- **Sửa lỗi Compile-time (`const`)**: Khắc phục dứt điểm lỗi `Method invocation is not a constant expression` liên quan đến hàm `.tr()` của `easy_localization` bằng cách cấu trúc lại các widget.
+- **Phân trang (Infinite Scroll / Load More)**: Tích hợp `ScrollController` tự động gọi API lấy thêm danh sách người dùng khi cuộn gần cuối (cách 200px). Xử lý an toàn các trạng thái `_isLoadingMore` và `_hasMore` để tránh spam API.
+- **Chức năng Hủy ghép đôi**: Thiết kế Dialog xác nhận "Hủy ghép đôi" (Unmatch). Cập nhật mượt mà UI bằng `_matches.removeWhere()` và hiển thị `SnackBar` thông báo thay vì phải chờ reload toàn bộ trang.
+- **Điều hướng an toàn**: Bổ sung truyền biến `partnerId` và `partnerName` sang màn hình `MatchChatScreen`. Tự động gọi lại API làm mới danh sách nếu người dùng thực hiện Unmatch từ trong phòng chat.
+
+#### 2. Frontend (Flutter) - Trải nghiệm Chat (ChatScreen)
+- **Gợi ý Cảm xúc (Emotion Action Chips)**: Bổ sung các nút thẻ cảm xúc nhanh (Bình yên 🍃, Áp lực 🌪️, Cô đơn 🌧️...) cho câu chào mở màn của AI, giúp người dùng mới dễ dàng bắt đầu câu chuyện.
+- **Chuyển pha Matchmaking (Phase 2 Transition)**: Bắt thành công sự kiện `matchReady` qua Socket.IO. Hiển thị `AlertDialog` "✨ Đã thấu hiểu tâm hồn" rực rỡ và cho phép điều hướng thẳng tới tab Định mệnh.
+- **Bảo vệ Timeout (15s)**: Thêm cơ chế tự động ngắt trạng thái gõ phím (`_isTyping`) và hiển thị lỗi mạng nếu AI / Server không phản hồi trong vòng 15 giây.
+
+#### 3. Frontend (Flutter) - Cá nhân hóa & Dashboard (Profile & MainScreen)
+- **Biểu đồ Radar (fl_chart)**: Tích hợp thư viện biểu đồ vẽ Radar Chart hiển thị "Tần số cảm xúc" của người dùng trực quan ngay trên `ProfileScreen`.
+- **Đa ngôn ngữ (i18n)**: Gắn hành động chuyển đổi mượt mà giữa Tiếng Việt và Tiếng Anh sử dụng `context.setLocale()` cho nút cài đặt ngôn ngữ.
+- **Custom Modal Popup**: Áp dụng hiệu ứng vật lý lò xo (Spring Physics - `Curves.elasticOut`) cực mượt cho Popup nổi lên từ phím `+` giữa màn hình. Cải thiện lớp nền che phủ (`BackdropFilter`).
+- **Thông báo thông minh**: Bong bóng AI (`FloatingAiBubble`) đã liên kết thành công với biến `_hasUnreadMessages`, hiển thị chấm đỏ (red dot) cảnh báo nếu có tin nhắn mới tới mà người dùng đang không ở trong phòng chat.
+
+#### 4. Frontend (Flutter) - Đăng nhập & Log Hệ thống (LoginScreen)
+- **Quản lý Log cục bộ**: Xây dựng hàm `_saveLogToFile` lưu lại các sự kiện lỗi ra file `.txt` trên điện thoại, hỗ trợ tốt cho việc debug các thiết bị thực tế không cắm cáp.
+- **Điều khoản & Chính sách**: Thêm checkbox bắt buộc đồng ý các điều khoản dịch vụ trước khi đăng nhập. Sử dụng `TextSpan` kết hợp `TapGestureRecognizer` mở trình duyệt web an toàn.
+- **Animation Nút bấm**: Bổ sung hiệu ứng nảy (Bounce) sinh động liên tục cho nút Đăng nhập Google, kích thích tương tác của người dùng.
