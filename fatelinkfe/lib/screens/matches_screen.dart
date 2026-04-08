@@ -250,11 +250,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                   child: Text(
-                    'Định mệnh của bạn', // Tạm thời để nguyên, bạn có thể bọc .tr() sau: 'matches_title'.tr()
-                    style: TextStyle(
+                    'matches_title'.tr(),
+                    style: const TextStyle(
                       fontFamily: 'serif',
                       color: Colors.white,
                       fontSize: 28,
@@ -273,11 +273,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                         ),
                       )
                     : _matches.isEmpty
-                    ? const Expanded(
+                    ? Expanded(
                         child: Center(
                           child: Text(
-                            'Chưa có mảnh ghép nào cùng tần số với bạn.',
-                            style: TextStyle(
+                            'no_matches'.tr(),
+                            style: const TextStyle(
                               color: Colors.white54,
                               fontSize: 15,
                             ),
