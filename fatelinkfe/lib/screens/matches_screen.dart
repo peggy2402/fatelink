@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/screens/match_chat_screen.dart'; // Màn hình chat mới
+import '../utils/constants.dart';
 
 class MatchedUser {
   final String id;
@@ -101,7 +102,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
       // Gọi API có truyền thêm số trang (page)
       final url = Uri.parse(
-        'https://fatelink-be.fly.dev/users/$userId/matches?page=$_page&limit=10',
+        '${AppConstants.baseUrl}/users/$userId/matches?page=$_page&limit=10',
       );
       final response = await http.get(
         url,
