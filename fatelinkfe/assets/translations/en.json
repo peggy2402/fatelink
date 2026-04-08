@@ -12,6 +12,7 @@
     "language": "Language",
     "matches_title": "Your Fates",
     "matches_subtitle": "Fates that match you",
+    "no_matches": "No fates have matched you yet.",
     "matches_cancelled": "Cancelled connection with ",
     "TalkWithFaye": "Chat more with Faye\nto find compatible pieces."
 }

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/screens/match_chat_screen.dart'; // Màn hình chat mới
+import '../utils/constants.dart';
 
 class MatchedUser {
   final String id;
@@ -101,7 +102,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
       // Gọi API có truyền thêm số trang (page)
       final url = Uri.parse(
-        'https://fatelink-be.fly.dev/users/$userId/matches?page=$_page&limit=10',
+        '${AppConstants.baseUrl}/users/$userId/matches?page=$_page&limit=10',
       );
       final response = await http.get(
         url,
@@ -249,11 +250,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                   child: Text(
-                    'Định mệnh của bạn', // Tạm thời để nguyên, bạn có thể bọc .tr() sau: 'matches_title'.tr()
-                    style: TextStyle(
+                    'matches_title'.tr(),
+                    style: const TextStyle(
                       fontFamily: 'serif',
                       color: Colors.white,
                       fontSize: 28,
@@ -272,11 +273,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                         ),
                       )
                     : _matches.isEmpty
-                    ? const Expanded(
+                    ? Expanded(
                         child: Center(
                           child: Text(
-                            'Chưa có mảnh ghép nào cùng tần số với bạn.',
-                            style: TextStyle(
+                            'no_matches'.tr(),
+                            style: const TextStyle(
                               color: Colors.white54,
                               fontSize: 15,
                             ),
