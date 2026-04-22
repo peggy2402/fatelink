@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:fatelinkfe/screens/login_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../utils/constants.dart';
+import '../blocs/profile/profile_bloc.dart';
+import '../blocs/profile/profile_event.dart';
+import '../blocs/profile/profile_state.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_event.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,359 +16,216 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String? _avatarUrl;
-  // Dữ liệu giả cho biểu đồ Radar
-  final Map<String, double> emotionData = {
-    'Stress': 4,
-    'Lonely': 2,
-    'Sadness': 3,
-    'Calm': 8,
-    'Warmth': 7,
-    'Happy': 6,
-  };
+  bool _showChartData = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
-  }
-
-  String? _getUserIdFromToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return null;
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      final data = jsonDecode(payload);
-      return data['sub'] ?? data['id'] ?? data['userId'];
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<void> _loadUserProfile() async {
-    const secureStorage = FlutterSecureStorage();
-    final token = await secureStorage.read(key: 'accessToken');
-    final avatar = await secureStorage.read(key: 'avatarUrl');
-
-    if (mounted) {
-      setState(() => _avatarUrl = avatar);
-    }
-
-    if (token == null) return;
-    final userId = _getUserIdFromToken(token);
-    if (userId == null) return;
-
-    try {
-      final url = Uri.parse('${AppConstants.baseUrl}/users/$userId/profile');
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200 && mounted) {
-        final data = jsonDecode(response.body);
-        if (data['emotions'] != null) {
-          setState(() {
-            emotionData['Stress'] = (data['emotions']['stress'] ?? 5)
-                .toDouble();
-            emotionData['Lonely'] = (data['emotions']['loneliness'] ?? 5)
-                .toDouble();
-            emotionData['Sadness'] = (data['emotions']['sadness'] ?? 5)
-                .toDouble();
-            emotionData['Calm'] = (data['emotions']['calmness'] ?? 5)
-                .toDouble();
-            emotionData['Warmth'] = (data['emotions']['warmth'] ?? 5)
-                .toDouble();
-            emotionData['Happy'] = (data['emotions']['happiness'] ?? 5)
-                .toDouble();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Lỗi tải profile: $e');
-    }
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    const secureStorage = FlutterSecureStorage();
-    await secureStorage.delete(key: 'accessToken');
-
-    if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false, // Xóa toàn bộ stack màn hình trước đó
-      );
-    }
+    // Kích hoạt Event load data khi trang vừa được mở
+    context.read<ProfileBloc>().add(LoadProfileEvent(context));
+    
+    // Kích hoạt hiệu ứng bung to (Animation) sau khi UI xuất hiện 300ms
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _showChartData = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF001520),
-      body: Stack(
-        children: [
-          // --- Nền Mesh Gradient ---
-          Positioned(
-            top: -100,
-            right: -50,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF0066FF), // Đổi blob đỏ thành xanh dương
+      backgroundColor: Colors.transparent, // Để lộ nền background từ MainScreen
+      body: BlocBuilder<ProfileBloc, ProfileState>(
+        builder: (context, state) {
+          if (state is ProfileLoading || state is ProfileInitial) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFBD114A)),
+            );
+          }
+
+          if (state is ProfileError) {
+            return Center(
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: 50,
-            left: -100,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF0066FF),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-              child: const SizedBox(),
-            ),
-          ),
+            );
+          }
 
-          // --- Nội dung Profile ---
-          SafeArea(
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                  child: Text(
-                    'Hồ Sơ Của Bạn',
-                    style: TextStyle(
-                      fontFamily: 'serif',
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+          if (state is ProfileLoaded) {
+            final data = state.profileData;
 
-                // Avatar Glassmorphism
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 2,
-                    ), // Viền trắng
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.2), // Glow trắng
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                    image: const DecorationImage(
-                      image: AssetImage(
-                        'assets/images/avt_faye_ai.png',
-                      ), // Placeholder
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+            // Lấy object 'emotions' từ Backend trả về, fallback bằng map mặc định nếu rỗng
+            final emotions =
+                data['emotions'] ??
+                {
+                  'stress': 0.4,
+                  'lonely': 0.3,
+                  'sadness': 0.2,
+                  'calm': 0.8,
+                  'warmth': 0.7,
+                  'happy': 0.6,
+                };
 
-                const Text(
-                  'Người Dùng FateLink',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Tần số: Đang cập nhật...',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 14,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Biểu đồ Radar
-                SizedBox(
-                  height: 200,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: RadarChart(
-                      RadarChartData(
-                        dataSets: [
-                          RadarDataSet(
-                            dataEntries: emotionData.entries
-                                .map((e) => RadarEntry(value: e.value))
-                                .toList(),
-                            borderColor: Colors.lightBlueAccent,
-                            fillColor: Colors.lightBlueAccent.withOpacity(0.3),
-                          ),
-                        ],
-                        getTitle: (index, angle) {
-                          return RadarChartTitle(
-                            text: emotionData.keys.elementAt(index),
-                            angle: angle,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Card Cài đặt
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.03),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
-                      ),
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          24,
-                          32,
-                          24,
-                          100,
-                        ), // Padding bottom lớn để không vướng thanh Nav
-                        children: [
-                          _buildMenuButton(
-                            Icons.person_outline,
-                            'Thông tin cá nhân',
-                            () {},
-                          ),
-                          _buildMenuButton(
-                            Icons.graphic_eq,
-                            'Phân tích tần số',
-                            () {},
-                          ),
-                          _buildMenuButton(
-                            Icons.settings_outlined,
-                            'Cài đặt ứng dụng',
-                            () {},
-                          ),
-                          _buildMenuButton(
-                            Icons.language,
-                            'Ngôn ngữ / Language (${context.locale.languageCode.toUpperCase()})',
-                            () {
-                              if (context.locale.languageCode == 'vi') {
-                                context.setLocale(const Locale('en'));
-                              } else {
-                                context.setLocale(const Locale('vi'));
-                              }
-                            },
-                          ),
-                          _buildMenuButton(
-                            Icons.privacy_tip_outlined,
-                            'Quyền riêng tư & Điều khoản',
-                            () {},
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Nút Đăng xuất
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent.withOpacity(
-                                  0.1,
-                                ), // Nền đỏ mờ
-                                foregroundColor: Colors.redAccent, // Chữ đỏ
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(
-                                    color: Colors.redAccent.withOpacity(0.5),
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              onPressed: () => _logout(context),
-                              child: const Text(
-                                'Đăng Xuất',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 30),
+                    // Avatar
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFBD114A).withOpacity(0.4),
+                            blurRadius: 20,
+                            spreadRadius: 5,
                           ),
                         ],
                       ),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundImage: NetworkImage(
+                          data['avatarUrl'] ??
+                              'https://hinhanhcute.com/wp-content/uploads/2025/09/Hinh-anh-con-ca-heo-cute-sieu-de-thuong.webp',
+                        ),
+                        backgroundColor: Colors.transparent,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    // Name
+                    Text(
+                      data['name'] ?? 'Người dùng',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Tiêu đề biểu đồ
+                    Text(
+                      'emotion_frequency'.tr(),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                        fontFamily: 'serif',
+                      ),
+                    ),
+
+                    // Biểu đồ Radar Chart
+                    SizedBox(
+                      height: 300,
+                      width: double.infinity,
+                      child: _buildRadarChart(emotions),
+                    ),
+
+                    const SizedBox(height: 40),
+                    // Nút Đăng xuất
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(AuthLogoutRequested());
+                      },
+                      icon: const Icon(Icons.logout, color: Colors.redAccent),
+                      label: Text('logout'.tr()),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
 
-  Widget _buildMenuButton(IconData icon, String title, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.white70),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
+  // Hàm cấu hình cấu trúc biểu đồ Radar của fl_chart
+  Widget _buildRadarChart(Map<String, dynamic> emotions) {
+    // Parse các giá trị double để an toàn tránh Crash
+    final double stress = (emotions['stress'] ?? 0).toDouble();
+    final double lonely = (emotions['lonely'] ?? 0).toDouble();
+    final double sadness = (emotions['sadness'] ?? 0).toDouble();
+    final double calm = (emotions['calm'] ?? 0).toDouble();
+    final double warmth = (emotions['warmth'] ?? 0).toDouble();
+    final double happy = (emotions['happy'] ?? 0).toDouble();
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: RadarChart(
+        RadarChartData(
+          tickCount: 4, // Số vòng lưới
+          ticksTextStyle: const TextStyle(
+            color: Colors.transparent,
+          ), // Ẩn số liệu độ đo
+          gridBorderData: BorderSide(
+            color: Colors.white.withOpacity(0.15),
+            width: 1.5,
+          ), // Lưới nhện
+          tickBorderData: BorderSide(
+            color: Colors.white.withOpacity(0.15),
+            width: 1,
+          ), // Đường thẳng chia lưới
+          titlePositionPercentageOffset: 0.15, // Khoảng cách chữ so với viền
+          getTitle: (index, angle) {
+            switch (index) {
+              case 0:
+                return RadarChartTitle(text: 'Áp lực', angle: angle);
+              case 1:
+                return RadarChartTitle(text: 'Cô đơn', angle: angle);
+              case 2:
+                return RadarChartTitle(text: 'Buồn bã', angle: angle);
+              case 3:
+                return RadarChartTitle(text: 'Bình tĩnh', angle: angle);
+              case 4:
+                return RadarChartTitle(text: 'Ấm áp', angle: angle);
+              case 5:
+                return RadarChartTitle(text: 'Vui vẻ', angle: angle);
+              default:
+                return const RadarChartTitle(text: '');
+            }
+          },
+          titleTextStyle: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
+          dataSets: [
+            RadarDataSet(
+              fillColor: const Color(
+                0xFFBD114A,
+              ).withOpacity(0.4), // Màu fill bên trong
+              borderColor: const Color(0xFFBD114A), // Màu đường viền Radar
+              entryRadius: 4, // Kích thước chấm tròn tại mỗi đỉnh
+              dataEntries: [
+                RadarEntry(value: _showChartData ? stress : 0),
+                RadarEntry(value: _showChartData ? lonely : 0),
+                RadarEntry(value: _showChartData ? sadness : 0),
+                RadarEntry(value: _showChartData ? calm : 0),
+                RadarEntry(value: _showChartData ? warmth : 0),
+                RadarEntry(value: _showChartData ? happy : 0),
+              ],
+            ),
+          ],
         ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          color: Colors.white.withOpacity(0.3),
-          size: 16,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildFallbackAvatar() {
-    return Image.asset(
-      'assets/images/default_avatar.png',
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: Colors.grey.withOpacity(0.5),
-        child: const Icon(Icons.person, color: Colors.white, size: 60),
+        swapAnimationDuration: const Duration(
+          milliseconds: 800,
+        ), // Hiệu ứng mượt khi update data
+        swapAnimationCurve: Curves.easeOutCubic,
       ),
     );
   }

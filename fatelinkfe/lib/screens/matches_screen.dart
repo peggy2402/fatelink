@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/screens/match_chat_screen.dart'; // Màn hình chat mới
-import '../utils/constants.dart';
+import '../blocs/matches/matches_bloc.dart';
+import '../blocs/matches/matches_event.dart';
+import '../blocs/matches/matches_state.dart';
 
 class MatchedUser {
   final String id;
@@ -39,20 +40,13 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
-  final _secureStorage = const FlutterSecureStorage();
-  List<MatchedUser> _matches = [];
-  bool _isLoading = true;
-
-  // Biến phục vụ chức năng Load More (Phân trang)
-  int _page = 1;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _fetchMatches();
+    // Khởi tạo data lần đầu thông qua BLoC
+    context.read<MatchesBloc>().add(LoadMatches());
     _scrollController.addListener(_onScroll);
   }
 
@@ -66,97 +60,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
     // Kích hoạt load thêm khi cuộn gần đến cuối danh sách (cách 200px)
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoadingMore && _hasMore && !_isLoading) {
-        _fetchMoreMatches();
-      }
-    }
-  }
-
-  Future<void> _fetchMatches() async {
-    setState(() {
-      _isLoading = true;
-      _page = 1;
-      _hasMore = true;
-    });
-    await _loadData();
-  }
-
-  Future<void> _fetchMoreMatches() async {
-    setState(() {
-      _isLoadingMore = true;
-      _page++;
-    });
-    await _loadData();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final token = await _secureStorage.read(key: 'accessToken');
-      if (token == null) throw Exception('Token is null');
-
-      final parts = token.split('.');
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      final userId = jsonDecode(payload)['sub'] ?? jsonDecode(payload)['id'];
-
-      // Gọi API có truyền thêm số trang (page)
-      final url = Uri.parse(
-        '${AppConstants.baseUrl}/users/$userId/matches?page=$_page&limit=10',
-      );
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200 && mounted) {
-        // FIX BUG: Tránh crash màn hình đỏ do parse JSON rỗng hoặc lỗi
-        try {
-          if (response.body.trim().isEmpty)
-            throw Exception("Response body is empty");
-
-          final decoded = jsonDecode(response.body);
-          if (decoded is List) {
-            final newMatches = decoded
-                .map((json) => MatchedUser.fromJson(json))
-                .toList();
-
-            setState(() {
-              if (_page == 1) {
-                _matches = newMatches;
-              } else {
-                _matches.addAll(newMatches);
-              }
-
-              // Nếu trả về ít hơn 10 thì xem như hết dữ liệu
-              if (newMatches.length < 10) _hasMore = false;
-
-              _isLoading = false;
-              _isLoadingMore = false;
-            });
-          }
-        } catch (e) {
-          debugPrint('Lỗi Parse JSON: $e');
-          setState(() {
-            _isLoading = false;
-            _isLoadingMore = false;
-            _hasMore = false; // Ngừng load thêm khi gặp lỗi
-          });
-        }
-      } else {
-        if (mounted)
-          setState(() {
-            _isLoading = false;
-            _isLoadingMore = false;
-          });
-      }
-    } catch (e) {
-      debugPrint('Lỗi tải danh sách ghép đôi: $e');
-      if (mounted)
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
+      context.read<MatchesBloc>().add(LoadMoreMatches());
     }
   }
 
@@ -188,7 +92,16 @@ class _MatchesScreenState extends State<MatchesScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _unmatchUser(user);
+              // Gọi sự kiện unmatch
+              context.read<MatchesBloc>().add(UnmatchUserEvent(user));
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('matches_cancelled ${user.name}'.tr()),
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
             child: const Text(
               'Hủy ghép đôi',
@@ -199,23 +112,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _unmatchUser(MatchedUser user) {
-    // TODO: Bổ sung API gọi backend để hủy ghép đôi thực sự
-
-    // Cập nhật giao diện trước cho nhanh nhạy
-    setState(() {
-      _matches.removeWhere((u) => u.id == user.id);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('matches_cancelled ${user.name}'.tr()),
-        backgroundColor: Colors.white.withOpacity(0.1),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -264,47 +160,53 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 ),
 
                 // Danh sách Matches
-                _isLoading
-                    ? const Expanded(
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFFBD114A),
-                          ),
-                        ),
-                      )
-                    : _matches.isEmpty
-                    ? Expanded(
-                        child: Center(
-                          child: Text(
-                            'no_matches'.tr(),
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 15,
+                Expanded(
+                  child: BlocBuilder<MatchesBloc, MatchesState>(
+                    builder: (context, state) {
+                      if (state is MatchesLoading || state is MatchesInitial) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Color(0xFFBD114A)),
+                        );
+                      }
+                      
+                      if (state is MatchesError) {
+                        return Center(
+                          child: Text(state.message, style: const TextStyle(color: Colors.red)),
+                        );
+                      }
+                      
+                      if (state is MatchesLoaded) {
+                        if (state.matches.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'no_matches'.tr(),
+                              style: const TextStyle(color: Colors.white54, fontSize: 15),
                             ),
-                          ),
-                        ),
-                      )
-                    : Expanded(
-                        child: ListView.builder(
+                          );
+                        }
+                        
+                        return ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.only(bottom: 100),
-                          itemCount: _matches.length + (_isLoadingMore ? 1 : 0),
+                          itemCount: state.matches.length + (state.isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            // Hiển thị loading spinner ở cuối danh sách
-                            if (index == _matches.length) {
+                            if (index == state.matches.length) {
                               return const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 24.0),
                                 child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFFBD114A),
-                                  ),
+                                  child: CircularProgressIndicator(color: Color(0xFFBD114A)),
                                 ),
                               );
                             }
-                            return _buildMatchItem(_matches[index]);
+                            return _buildMatchItem(state.matches[index]);
                           },
-                        ),
-                      ),
+                        );
+                      }
+                      
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -326,7 +228,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
           ),
         );
         if (shouldReload == true) {
-          _fetchMatches(); // Gọi lại API để làm mới danh sách nếu vừa unmatch
+          context.read<MatchesBloc>().add(LoadMatches());
         }
       },
       onLongPress: () {
