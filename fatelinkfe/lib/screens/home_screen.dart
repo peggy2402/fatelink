@@ -26,7 +26,7 @@ class MatchUser {
   factory MatchUser.fromJson(Map<String, dynamic> json) {
     return MatchUser(
       id: json['id'] ?? json['_id'] ?? '',
-      name: json['displayName'] ?? json['name'] ?? 'Mảnh ghép ẩn danh',
+      name: json['displayName'] ?? json['name'] ?? 'Fater',
       emotion: json['dominantEmotion'] ?? json['detected_emotion'] ?? 'Bí ẩn',
       compatibilityScore:
           json['matchingScore'] ?? json['compatibilityScore'] ?? 80,
