@@ -1,0 +1,10 @@
+[2026-04-25T13:19:27.076Z] [INFO] === BÁO CÁO TRẠNG THÁI AI PROVIDERS ===
+[2026-04-25T13:19:27.112Z] [INFO] 📦 Provider: <b class="text-white">Gemini</b>
+[2026-04-25T13:19:27.135Z] [ERROR] &nbsp;&nbsp;&nbsp;↳ 1. Model: <span class="text-blue-300">[Gemini 1.5 Pro]</span> -> Trạng thái: Lỗi - fetch failed
+[2026-04-25T13:19:27.148Z] [SUCCESS] &nbsp;&nbsp;&nbsp;↳ 2. Model: <span class="text-blue-300">[gemma-4-26b-a4b-it]</span> -> Trạng thái: Thành công (6454ms)
+[2026-04-25T13:19:27.157Z] [INFO] 📦 Provider: <b class="text-white">LlamaLocal</b>
+[2026-04-25T13:19:27.164Z] [ERROR] &nbsp;&nbsp;&nbsp;↳ 1. Model: <span class="text-blue-300">[Meta-Llama-3-8B.Q4_K_M.gguf]</span> -> Trạng thái: Lỗi - Local Llama is disabled in production.
+[2026-04-25T13:19:27.176Z] [ERROR] &nbsp;&nbsp;&nbsp;↳ 1. Model: <span class="text-blue-300">[gpt-3.5-turbo]</span> -> Trạng thái: Lỗi - 404 The model `gpt-3.5-turbo` does not exist or you do not have access to it.
+[2026-04-25T13:19:27.185Z] [INFO] 📦 Provider: <b class="text-white">OpenAI</b>
+[2026-04-25T13:19:27.193Z] [ERROR] &nbsp;&nbsp;&nbsp;↳ 3. Model: <span class="text-blue-300">[text-davinci-003]</span> -> Trạng thái: Lỗi - 404 The model `text-davinci-003` does not exist or you do not have access to it.
+[2026-04-25T13:19:27.201Z] [SUCCESS] &nbsp;&nbsp;&nbsp;↳ 5. Model: <span class="text-blue-300">[llama-3.1-8b-instant]</span> -> Trạng thái: Thành công (445ms)

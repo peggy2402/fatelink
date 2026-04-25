@@ -294,3 +294,38 @@
 - **Quản lý Log cục bộ**: Xây dựng hàm `_saveLogToFile` lưu lại các sự kiện lỗi ra file `.txt` trên điện thoại, hỗ trợ tốt cho việc debug các thiết bị thực tế không cắm cáp.
 - **Điều khoản & Chính sách**: Thêm checkbox bắt buộc đồng ý các điều khoản dịch vụ trước khi đăng nhập. Sử dụng `TextSpan` kết hợp `TapGestureRecognizer` mở trình duyệt web an toàn.
 - **Animation Nút bấm**: Bổ sung hiệu ứng nảy (Bounce) sinh động liên tục cho nút Đăng nhập Google, kích thích tương tác của người dùng.
+
+---
+
+## 📅 Ngày: 24/04/2026
+
+### 🎯 Trọng tâm: Tái cấu trúc (Refactor) Frontend sang kiến trúc BLoC (Business Logic Component)
+
+#### 1. Frontend (Flutter) - Quản lý trạng thái (State Management)
+- **Chuyển đổi toàn diện sang BLoC**: Đã tiến hành tái cấu trúc toàn bộ ứng dụng Flutter (`fatelinkfe`), chuyển đổi cơ chế quản lý trạng thái sang mô hình **BLoC** nhằm nâng cao khả năng mở rộng và bảo trì của dự án.
+- **Tách biệt Logic và UI (Clean Architecture)**: Mọi logic nghiệp vụ đã được cô lập hoàn toàn khỏi giao diện. Điển hình như `MatchesBloc`, giờ đây quản lý các sự kiện `LoadMatches`, `LoadMoreMatches`, và `UnmatchUserEvent`, giúp UI (như `MatchesScreen`) trở nên "ngu" hơn, chỉ chịu trách nhiệm lắng nghe (listen/build) theo các State cụ thể (`MatchesLoading`, `MatchesLoaded`, `MatchesError`).
+- **Tối ưu Cấu trúc Project**: Source code đã được quy hoạch lại chuẩn mực vào các module riêng biệt như `/blocs`, `/repositories`, `/screens`, `/models`... 
+- **Cải tiến Luồng xử lý Bất đồng bộ**: 
+  - Luồng tính năng Phân trang (Load More) được xử lý an toàn trực tiếp trên `MatchesBloc` kết hợp `MatchesRepository`, có quản lý cờ `isLoadingMore`.
+  - Tối ưu hóa tính năng Unmatch (Hủy ghép đôi) bằng cách áp dụng **Optimistic UI** (xóa user khỏi list trên state ngay lập tức) giúp tăng độ phản hồi, sau đó mới gọi API ngầm.
+
+## 📅 Ngày: 25/04/2026
+
+### 🎯 Trọng tâm: Hoàn thiện UI/UX chuẩn BLoC, App Router & Xử lý sự cố Giao diện
+
+#### 1. Kiến trúc BLoC & Quản lý Route
+- **App Router (`app_router.dart`)**: Tách biệt hoàn toàn logic điều hướng (`onGenerateRoute`) khỏi `main.dart` và chuyển vào thư mục `core/router/`. Giúp `main.dart` gọn gàng, dễ dàng quản lý và mở rộng.
+- **Theme & Colors (`app_theme.dart`, `app_colors.dart`)**: Loại bỏ toàn bộ mã màu hardcode, quản lý màu sắc và giao diện tập trung tại Core. Thiết lập `AppTheme` chuẩn Material 3 với phong cách Premium Dark Theme.
+
+#### 2. Tối ưu Màn hình Trang chủ (HomeScreen)
+- Loại bỏ hoàn toàn logic gọi API và quản lý Token lộn xộn trong tầng UI.
+- Tích hợp `HomeBloc` để quản lý trạng thái (`initial`, `loading`, `loaded`, `error`).
+- Triển khai **Skeletonizer / Shimmer Effect**: Hiển thị bộ khung (dummy cards) mượt mà trong lúc chờ BLoC tải dữ liệu từ API thay vì sử dụng vòng xoay loading truyền thống.
+
+#### 3. Hoàn thiện Luồng Khởi động (Onboarding & Login)
+- **Onboarding Screen**: Xây dựng màn hình giới thiệu 3 bước (PageView) kết hợp hiệu ứng icon bay bổng và Custom Dots Indicator. Nút hành động thay đổi linh hoạt ("Tiếp tục" -> "Tôi Đồng Ý") và chuyển hướng an toàn sang Login.
+- **Login Screen (Nâng cấp Premium)**:
+  - Bổ sung hiệu ứng nảy (Bounce Animation) tuần hoàn cho nút Đăng nhập Google để kích thích tương tác.
+  - Thiết kế **Popup Sinh Trắc Học** (Biometric BottomSheet) với giao diện bo góc mượt mà, sẵn sàng tích hợp Face ID & Touch ID.
+  - **Sửa lỗi UX Checkbox Điều khoản**: Khắc phục dứt điểm lỗi bóng mờ (ripple effect) bị lẹm sang bên phải khi nhấn bằng cách tách `margin` thành `SizedBox` nằm ngoài `InkWell`, mang lại UX chạm hoàn hảo.
+  - Tích hợp `url_launcher` kết nối trực tiếp đến Web Server: Khắc phục lỗi `Invalid constant value` của `TextSpan` và ghép URL tuyệt đối chính xác để mở các trang Điều khoản, Chính sách Dịch vụ.
