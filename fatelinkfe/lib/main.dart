@@ -3,20 +3,21 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'services/fcm_service.dart';
-import 'screens/splash_screen.dart';
-import 'screens/match_chat_screen.dart';
-import 'blocs/auth/auth_bloc.dart';
-import 'widgets/auth_wrapper.dart';
-import 'repositories/chat_repository.dart';
-import 'repositories/matches_repository.dart';
-import 'repositories/home_repository.dart';
-import 'repositories/profile_repository.dart';
-import 'blocs/chat/chat_bloc.dart';
-import 'blocs/matches/matches_bloc.dart';
-import 'blocs/home/home_bloc.dart';
-import 'blocs/profile/profile_bloc.dart';
-import 'blocs/main/main_bloc.dart';
-import 'blocs/main/main_event.dart';
+import 'presentation/screens/splash_screen.dart';
+import 'presentation/screens/match_chat_screen.dart';
+import 'logic/blocs/auth/auth_bloc.dart';
+import 'presentation/widgets/auth_wrapper.dart';
+import 'data/repositories/chat_repository.dart';
+import 'data/repositories/matches_repository.dart';
+import 'data/repositories/home_repository.dart';
+import 'data/repositories/profile_repository.dart';
+import 'logic/blocs/chat/chat_bloc.dart';
+import 'logic/blocs/matches/matches_bloc.dart';
+import 'logic/blocs/home/home_bloc.dart';
+import 'logic/blocs/profile/profile_bloc.dart';
+import 'logic/blocs/main/main_bloc.dart';
+import 'logic/blocs/main/main_event.dart';
+import 'core/router/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +58,9 @@ class MyApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
-          BlocProvider<MainBloc>(create: (context) => MainBloc()..add(InitMainEvent())),
+          BlocProvider<MainBloc>(
+            create: (context) => MainBloc()..add(InitMainEvent()),
+          ),
           BlocProvider<ChatBloc>(
             create: (context) =>
                 ChatBloc(chatRepository: context.read<ChatRepository>()),
@@ -68,7 +71,7 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider<HomeBloc>(
             create: (context) =>
-                HomeBloc(repository: context.read<HomeRepository>()),
+                HomeBloc(homeRepository: context.read<HomeRepository>()),
           ),
           BlocProvider<ProfileBloc>(
             create: (context) =>
@@ -83,19 +86,7 @@ class MyApp extends StatelessWidget {
           supportedLocales: context.supportedLocales,
           locale: context.locale,
           home: const AuthWrapper(),
-          onGenerateRoute: (settings) {
-            if (settings.name == '/match-chat') {
-              final args = settings.arguments;
-              String partnerId = args is String ? args : 'unknown_id';
-              return MaterialPageRoute(
-                builder: (context) => MatchChatScreen(
-                  partnerId: partnerId,
-                  partnerName: 'FateLink'.tr(),
-                ),
-              );
-            }
-            return null;
-          },
+          onGenerateRoute: AppRouter.onGenerateRoute,
         ),
       ),
     );
