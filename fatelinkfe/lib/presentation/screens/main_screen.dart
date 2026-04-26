@@ -14,6 +14,8 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
 import '../../logic/blocs/main/main_state.dart';
+import '../../logic/blocs/auth/auth_bloc.dart';
+import '../../logic/blocs/auth/auth_state.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -85,9 +87,16 @@ class _MainScreenState extends State<MainScreen> {
     // Kiểm tra bàn phím có đang bật không để tự động ẩn thanh điều hướng
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF001520),
-      body: BlocBuilder<MainBloc, MainState>(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthUnauthenticated) {
+          // Bị đăng xuất (logout) hoặc token hết hạn -> văng ra màn hình Login
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF001520),
+        body: BlocBuilder<MainBloc, MainState>(
         builder: (context, state) {
           final currentIndex = state.selectedIndex;
 
@@ -226,6 +235,7 @@ class _MainScreenState extends State<MainScreen> {
             ],
           );
         },
+      ),
       ),
     );
   }
