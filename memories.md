@@ -329,3 +329,27 @@
   - Thiết kế **Popup Sinh Trắc Học** (Biometric BottomSheet) với giao diện bo góc mượt mà, sẵn sàng tích hợp Face ID & Touch ID.
   - **Sửa lỗi UX Checkbox Điều khoản**: Khắc phục dứt điểm lỗi bóng mờ (ripple effect) bị lẹm sang bên phải khi nhấn bằng cách tách `margin` thành `SizedBox` nằm ngoài `InkWell`, mang lại UX chạm hoàn hảo.
   - Tích hợp `url_launcher` kết nối trực tiếp đến Web Server: Khắc phục lỗi `Invalid constant value` của `TextSpan` và ghép URL tuyệt đối chính xác để mở các trang Điều khoản, Chính sách Dịch vụ.
+
+## 📅 Ngày: 26/04/2026
+
+### 🎯 Trọng tâm: Sửa lỗi Luồng Điều Hướng Khởi Động (App Flow), Nâng cấp Splash Screen & Xử lý Trạng thái Đăng xuất
+
+#### 1. Sửa lỗi xung đột Router & AuthWrapper
+- **Khắc phục lỗi bỏ qua Splash/Onboarding**: Trước đây `AuthWrapper` gọi BLoC check token ngay lập tức, đè luôn `SplashScreen` và nhảy thẳng vào `LoginScreen`. Đã tái cấu trúc biến `AuthWrapper` thành "Nhà điều phối" trung tâm:
+  - Tự động chờ 3 giây để `SplashScreen` hoàn tất Animation.
+  - Đọc cờ `is_first_time` từ `SharedPreferences`. Nếu là máy mới tải App -> chuyển hướng an toàn vào `/onboarding`.
+  - Chỉ khi đã qua Onboarding, mới gọi `AuthBloc` kiểm tra Token để vào `/main` hoặc `/login`.
+- **Bắt sự kiện tự động chuyển trang**:
+  - Thêm `BlocListener` vào `login_screen.dart` để tự động `pushReplacementNamed` sang `/main` khi BLoC emit trạng thái `AuthAuthenticated` (Đăng nhập thành công).
+  - Thêm `BlocListener` bao bọc `main_screen.dart` để tự văng ra màn hình Login ngay khi token hết hạn hoặc người dùng ấn Đăng xuất (`AuthUnauthenticated`).
+
+#### 2. Nâng cấp UI/UX Splash Screen (First Impression)
+- Loại bỏ hoàn toàn logic gọi API dư thừa, biến `splash_screen.dart` thành một màn hình thuần đồ họa (UI component).
+- Thiết kế lại giao diện đồng bộ với phong cách **Premium Dark Space**:
+  - Nền đen không gian sâu thẳm (`#0A0514`) kết hợp 2 khối Mesh Gradient (Neon Purple & Soft Pink) bị làm mờ mạnh (`sigma: 80`).
+  - Chữ "FATELINK" được thiết kế lại với typography quyền lực (Bold w900, letter spacing lớn) và hiệu ứng đổ bóng phát sáng (Glow Shadow) đa lớp.
+  - Hiệu ứng chuyển động nảy của Lottie kết hợp Trượt từ dưới lên (Slide Up + Fade in) mượt mà 60fps.
+
+#### 3. Hoàn thiện Logic Onboarding
+- Áp dụng `SharedPreferences` vào `onboarding_screen.dart`.
+- Ghi cờ `is_first_time = false` ngay khi người dùng nhấn "Bỏ qua" hoặc "Tôi Đồng Ý", kết hợp `pushReplacementNamed` để chặn nút Back của Android, đảm bảo trải nghiệm Onboarding một lần duy nhất hoàn hảo.
