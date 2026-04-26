@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fatelinkfe/core/constants/app_colors.dart';
-import 'package:fatelinkfe/presentation/screens/login_screen.dart'; // Đảm bảo bạn đã có màn hình này
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fatelinkfe/presentation/screens/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -50,7 +51,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _navigateToLogin() {
+  Future<void> _navigateToLogin() async {
+    // Lưu cờ (flag) vào SharedPreferences để không hiện lại Onboarding lần sau
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_first_time', false);
+
+    if (!mounted) return;
+
     // Sử dụng pushReplacement để không cho phép back lại Onboarding
     Navigator.pushReplacementNamed(context, '/login');
   }
