@@ -21,9 +21,33 @@ import 'core/router/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await FcmService.initialize();
-  await EasyLocalization.ensureInitialized();
+  
+  try {
+    await EasyLocalization.ensureInitialized();
+    await Firebase.initializeApp();
+    
+    try {
+      await FcmService.initialize();
+    } catch (fcmError) {
+      debugPrint('Cảnh báo: Không thể khởi tạo FCM (Thường xảy ra trên máy ảo iOS): $fcmError');
+    }
+  } catch (e, stackTrace) {
+    debugPrint('Lỗi khởi tạo App: $e\n$stackTrace');
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              'Lỗi khởi tạo ứng dụng:\n$e\n\nVui lòng kiểm tra cấu hình Firebase hoặc thư mục translations.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+            ),
+          ),
+        ),
+      ),
+    );
+    return; // Dừng lại, không chạy app chính để tránh crash màn hình đỏ
+  }
 
   runApp(
     EasyLocalization(
