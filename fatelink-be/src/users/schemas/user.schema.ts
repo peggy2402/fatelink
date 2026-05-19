@@ -41,6 +41,9 @@ export class User {
 
   @Prop({ default: '' })
   fcmToken!: string;
+
+  @Prop({ default: 0 })
+  tokenVersion!: number; // Dùng để vô hiệu hoá JWT khi logout
   
 }
 

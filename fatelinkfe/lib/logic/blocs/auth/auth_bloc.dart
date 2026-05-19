@@ -48,6 +48,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       print(
         'Check url login: ${AppConstants.baseUrl}/${AppConstants.loginWithGoogle}',
       );
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -56,7 +58,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         await _secureStorage.write(key: 'accessToken', value: accessToken);
         emit(AuthAuthenticated(accessToken));
       } else {
-        throw Exception('Đăng nhập thất bại: ${response.statusCode}');
+        throw Exception('Đăng nhập thất bại: Mã lỗi ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       emit(AuthError(e.toString()));

@@ -9,6 +9,7 @@ import '../../logic/blocs/auth/auth_state.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/toast_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,8 +22,8 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId:
-        '751936511912-tb3fd241um9i6d3h8u61bmk6tqbbs72p.apps.googleusercontent.com',
+    // TODO: Thay bằng Web Client ID lấy từ Firebase Console (Authentication > Google > Web SDK config)
+    serverClientId: '918573554808-07stv5tp2474icsh5f47mvop9vaa9sug.apps.googleusercontent.com',
   );
 
   late AnimationController _bounceController;
@@ -52,11 +53,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleGoogleSignIn() async {
     if (!_isTermsAccepted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng đồng ý với Điều khoản dịch vụ để tiếp tục.'),
-          backgroundColor: AppColors.secondary,
-        ),
+      ToastUtil.showWarning(
+        context,
+        'Vui lòng đồng ý với Điều khoản dịch vụ để tiếp tục.',
       );
       return;
     }
@@ -82,11 +81,9 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (error) {
       debugPrint('Lỗi Google Sign-In: $error');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng nhập thất bại, vui lòng thử lại!'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastUtil.showError(
+          context,
+          'Đăng nhập thất bại, vui lòng thử lại!',
         );
       }
     }
@@ -107,10 +104,10 @@ class _LoginScreenState extends State<LoginScreen>
             filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF0A0514).withOpacity(0.7),
+                color: Colors.white.withOpacity(0.9), // Đổi nền sáng trong suốt
                 border: Border(
                   top: BorderSide(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withOpacity(0.5),
                     width: 1,
                   ),
                 ),
@@ -126,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -134,17 +131,17 @@ class _LoginScreenState extends State<LoginScreen>
                       const Text(
                         'Đăng nhập sinh trắc học',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.primary, // Đổi màu tiêu đề tươi hơn
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Sử dụng khuôn mặt hoặc vân tay để đăng nhập an toàn mà không cần mật khẩu.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 14),
                       ),
                       const SizedBox(height: 32),
                       Row(
@@ -190,22 +187,29 @@ class _LoginScreenState extends State<LoginScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 24),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 Icon(
                   icon,
                   size: 48,
-                  color: Colors.white,
-                ), // Đổi sang neon/trắng
+                  color: AppColors.primary, // Đổi màu icon
+                ),
                 const SizedBox(height: 12),
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.primary, // Đổi màu text phụ
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -220,9 +224,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFF0A0514,
-      ), // Dark deep space color (#0a0514)
+      backgroundColor: const Color(0xFFFDFDFD), // Almost white
       body: Stack(
         children: [
           // --- Smooth Glowing Animated Mesh Gradient Background ---
@@ -234,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen>
               height: 300,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0x668A2BE2), // Neon purple
+                color: Color(0x66FFD1DC), // Light pink
               ),
             ),
           ),
@@ -246,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen>
               height: 400,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0x66FF69B4), // Soft pink
+                color: Color(0x66FFFFFF), // Pure white
               ),
             ),
           ),
@@ -258,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen>
               height: 350,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0x664169E1), // Deep blue
+                color: Color(0x66E6E6FA), // Pale purple
               ),
             ),
           ),
@@ -271,11 +273,9 @@ class _LoginScreenState extends State<LoginScreen>
           BlocListener<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.redAccent,
-                  ),
+                ToastUtil.showError(
+                  context,
+                  state.message,
                 );
               } else if (state is AuthAuthenticated) {
                 // Đăng nhập thành công -> Văng vào trang chủ
@@ -301,43 +301,38 @@ class _LoginScreenState extends State<LoginScreen>
                           Column(
                             children: [
                               const SizedBox(height: 40),
-                              // Glowing 3D heart icon inside a glassmorphic container
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(32),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(
-                                    sigmaX: 20,
-                                    sigmaY: 20,
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(32),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.2),
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFFFF69B4,
-                                          ).withOpacity(0.2),
-                                          blurRadius: 40,
-                                          spreadRadius: 10,
-                                        ),
+                              // Modern 3D-like white squircle container
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(32),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 24,
+                                      spreadRadius: 4,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFFF69B4),
+                                        Color(0xFFFF3B30),
                                       ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                    child: ShaderMask(
-                                      shaderCallback: (bounds) => AppColors
-                                          .primaryGradient
-                                          .createShader(bounds),
-                                      child: const Icon(
-                                        Icons.favorite_rounded,
-                                        size: 64,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.favorite_rounded,
+                                    size: 48,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
@@ -347,16 +342,16 @@ class _LoginScreenState extends State<LoginScreen>
                                 style: TextStyle(
                                   fontSize: 36,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: Color(0xFF2F4F4F),
                                   letterSpacing: 1.2,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
+                              Text(
                                 'Bắt đầu tìm kiếm một nửa của bạn',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white70,
+                                  color: Colors.blueGrey.shade600,
                                 ),
                               ),
                             ],
@@ -382,10 +377,10 @@ class _LoginScreenState extends State<LoginScreen>
                                                 : _handleGoogleSignIn,
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.white,
-                                              foregroundColor: Colors.black87,
-                                              elevation: 10, // Soft drop shadow
+                                              foregroundColor: const Color(0xFF2F4F4F),
+                                              elevation: 8, // Soft drop shadow
                                               shadowColor: Colors.black
-                                                  .withOpacity(0.4),
+                                                  .withOpacity(0.15),
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     vertical: 18,
@@ -435,34 +430,24 @@ class _LoginScreenState extends State<LoginScreen>
                                   InkWell(
                                     onTap: _showBiometricPopup,
                                     borderRadius: BorderRadius.circular(16),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: BackdropFilter(
-                                        filter: ImageFilter.blur(
-                                          sigmaX: 10,
-                                          sigmaY: 10,
-                                        ),
-                                        child: Container(
-                                          width: 58,
-                                          height: 58,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(
-                                              0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.white.withOpacity(
-                                                0.3,
-                                              ),
-                                            ),
+                                    child: Container(
+                                      width: 58,
+                                      height: 58,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.08),
+                                            blurRadius: 15,
+                                            spreadRadius: 2,
+                                            offset: const Offset(0, 4),
                                           ),
-                                          child: const Icon(
-                                            Icons.fingerprint,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.fingerprint,
+                                        color: AppColors.primary, // Đổi màu icon sinh trắc học ở nút ngoài
                                       ),
                                     ),
                                   ),
@@ -476,7 +461,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 children: [
                                   Expanded(
                                     child: Divider(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.grey.shade300,
                                       thickness: 1,
                                     ),
                                   ),
@@ -487,7 +472,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     child: Text(
                                       'HOẶC ĐĂNG NHẬP BẰNG',
                                       style: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
+                                        color: Colors.grey.shade500,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -495,7 +480,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   Expanded(
                                     child: Divider(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.grey.shade300,
                                       thickness: 1,
                                     ),
                                   ),
@@ -570,7 +555,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 child: RichText(
                                   text: TextSpan(
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
+                                      color: Colors.blueGrey.shade600,
                                       fontSize: 13,
                                       height: 1.5,
                                     ),
@@ -664,24 +649,23 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildSocialButton(String assetPath) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          width: 56,
-          height: 56,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
+    return Container(
+      width: 56,
+      height: 56,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
-          child: Image.asset(assetPath, fit: BoxFit.contain),
-        ),
+        ],
       ),
+      child: Image.asset(assetPath, fit: BoxFit.contain),
     );
   }
 }

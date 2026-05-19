@@ -47,7 +47,12 @@ export class AuthService {
       const user = await this.usersService.findOrCreate(userProfile);
 
       // 4. Tạo JWT Token cho user
-      const jwtPayload = { sub: user._id, email: user.email };
+      // Thêm tokenVersion vào Payload để bảo mật Token Versioning
+      const jwtPayload = { 
+        sub: user._id, 
+        email: user.email, 
+        tokenVersion: user.tokenVersion || 0 
+      };
       const accessToken = this.jwtService.sign(jwtPayload);
 
       return {
@@ -59,5 +64,12 @@ export class AuthService {
       console.error('Lỗi xác thực Google Token:', error);
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }
+  }
+
+  // Hàm Đăng xuất: Tăng tokenVersion để vô hiệu hoá toàn bộ token cũ
+  async logout(userId: string) {
+    // Giả định usersService có hàm incrementTokenVersion hoặc update
+    await this.usersService.incrementTokenVersion(userId);
+    return { message: 'Đăng xuất thành công, token đã bị thu hồi.' };
   }
 }
