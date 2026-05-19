@@ -9,6 +9,7 @@ import '../../logic/blocs/auth/auth_state.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/toast_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,11 +53,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleGoogleSignIn() async {
     if (!_isTermsAccepted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng đồng ý với Điều khoản dịch vụ để tiếp tục.'),
-          backgroundColor: AppColors.secondary,
-        ),
+      ToastUtil.showWarning(
+        context,
+        'Vui lòng đồng ý với Điều khoản dịch vụ để tiếp tục.',
       );
       return;
     }
@@ -82,11 +81,9 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (error) {
       debugPrint('Lỗi Google Sign-In: $error');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng nhập thất bại, vui lòng thử lại!'),
-            backgroundColor: Colors.redAccent,
-          ),
+        ToastUtil.showError(
+          context,
+          'Đăng nhập thất bại, vui lòng thử lại!',
         );
       }
     }
@@ -107,10 +104,10 @@ class _LoginScreenState extends State<LoginScreen>
             filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF0A0514).withOpacity(0.7),
+                color: Colors.white.withOpacity(0.9), // Đổi nền sáng trong suốt
                 border: Border(
                   top: BorderSide(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withOpacity(0.5),
                     width: 1,
                   ),
                 ),
@@ -134,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen>
                       const Text(
                         'Đăng nhập sinh trắc học',
                         style: TextStyle(
-                          color: const Color(0xFF2F4F4F),
+                          color: AppColors.primary, // Đổi màu tiêu đề tươi hơn
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -206,13 +203,13 @@ class _LoginScreenState extends State<LoginScreen>
                 Icon(
                   icon,
                   size: 48,
-                  color: const Color(0xFF2F4F4F),
+                  color: AppColors.primary, // Đổi màu icon
                 ),
                 const SizedBox(height: 12),
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF2F4F4F),
+                    color: AppColors.primary, // Đổi màu text phụ
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -276,11 +273,9 @@ class _LoginScreenState extends State<LoginScreen>
           BlocListener<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Colors.redAccent,
-                  ),
+                ToastUtil.showError(
+                  context,
+                  state.message,
                 );
               } else if (state is AuthAuthenticated) {
                 // Đăng nhập thành công -> Văng vào trang chủ
@@ -452,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       child: const Icon(
                                         Icons.fingerprint,
-                                        color: Color(0xFF2F4F4F),
+                                        color: AppColors.primary, // Đổi màu icon sinh trắc học ở nút ngoài
                                       ),
                                     ),
                                   ),

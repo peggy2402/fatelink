@@ -1,82 +1,129 @@
 import 'package:flutter/material.dart';
 
 class ToastUtil {
-  // Hiển thị Toast thông báo Thành Công (Xanh lá)
   static void showSuccess(BuildContext context, String message) {
-    _showToast(
-      context,
-      message,
-      const Color(0xFF2E7D32),
-      Icons.check_circle_outline,
-    );
+    _showToast(context, message, const Color(0xFF2E7D32), Icons.check_circle_outline);
   }
 
-  // Hiển thị Toast thông báo Lỗi (Đỏ bordeaux theo theme FateLink)
   static void showError(BuildContext context, String message) {
     _showToast(context, message, const Color(0xFFBD114A), Icons.error_outline);
   }
 
-  // Hiển thị Toast thông tin chung (Xanh biển sâu)
   static void showInfo(BuildContext context, String message) {
-    _showToast(context, message, const Color(0xFFBD114A), Icons.info_outline);
+    _showToast(context, message, const Color(0xFF0D47A1), Icons.info_outline);
   }
 
-  // Hàm private xử lý giao diện chung cho Toast
-  static void _showToast(
-    BuildContext context,
-    String message,
-    Color bgColor,
-    IconData icon,
-  ) {
-    // Ẩn Toast cũ nếu đang hiển thị để tránh bị đè hoặc chờ lâu
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  static void showWarning(BuildContext context, String message) {
+    _showToast(context, message, const Color(0xFFFF9500), Icons.warning_amber_rounded);
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        // 1. Làm cho SnackBar gốc trở nên vô hình
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        // 2. Animate toàn bộ nội dung bên trong để mô phỏng khối Toast trượt xuống
-        content: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return Opacity(
-              // Hiệu ứng mờ dần (FadeIn)
-              opacity: value,
-              child: Transform.translate(
-                // Hiệu ứng trượt từ trên xuống
-                offset: Offset(0, (1 - value) * -30),
-                child: child,
-              ),
-            );
-          },
+  static void _showToast(BuildContext context, String message, Color color, IconData icon) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => _AnimatedToast(
+        message: message,
+        color: color,
+        icon: icon,
+        onDismiss: () {
+          overlayEntry.remove();
+        },
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+  }
+}
+
+class _AnimatedToast extends StatefulWidget {
+  final String message;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onDismiss;
+
+  const _AnimatedToast({
+    required this.message,
+    required this.color,
+    required this.icon,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_AnimatedToast> createState() => _AnimatedToastState();
+}
+
+class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    // Hiệu ứng trượt mượt mà từ trên cùng (-1.5) xuống giữa (0)
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(0, -1.5),
+      end: const Offset(0, 0),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _controller.forward();
+
+    // Tự động đóng Toast sau 3 giây
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (mounted) {
+        await _controller.reverse();
+        widget.onDismiss();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 16, // Hiển thị ngay dưới Status bar (tai thỏ)
+      left: 24,
+      right: 24,
+      child: SlideTransition(
+        position: _offsetAnimation,
+        child: Material(
+          color: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: bgColor.withOpacity(0.95),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
+                  color: widget.color.withOpacity(0.2),
+                  blurRadius: 15,
+                  spreadRadius: 2,
                   offset: const Offset(0, 4),
                 ),
               ],
+              border: Border.all(color: widget.color.withOpacity(0.3)),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 24),
+                Icon(widget.icon, color: widget.color, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    message,
+                    widget.message,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF2F4F4F),
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -84,15 +131,6 @@ class ToastUtil {
             ),
           ),
         ),
-        behavior: SnackBarBehavior.floating,
-        // Đẩy SnackBar lên trên cùng
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 120,
-          left: 16,
-          right: 16,
-        ),
-        duration: const Duration(seconds: 3),
-        padding: EdgeInsets.zero, // Xóa padding mặc định của SnackBar
       ),
     );
   }

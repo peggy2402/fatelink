@@ -103,4 +103,14 @@ export class UsersService {
     ).exec();
   }
 
+  /**
+   * Tăng phiên bản token của user lên 1.
+   * Dùng để vô hiệu hoá tất cả các token cũ khi người dùng đăng xuất.
+   * @param userId - ID của người dùng.
+   */
+  async incrementTokenVersion(userId: string) {
+    return this.userModel.findByIdAndUpdate(userId, {
+      $inc: { tokenVersion: 1 },
+    }).exec();
+  }
 }
