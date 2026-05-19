@@ -6,7 +6,6 @@ import 'services/fcm_service.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/match_chat_screen.dart';
 import 'logic/blocs/auth/auth_bloc.dart';
-import 'presentation/widgets/auth_wrapper.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/matches_repository.dart';
 import 'data/repositories/home_repository.dart';
@@ -17,6 +16,7 @@ import 'logic/blocs/home/home_bloc.dart';
 import 'logic/blocs/profile/profile_bloc.dart';
 import 'logic/blocs/main/main_bloc.dart';
 import 'logic/blocs/main/main_event.dart';
+import 'logic/blocs/splash/splash_bloc.dart';
 import 'core/router/app_router.dart';
 
 void main() async {
@@ -101,6 +101,7 @@ class MyApp extends StatelessWidget {
             create: (context) =>
                 ProfileBloc(repository: context.read<ProfileRepository>()),
           ),
+          BlocProvider<SplashBloc>(create: (context) => SplashBloc()),
         ],
         child: MaterialApp(
           title: 'FateLink',
@@ -109,7 +110,7 @@ class MyApp extends StatelessWidget {
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
           locale: context.locale,
-          home: const AuthWrapper(),
+          home: const SplashScreen(),
           onGenerateRoute: AppRouter.onGenerateRoute,
         ),
       ),

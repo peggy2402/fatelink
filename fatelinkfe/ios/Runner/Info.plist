@@ -66,5 +66,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Dán REVERSED_CLIENT_ID từ file GoogleService-Info.plist của bạn vào đây -->
+				<string>com.googleusercontent.apps.918573554808-9lic50m4gfeh8fs664229vnmmqkro5hg</string>
+			</array>
+		</dict>
+	</array>
+
 </dict>
 </plist>
