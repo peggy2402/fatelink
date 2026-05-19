@@ -1,26 +1,52 @@
 {
   "project_info": {
-    "project_number": "244194531061",
-    "project_id": "todolist-b64bb",
-    "storage_bucket": "todolist-b64bb.firebasestorage.app"
+    "project_number": "918573554808",
+    "project_id": "fatelink-5a62b",
+    "storage_bucket": "fatelink-5a62b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:244194531061:android:fe07dbd6ad42af1d5fd7bc",
+        "mobilesdk_app_id": "1:918573554808:android:da9dbc0e381c84e018a18d",
         "android_client_info": {
           "package_name": "com.example.fatelinkfe"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "918573554808-fnjqqdqrdl2c6rt6qkjg81dskee287f3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fatelinkfe",
+            "certificate_hash": "4e26816bd0703f80c8d6e54f2fa66511702e81f3"
+          }
+        },
+        {
+          "client_id": "918573554808-07stv5tp2474icsh5f47mvop9vaa9sug.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyA6NsX5mJYuN7ONBAYkeU5tZ8zAmHQ5ezs"
+          "current_key": "AIzaSyDHAg9GTVhAw22RqvoabjFze1x7iEIFfO4"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "918573554808-07stv5tp2474icsh5f47mvop9vaa9sug.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "918573554808-9lic50m4gfeh8fs664229vnmmqkro5hg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fatelinkfe",
+                "app_store_id": "24022003"
+              }
+            }
+          ]
         }
       }
     }
