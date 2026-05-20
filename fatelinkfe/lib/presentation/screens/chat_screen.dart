@@ -369,13 +369,16 @@ class ChatScreenState extends State<ChatScreen> {
         children: emotions
             .map(
               (emotion) => ActionChip(
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: const Color(0xFF0D47A1).withOpacity(0.3),
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
                 side: BorderSide(
-                  color: const Color(0xFF0D47A1).withOpacity(0.5),
+                  color: const Color(0xFF0D47A1).withOpacity(0.8),
                 ),
-                label: Text(
-                  emotion,
-                  style: const TextStyle(color: Colors.white),
+                label: Text(emotion),
+                labelStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
                 ),
                 onPressed: () {
                   sendMessage(emotion); // Gửi tin nhắn đi khi bấm

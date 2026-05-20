@@ -11,6 +11,7 @@ import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/utils/toast_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -30,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _bounceAnimation;
 
   bool _isTermsAccepted = false;
-
+  String _appVersion = ''; // Giá trị mặc định, sẽ được cập nhật bằng package_info_plus
   @override
   void initState() {
     super.initState();
@@ -43,6 +44,20 @@ class _LoginScreenState extends State<LoginScreen>
     _bounceAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
       CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
     );
+
+    // Lấy thông tin phiên bản ứng dụng
+    _initAppVersion();
+  }
+
+  Future<void> _initAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _appVersion = 'v${packageInfo.version}';
+      });
+    } catch (e) {
+      debugPrint('Lỗi khi lấy thông tin phiên bản: $e');
+    }
   }
 
   @override
@@ -516,9 +531,11 @@ class _LoginScreenState extends State<LoginScreen>
                           const SizedBox(height: 40),
 
                           // --- Footer: Điều khoản ---
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                          Column(
                             children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
                               InkWell(
                                 onTap: () => setState(
                                   () => _isTermsAccepted = !_isTermsAccepted,
@@ -633,8 +650,19 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (_appVersion.isNotEmpty)
+                                    Text(
+                                      _appVersion,
+                                      style: TextStyle(
+                                        color: Colors.blueGrey.shade500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                ],
+                              ),
                         ],
                       ),
                     ),
