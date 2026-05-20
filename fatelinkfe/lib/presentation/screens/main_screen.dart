@@ -5,11 +5,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/presentation/screens/home_screen.dart';
 import 'package:fatelinkfe/presentation/screens/chat_screen.dart';
-import 'package:fatelinkfe/presentation/screens/matches_screen.dart';
+import 'package:fatelinkfe/presentation/screens/explore_screen.dart';
 import 'package:fatelinkfe/presentation/screens/profile_screen.dart';
 import 'package:fatelinkfe/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
+import 'package:fatelinkfe/presentation/screens/chat_screen.dart' show ChatView; // Import enum
 import 'package:easy_localization/easy_localization.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
@@ -30,6 +31,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isLoading = true; // Để hiển thị loading khi check SharedPreferences
   bool _hasUnreadMessages = false; // Biến lưu trạng thái có tin nhắn mới
   String? _avatarUrl; // Biến lưu URL ảnh đại diện
+  ChatView _chatView = ChatView.list; // State để biết đang ở list hay room
 
   final GlobalKey<ChatScreenState> _chatScreenKey =
       GlobalKey<ChatScreenState>();
@@ -72,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
         _hasStartedChat = true;
         _hasUnreadMessages = false;
       });
-      context.read<MainBloc>().add(const ChangeTabEvent(1)); // Chuyển sang tab Chat qua BLoC
+      context.read<MainBloc>().add(const ChangeTabEvent(2)); // Chuyển sang tab Chat qua BLoC (Index 2)
     }
   }
 
@@ -85,6 +87,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     // Kiểm tra bàn phím có đang bật không để tự động ẩn thanh điều hướng
+    final currentIndex = context.watch<MainBloc>().state.selectedIndex;
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return BlocListener<AuthBloc, AuthState>(
@@ -97,8 +100,7 @@ class _MainScreenState extends State<MainScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFF001520),
         body: BlocBuilder<MainBloc, MainState>(
-        builder: (context, state) {
-          final currentIndex = state.selectedIndex;
+        builder: (context, mainState) {
 
           // Đưa danh sách screens vào trong builder để truy cập được currentIndex
           final List<Widget> screens = [
@@ -106,6 +108,7 @@ class _MainScreenState extends State<MainScreen> {
               showOnboarding: _showOnboarding,
               onStartChat: _handleStartChat,
             ),
+            const ExploreScreen(),
             ChatScreen(
               key: _chatScreenKey,
               onBack: () {
@@ -113,13 +116,17 @@ class _MainScreenState extends State<MainScreen> {
                 setState(() => _isPopupOpen = false); // Đóng popup nếu đang mở
               },
               onNewMessage: () {
-                if (currentIndex != 1) {
+                if (currentIndex != 2) {
                   // Chỉ hiện chấm đỏ nếu đang KHÔNG ở tab Chat
                   setState(() => _hasUnreadMessages = true);
                 }
               },
+              onViewChanged: (view) {
+                if (_chatView != view) {
+                  setState(() => _chatView = view);
+                }
+              },
             ),
-            const MatchesScreen(),
             const ProfileScreen(),
           ];
 
@@ -130,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: CircularProgressIndicator(color: Color(0xFFBD114A)),
                 )
               else
-                IndexedStack(index: currentIndex, children: screens),
+                IndexedStack(index: mainState.selectedIndex, children: screens),
 
               // Lớp Blur mờ phía sau khi mở Modal Popup
               if (_isPopupOpen)
@@ -166,7 +173,8 @@ class _MainScreenState extends State<MainScreen> {
               ),
 
               // Thanh Điều Hướng hoặc Thanh Chat Input
-              if (!_isLoading && (!isKeyboardOpen || currentIndex == 1))
+              if (!_isLoading &&
+                  (!isKeyboardOpen || (mainState.selectedIndex == 2 && _chatView == ChatView.room)))
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -188,15 +196,11 @@ class _MainScreenState extends State<MainScreen> {
                         child: FadeTransition(opacity: animation, child: child),
                       );
                     },
-                    child: currentIndex == 1
+                    child: (mainState.selectedIndex == 2 && _chatView == ChatView.room)
                         ? ChatInputBar(
                             key: const ValueKey('chatBar'),
                             controller: _chatController,
-                            isPopupOpen: _isPopupOpen,
-                            onPlusTap: () =>
-                                setState(() => _isPopupOpen = !_isPopupOpen),
-                            onSend: () {
-                              final text = _chatController.text;
+                            onSubmitted: (text) {
                               if (text.trim().isNotEmpty) {
                                 _chatScreenKey.currentState?.sendMessage(text);
                                 _chatController.clear();
@@ -211,7 +215,7 @@ class _MainScreenState extends State<MainScreen> {
                               context.read<MainBloc>().add(ChangeTabEvent(index));
                               setState(() {
                                 _isPopupOpen = false;
-                                if (index == 1) _hasUnreadMessages = false;
+                                if (index == 2) _hasUnreadMessages = false;
                               });
                             },
                           ),
@@ -220,13 +224,13 @@ class _MainScreenState extends State<MainScreen> {
 
               // Hiển thị bong bóng AI nếu đã bắt đầu chat và không ở tab Chat (Đưa xuống cuối để nổi lên trên cùng)
               if (_hasStartedChat &&
-                  currentIndex != 1 &&
+                  mainState.selectedIndex != 2 &&
                   !isKeyboardOpen &&
                   !_isPopupOpen)
                 FloatingAiBubble(
                   hasNotification: _hasUnreadMessages,
                   onTap: () {
-                    context.read<MainBloc>().add(const ChangeTabEvent(1));
+                    context.read<MainBloc>().add(const ChangeTabEvent(2));
                     setState(() {
                       _hasUnreadMessages = false; // Tắt chấm đỏ khi đã vào Chat
                     });

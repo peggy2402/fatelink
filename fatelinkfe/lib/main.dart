@@ -64,11 +64,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Khởi tạo các repository ở đây để đảm bảo chúng là Singleton
+    final chatRepository = ChatRepository();
+
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<ChatRepository>(
-          create: (context) => ChatRepository(),
-        ),
+        RepositoryProvider.value(value: chatRepository),
         RepositoryProvider<MatchesRepository>(
           create: (context) => MatchesRepository(),
         ),
@@ -86,8 +87,7 @@ class MyApp extends StatelessWidget {
             create: (context) => MainBloc()..add(InitMainEvent()),
           ),
           BlocProvider<ChatBloc>(
-            create: (context) =>
-                ChatBloc(chatRepository: context.read<ChatRepository>()),
+            create: (context) => ChatBloc(chatRepository: chatRepository),
           ),
           BlocProvider<MatchesBloc>(
             create: (context) =>

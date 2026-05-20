@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VMU 2025 - Công cụ quy đổi điểm tổ hợp & phương thức</title>
+  <style>
+    :root{
+      --bg:#f4f7fb; --card:#ffffff; --ink:#162033; --muted:#667085; --line:#d9e2ef;
+      --primary:#0b5bd3; --primary2:#073b8e; --good:#0f8a4b; --bad:#c92a2a; --warn:#a15c00;
+      --soft:#eef5ff; --soft2:#f9fbff;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#eef5ff 0%,var(--bg) 42%,#fff 100%);font-family:Arial,Helvetica,sans-serif;color:var(--ink);line-height:1.45}
+    .wrap{max-width:1180px;margin:auto;padding:28px 16px 52px}
+    .hero{background:linear-gradient(135deg,#0b5bd3,#052e73);color:#fff;border-radius:24px;padding:30px;box-shadow:0 16px 42px rgba(11,91,211,.24);position:relative;overflow:hidden}
+    .hero:after{content:"";position:absolute;right:-80px;top:-80px;width:260px;height:260px;border-radius:999px;background:rgba(255,255,255,.14)}
+    h1{margin:0 0 10px;font-size:30px;line-height:1.15}
+    .hero p{margin:6px 0;color:#e9f2ff;max-width:880px}
+    .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);padding:6px 10px;border-radius:999px;margin:0 6px 8px 0;font-size:13px}
+    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-top:18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 10px 28px rgba(15,35,80,.08)}
+    .card h2{font-size:20px;margin:0 0 12px;color:#0b326f}
+    .card h3{font-size:16px;margin:18px 0 8px;color:#173b75}
+    label{display:block;font-weight:700;font-size:13px;margin:12px 0 6px;color:#24324b}
+    select,input{width:100%;font-size:15px;border:1px solid #c7d3e3;border-radius:12px;padding:11px 12px;background:#fff;color:var(--ink);outline:none}
+    select:focus,input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(11,91,211,.12)}
+    .row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    button{border:none;border-radius:12px;padding:11px 15px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;box-shadow:0 6px 16px rgba(11,91,211,.20)}
+    button.secondary{background:#eaf1ff;color:#0b3c85;box-shadow:none;border:1px solid #cbdcf7}
+    button.ghost{background:#fff;color:#0b3c85;box-shadow:none;border:1px solid #cbdcf7}
+    .result{margin-top:16px;border-radius:16px;border:1px solid #c9dbf7;background:linear-gradient(180deg,#f8fbff,#eef5ff);padding:16px;min-height:112px}
+    .result .big{font-size:31px;font-weight:800;color:#0b5bd3;margin:4px 0}
+    .kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+    .pill{background:#fff;border:1px solid #d7e3f6;border-radius:14px;padding:10px}
+    .pill small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}.pill b{font-size:16px}
+    .note{font-size:13px;color:var(--muted);background:#f8fafc;border:1px dashed #c8d2e0;border-radius:14px;padding:12px;margin-top:12px}
+    .warn{color:var(--warn);font-weight:700}.good{color:var(--good);font-weight:800}.bad{color:var(--bad);font-weight:800}
+    table{border-collapse:collapse;width:100%;font-size:13px;background:#fff;border-radius:12px;overflow:hidden}
+    th,td{border:1px solid #d8e1ef;padding:8px;text-align:left;vertical-align:top} th{background:#eef5ff;color:#0b326f}
+    .table-wrap{overflow:auto;border-radius:14px;border:1px solid #d8e1ef;margin-top:8px} .table-wrap table{border:none}.table-wrap td:first-child,.table-wrap th:first-child{position:sticky;left:0;background:#fff}.table-wrap th:first-child{background:#eef5ff}
+    details{margin-top:16px} summary{cursor:pointer;font-weight:800;color:#0b326f;margin-bottom:8px}
+    .foot{margin-top:18px;color:#667085;font-size:12px;text-align:center}
+    .hidden{display:none!important}.muted{color:var(--muted)}.mono{font-family:Consolas,Monaco,monospace}.small{font-size:12px}.source{word-break:break-word}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.row,.row3{grid-template-columns:1fr}.hero{padding:22px}h1{font-size:24px}.kpi{grid-template-columns:1fr}}
+    @media print{
+      body{background:#fff}.wrap{max-width:100%;padding:0}.hero,.card{box-shadow:none}.actions{display:none}.card{break-inside:avoid}.foot{position:fixed;bottom:0;left:0;right:0}
+      @page{size:A4;margin:14mm 12mm 18mm; @bottom-center{content:"Trang " counter(page) " / " counter(pages);font-family:Arial;font-size:10px;color:#667085;}}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <span class="badge">VMU 2025</span><span class="badge">Quy đổi tổ hợp</span><span class="badge">Quy đổi phương thức</span>
+    <h1>Công cụ quy đổi điểm xét tuyển Đại học Hàng hải Việt Nam 2025</h1>
+    <p>Chọn ngành, phương thức và tổ hợp để tính nhanh ngưỡng điểm quy đổi. Dữ liệu lấy từ thông báo điểm trúng tuyển hệ chính quy năm 2025 của Trường Đại học Hàng hải Việt Nam.</p>
+    <p class="small">Công thức chính: <b>Điểm quy đổi theo tổ hợp = Điểm D01 đã quy đổi theo phương thức + độ chênh tổ hợp so với D01</b>.</p>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1) Tính theo ngành</h2>
+      <label for="majorSearch">Tìm nhanh ngành / mã ngành</label>
+      <input id="majorSearch" placeholder="Ví dụ: Logistics, D407, Công nghệ thông tin..." oninput="filterMajors()" />
+
+      <label for="majorSelect">Chọn chuyên ngành</label>
+      <select id="majorSelect" onchange="onMajorChange()"></select>
+
+      <div class="row">
+        <div>
+          <label for="methodSelect">Phương thức cần quy đổi</label>
+          <select id="methodSelect" onchange="onMethodChange()">
+            <option value="PT1">PT1 - Thi tốt nghiệp THPT, D01 gốc</option>
+            <option value="PT2">PT2 - Xét tuyển kết hợp</option>
+            <option value="PT3">PT3 - Học bạ</option>
+            <option value="PT5">PT5 - Kết hợp IELTS/chứng chỉ TA + học bạ</option>
+            <option value="TSA">PT4 - TSA ĐHBK Hà Nội</option>
+            <option value="HSA">PT4 - HSA ĐHQG Hà Nội</option>
+            <option value="HCM">PT4 - ĐGNL ĐHQG TP.HCM</option>
+          </select>
+        </div>
+        <div id="comboBox">
+          <label for="comboSelect">Tổ hợp xét tuyển</label>
+          <select id="comboSelect" onchange="calcByMajor()"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="candidateScore">Điểm thí sinh, không bắt buộc</label>
+          <input id="candidateScore" type="number" step="0.01" placeholder="Nhập để so sánh đỗ/chưa" oninput="calcByMajor()" />
+        </div>
+        <div>
+          <label for="roundDigits">Làm tròn kết quả</label>
+          <select id="roundDigits" onchange="calcByMajor(); calcManual();">
+            <option value="2" selected>2 chữ số thập phân</option>
+            <option value="3">3 chữ số thập phân</option>
+            <option value="1">1 chữ số thập phân</option>
+            <option value="0">0 chữ số thập phân</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button onclick="calcByMajor()">Tính lại</button>
+        <button class="secondary" onclick="copyResult('majorResult')">Copy kết quả</button>
+        <button class="ghost" onclick="window.print()">In / lưu PDF</button>
+      </div>
+      <div id="majorResult" class="result"></div>
+      <div id="lawNote" class="note hidden"><span class="warn">Lưu ý nhóm ngành Luật:</span> ngoài điểm trúng tuyển, thí sinh còn phải đáp ứng chuẩn đầu vào: tổ hợp có cả Toán và Văn thì tổng hai môn không thấp hơn 12; tổ hợp có Văn và không có Toán thì điểm Văn không thấp hơn 6.</div>
+    </section>
+
+    <section class="card">
+      <h2>2) Quy đổi điểm nhập tay</h2>
+      <p class="muted">Dùng khi bạn muốn nhập một điểm D01 gốc rồi quy đổi sang phương thức/tổ hợp khác.</p>
+
+      <div class="row">
+        <div>
+          <label for="manualGroup">Nhóm ngành</label>
+          <select id="manualGroup" onchange="setupManual(); calcManual();">
+            <option value="normal">Nhóm thường - thang 30</option>
+            <option value="foreign">Nhóm Ngoại ngữ - thang 40</option>
+          </select>
+        </div>
+        <div>
+          <label for="manualBase">Điểm D01 gốc</label>
+          <input id="manualBase" type="number" step="0.01" value="23.50" oninput="calcManual()" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="manualMethod">Quy đổi sang phương thức</label>
+          <select id="manualMethod" onchange="setupManualCombo(); calcManual();">
+            <option value="PT1">PT1</option>
+            <option value="PT2">PT2</option>
+            <option value="PT3">PT3</option>
+            <option value="PT5">PT5</option>
+            <option value="TSA">PT4 - TSA</option>
+            <option value="HSA">PT4 - HSA</option>
+            <option value="HCM">PT4 - ĐGNL TP.HCM</option>
+          </select>
+        </div>
+        <div id="manualComboBox">
+          <label for="manualCombo">Tổ hợp</label>
+          <select id="manualCombo" onchange="calcManual()"></select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button onclick="calcManual()">Quy đổi</button>
+        <button class="secondary" onclick="copyResult('manualResult')">Copy kết quả</button>
+      </div>
+      <div id="manualResult" class="result"></div>
+      <div class="note">Các bảng PT2/PT3/PT5/PT4 được tính bằng nội suy tuyến tính theo từng khoảng điểm trong thông báo. Nếu trường công bố cách tính chi tiết khác, hãy ưu tiên quy định chính thức của trường.</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:18px">
+    <h2>Bảng dữ liệu nhanh</h2>
+    <details open>
+      <summary>Độ chênh tổ hợp so với D01</summary>
+      <div class="table-wrap"><table id="deltaTable"></table></div>
+    </details>
+    <details>
+      <summary>Danh sách điểm chuẩn D01 theo ngành</summary>
+      <div class="table-wrap"><table id="majorTable"></table></div>
+    </details>
+    <details>
+      <summary>Quy đổi phương thức theo khoảng điểm</summary>
+      <div class="table-wrap"><table id="methodTable"></table></div>
+    </details>
+    <div class="note source">Nguồn dữ liệu: Thông báo số 1945/TB-ĐHHHVN, ngày 22/08/2025, trang tuyển sinh Trường Đại học Hàng hải Việt Nam: https://tuyensinh.vimaru.edu.vn/tuyensinh/2025-thong-bao-diem-trung-tuyen-dai-hoc-he-chinh-quy-nam-2025.vmu</div>
+  </section>
+
+  <div class="foot">Trang <span class="mono">1</span> · File HTML chạy offline · Nên đối chiếu lại với thông báo chính thức khi dùng để tư vấn tuyển sinh.</div>
+</div>
+
+<script>
+const majors = [
+  {no:1,name:'Điều khiển tàu biển',code:'D101',score:22.25,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:2,name:'Khai thác máy tàu biển',code:'D102',score:21,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:3,name:'Quản lý hàng hải',code:'D129',score:23.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:4,name:'Điện tử viễn thông',code:'D104',score:22,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:5,name:'Điện tự động giao thông vận tải',code:'D103',score:20.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:6,name:'Điện tự động công nghiệp',code:'D105',score:23.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:7,name:'Tự động hóa hệ thống điện',code:'D121',score:22.25,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:8,name:'Máy tàu thủy',code:'D106',score:20.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:9,name:'Thiết kế tàu và công trình ngoài khơi',code:'D107',score:20,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:10,name:'Đóng tàu và công trình ngoài khơi',code:'D108',score:19.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:11,name:'Máy và tự động hóa xếp dỡ',code:'D109',score:20.25,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:12,name:'Kỹ thuật cơ khí',code:'D116',score:21.75,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:13,name:'Kỹ thuật cơ điện tử',code:'D117',score:22.75,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:14,name:'Kỹ thuật ô tô',code:'D122',score:22.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:15,name:'Kỹ thuật nhiệt lạnh',code:'D123',score:20.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:16,name:'Máy và tự động công nghiệp',code:'D128',score:21,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:17,name:'Xây dựng công trình thủy',code:'D110',score:19,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:18,name:'Kỹ thuật an toàn hàng hải',code:'D111',score:20.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:19,name:'Xây dựng dân dụng và công nghiệp',code:'D112',score:19.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:20,name:'Công trình giao thông và cơ sở hạ tầng',code:'D113',score:19,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:21,name:'Kiến trúc và nội thất',code:'D127',score:19,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:22,name:'Quản lý công trình xây dựng',code:'D130',score:20.25,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:23,name:'Công nghệ thông tin',code:'D114',score:23.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:24,name:'Công nghệ phần mềm',code:'D118',score:22.25,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:25,name:'Kỹ thuật truyền thông và mạng máy tính',code:'D119',score:21.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:26,name:'Quản lý kỹ thuật công nghiệp',code:'D131',score:21.75,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:27,name:'Kỹ thuật môi trường',code:'D115',score:20.75,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:28,name:'Kỹ thuật công nghệ hóa học',code:'D126',score:19.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:29,name:'Điện tự động công nghiệp (nâng cao)',code:'H105',score:19.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:30,name:'Công nghệ thông tin (nâng cao)',code:'H114',score:20,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:31,name:'Điều khiển tàu biển (chọn)',code:'S101',score:20.75,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:32,name:'Khai thác máy tàu biển (chọn)',code:'S102',score:19.5,group:'normal',cat:'Kỹ thuật & Công nghệ'},
+  {no:33,name:'Kinh tế vận tải biển',code:'D401',score:23.7,group:'normal',cat:'Kinh tế'},
+  {no:34,name:'Kinh tế vận tải thủy',code:'D410',score:22.75,group:'normal',cat:'Kinh tế'},
+  {no:35,name:'Logistics và chuỗi cung ứng',code:'D407',score:25,group:'normal',cat:'Kinh tế'},
+  {no:36,name:'Kinh tế ngoại thương',code:'D402',score:23.75,group:'normal',cat:'Kinh tế'},
+  {no:37,name:'Quản trị kinh doanh',code:'D403',score:22.5,group:'normal',cat:'Kinh tế'},
+  {no:38,name:'Quản trị tài chính kế toán',code:'D404',score:22.15,group:'normal',cat:'Kinh tế'},
+  {no:39,name:'Quản trị tài chính ngân hàng',code:'D411',score:22,group:'normal',cat:'Kinh tế'},
+  {no:40,name:'Truyền thông Marketing',code:'D412',score:23.15,group:'normal',cat:'Kinh tế'},
+  {no:41,name:'Kinh tế vận tải biển (nâng cao)',code:'H401',score:21.25,group:'normal',cat:'Kinh tế'},
+  {no:42,name:'Kinh tế ngoại thương (nâng cao)',code:'H402',score:21.65,group:'normal',cat:'Kinh tế'},
+  {no:43,name:'Tiếng Anh thương mại (TA hệ số 2)',code:'D124',score:27,group:'foreign',cat:'Ngoại ngữ'},
+  {no:44,name:'Ngôn ngữ Anh (TA hệ số 2)',code:'D125',score:28.5,group:'foreign',cat:'Ngoại ngữ'},
+  {no:45,name:'Quản lý kinh doanh và Marketing',code:'A403',score:20.75,group:'normal',cat:'Chương trình tiên tiến'},
+  {no:46,name:'Kinh tế Hàng hải',code:'A408',score:20.25,group:'normal',cat:'Chương trình tiên tiến'},
+  {no:47,name:'Kinh doanh quốc tế và Logistics',code:'A409',score:22.25,group:'normal',cat:'Chương trình tiên tiến'},
+  {no:48,name:'Quản lý kinh doanh thương mại điện tử',code:'A404',score:20,group:'normal',cat:'Chương trình tiên tiến'},
+  {no:49,name:'Luật hàng hải',code:'D120',score:23.25,group:'normal',cat:'Luật'},
+  {no:50,name:'Luật kinh doanh',code:'D132',score:23,group:'normal',cat:'Luật'}
+];
+
+const comboNames = {
+  D01:'D01 - Toán, Văn, Anh', A00:'A00 - Toán, Lý, Hóa', A01:'A01 - Toán, Lý, Anh', C00:'C00 - Văn, Sử, Địa', C01:'C01 - Toán, Văn, Lý', C02:'C02 - Toán, Văn, Hóa', C03:'C03 - Toán, Văn, Sử', C04:'C04 - Toán, Văn, Địa', D09:'D09 - Toán, Sử, Anh', D10:'D10 - Toán, Địa, Anh', D14:'D14 - Văn, Sử, Anh', D15:'D15 - Văn, Địa, Anh', X02:'X02 - Toán, Văn, Tin'
+};
+
+const deltas = {
+  normalPT12: {D01:0,A00:0.17,A01:0,C00:0.75,C01:0.4,C02:0.17,C03:0.29,C04:0.31,D09:-0.12,D10:-0.09,D14:0.44,D15:0.46,X02:0.35},
+  normalPT35: {D01:0,A00:0.17,A01:0.06,C01:0.11,C02:0.11,X02:0.26,D09:0.14,D10:0.10,D14:0.16,D15:0.12},
+  foreign: {D01:0,A01:0,D09:-0.16,D10:-0.12,D14:0.59,D15:0.61}
+};
+
+const ranges = {
+  normal: {
+    PT2: [[26,30,25.5,30],[24,26,23.4,25.5],[21,24,20.3,23.4],[18,21,17.2,20.3],[15,18,15,17.2]],
+    PT3: [[26,30,28.13,30],[24,26,26.9,28.13],[21,24,24.69,26.9],[18,21,22.56,24.69],[15,18,18,22.56]],
+    PT5: [[26,30,28.65,30],[24,26,27.57,28.65],[21,24,25.83,27.57],[18,21,24.27,25.83],[15,18,18,24.27]],
+    TSA: [[26,30,73.85,100],[24,26,64.08,73.85],[21,24,52.93,64.08],[18,21,43.41,52.93],[15,18,33.29,43.41]],
+    HSA: [[26,30,112,150],[24,26,98,112],[21,24,79,98],[18,21,63,79],[15,18,49,63]],
+    HCM: [[26,30,986.41,1200],[24,26,859.66,986.41],[21,24,626.36,859.66],[18,21,474.34,626.36],[15,18,380.53,474.34]]
+  },
+  foreign: {
+    PT2: [[34.67,40,34,40],[32,34.67,31.2,34],[28,32,27.07,31.2],[24,28,22.93,27.07],[20,24,20,22.93]],
+    TSA: [[34.67,40,73.85,100],[32,34.67,64.08,73.85],[28,32,52.93,64.08],[24,28,43.41,52.93],[20,24,33.29,43.41]],
+    HSA: [[34.67,40,112,150],[32,34.67,98,112],[28,32,79,98],[24,28,63,79],[20,24,49,63]],
+    HCM: [[34.67,40,986.41,1200],[32,34.67,859.66,986.41],[28,32,626.36,859.66],[24,28,474.34,626.36],[20,24,380.53,474.34]]
+  }
+};
+
+function fmt(n){
+  if(n === null || n === undefined || Number.isNaN(n)) return 'Không có dữ liệu';
+  const d = Number(document.getElementById('roundDigits')?.value || 2);
+  return Number(n).toFixed(d).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+}
+function rawFmt(n,d=2){return Number(n).toFixed(d).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1')}
+function getMajor(){return majors.find(m=>m.code===document.getElementById('majorSelect').value) || majors[0]}
+function isPT4(method){return ['TSA','HSA','HCM'].includes(method)}
+function interpolate(score, group, method){
+  if(method==='PT1') return score;
+  const rs = ranges[group]?.[method];
+  if(!rs) return null;
+  for(const [a,b,c,d] of rs){
+    if(score >= a - 1e-9 && score <= b + 1e-9){
+      return c + (score-a)*(d-c)/(b-a);
+    }
+  }
+  return null;
+}
+function deltaSet(group, method){
+  if(group==='foreign') return deltas.foreign;
+  if(method==='PT1' || method==='PT2') return deltas.normalPT12;
+  if(method==='PT3' || method==='PT5') return deltas.normalPT35;
+  return {D01:0};
+}
+function populateCombo(selectId, group, method){
+  const select = document.getElementById(selectId);
+  const set = deltaSet(group, method);
+  const old = select.value;
+  select.innerHTML = Object.keys(set).map(k=>`<option value="${k}">${comboNames[k] || k} (${set[k]>=0?'+':''}${set[k]})</option>`).join('');
+  if(set[old] !== undefined) select.value = old;
+}
+function filterMajors(){
+  const q = document.getElementById('majorSearch').value.trim().toLowerCase();
+  const select = document.getElementById('majorSelect');
+  const old = select.value;
+  const filtered = majors.filter(m => !q || (m.name+' '+m.code+' '+m.cat).toLowerCase().includes(q));
+  select.innerHTML = filtered.map(m=>`<option value="${m.code}">${m.no}. ${m.name} - ${m.code} - ${rawFmt(m.score)} ${m.group==='foreign'?'(thang 40)':'(thang 30)'}</option>`).join('');
+  if(filtered.some(m=>m.code===old)) select.value = old;
+  onMajorChange();
+}
+function onMajorChange(){
+  const m = getMajor();
+  const method = document.getElementById('methodSelect').value;
+  setupMethodAvailability(m.group);
+  populateCombo('comboSelect', m.group, method);
+  document.getElementById('lawNote').classList.toggle('hidden', m.cat !== 'Luật');
+  onMethodChange();
+}
+function setupMethodAvailability(group){
+  const methodSelect = document.getElementById('methodSelect');
+  [...methodSelect.options].forEach(o=>{
+    o.disabled = false;
+    if(group==='foreign' && ['PT3','PT5'].includes(o.value)) o.disabled = true;
+  });
+  if(methodSelect.selectedOptions[0]?.disabled) methodSelect.value='PT1';
+}
+function onMethodChange(){
+  const m = getMajor();
+  const method = document.getElementById('methodSelect').value;
+  document.getElementById('comboBox').classList.toggle('hidden', isPT4(method));
+  populateCombo('comboSelect', m.group, method);
+  calcByMajor();
+}
+function methodLabel(m){return {PT1:'PT1 - Thi tốt nghiệp THPT',PT2:'PT2 - Xét tuyển kết hợp',PT3:'PT3 - Học bạ',PT5:'PT5 - Chứng chỉ TA + học bạ',TSA:'PT4 - TSA',HSA:'PT4 - HSA',HCM:'PT4 - ĐGNL ĐHQG TP.HCM'}[m] || m}
+function calcByMajor(){
+  const m = getMajor();
+  const method = document.getElementById('methodSelect').value;
+  const converted = interpolate(m.score, m.group, method);
+  const resultBox = document.getElementById('majorResult');
+  if(converted === null){
+    resultBox.innerHTML = `<b>Không có bảng quy đổi phù hợp.</b><p class="muted">Nhóm ${m.group==='foreign'?'Ngoại ngữ':'thường'} chưa có dữ liệu cho ${methodLabel(method)} trong file này.</p>`; return;
+  }
+  let final = converted, delta = 0, comboText = 'Không áp dụng';
+  if(!isPT4(method)){
+    const combo = document.getElementById('comboSelect').value;
+    const set = deltaSet(m.group, method);
+    delta = set[combo] ?? 0;
+    final = converted + delta;
+    comboText = comboNames[combo] || combo;
+  }
+  const candidate = parseFloat(document.getElementById('candidateScore').value);
+  let compare = '';
+  if(!Number.isNaN(candidate)){
+    const diff = candidate - final;
+    compare = `<div class="pill"><small>So sánh điểm nhập</small><b class="${diff>=-1e-9?'good':'bad'}">${diff>=-1e-9?'Đạt ngưỡng':'Chưa đạt'}</b><div class="small muted">Chênh ${diff>=0?'+':''}${fmt(diff)}</div></div>`;
+  }
+  const scale = isPT4(method) ? (method==='TSA'?'thang 100':method==='HSA'?'thang 150':'thang 1200') : (m.group==='foreign'?'thang 40':'thang 30');
+  resultBox.innerHTML = `
+    <div class="muted">${m.name} · ${m.code} · ${m.cat}</div>
+    <div class="big">${fmt(final)} <span class="small muted">${scale}</span></div>
+    <div class="kpi">
+      <div class="pill"><small>D01 gốc PT1</small><b>${fmt(m.score)}</b></div>
+      <div class="pill"><small>${methodLabel(method)} trước tổ hợp</small><b>${fmt(converted)}</b></div>
+      <div class="pill"><small>Độ chênh tổ hợp</small><b>${delta>=0?'+':''}${fmt(delta)}</b></div>
+      ${compare}
+    </div>
+    <p class="small muted">Tổ hợp/loại điểm: ${comboText}. Kết quả chỉ là quy đổi theo bảng công bố, chưa xét điều kiện riêng nếu có.</p>`;
+}
+function setupManual(){
+  const group = document.getElementById('manualGroup').value;
+  const base = document.getElementById('manualBase');
+  if(group==='foreign' && Number(base.value)<20) base.value = 27;
+  if(group==='normal' && Number(base.value)>30) base.value = 23.5;
+  [...document.getElementById('manualMethod').options].forEach(o=>{
+    o.disabled = group==='foreign' && ['PT3','PT5'].includes(o.value);
+  });
+  if(document.getElementById('manualMethod').selectedOptions[0]?.disabled) document.getElementById('manualMethod').value='PT1';
+  setupManualCombo();
+}
+function setupManualCombo(){
+  const group = document.getElementById('manualGroup').value;
+  const method = document.getElementById('manualMethod').value;
+  document.getElementById('manualComboBox').classList.toggle('hidden', isPT4(method));
+  populateCombo('manualCombo', group, method);
+}
+function calcManual(){
+  const group = document.getElementById('manualGroup').value;
+  const score = parseFloat(document.getElementById('manualBase').value);
+  const method = document.getElementById('manualMethod').value;
+  const box = document.getElementById('manualResult');
+  if(Number.isNaN(score)){box.innerHTML='<b>Hãy nhập điểm D01 gốc.</b>';return}
+  const converted = interpolate(score, group, method);
+  if(converted === null){box.innerHTML=`<b>Không có dữ liệu quy đổi.</b><p class="muted">Điểm nhập có thể nằm ngoài khoảng hoặc phương thức chưa có bảng quy đổi.</p>`;return}
+  let final = converted, delta = 0, comboText = 'Không áp dụng';
+  if(!isPT4(method)){
+    const combo = document.getElementById('manualCombo').value;
+    const set = deltaSet(group, method);
+    delta = set[combo] ?? 0;
+    final = converted + delta;
+    comboText = comboNames[combo] || combo;
+  }
+  const scale = isPT4(method) ? (method==='TSA'?'thang 100':method==='HSA'?'thang 150':'thang 1200') : (group==='foreign'?'thang 40':'thang 30');
+  box.innerHTML = `<div class="muted">${group==='foreign'?'Nhóm Ngoại ngữ':'Nhóm thường'} · ${methodLabel(method)}</div><div class="big">${fmt(final)} <span class="small muted">${scale}</span></div><div class="kpi"><div class="pill"><small>D01 gốc</small><b>${fmt(score)}</b></div><div class="pill"><small>Quy đổi phương thức</small><b>${fmt(converted)}</b></div><div class="pill"><small>Độ chênh tổ hợp</small><b>${delta>=0?'+':''}${fmt(delta)}</b></div></div><p class="small muted">Tổ hợp/loại điểm: ${comboText}.</p>`;
+}
+function copyResult(id){
+  const text = document.getElementById(id).innerText.trim();
+  navigator.clipboard?.writeText(text).then(()=>alert('Đã copy kết quả.')).catch(()=>alert(text));
+}
+function buildTables(){
+  const dt = document.getElementById('deltaTable');
+  const allCombos = ['D01','A00','A01','C00','C01','C02','C03','C04','D09','D10','D14','D15','X02'];
+  dt.innerHTML = `<tr><th>Bảng</th>${allCombos.map(c=>`<th>${c}</th>`).join('')}</tr>`+
+    [['PT1/PT2 thường',deltas.normalPT12],['PT3/PT5 thường',deltas.normalPT35],['Ngoại ngữ',deltas.foreign]].map(([name,set])=>`<tr><th>${name}</th>${allCombos.map(c=>`<td>${set[c]===undefined?'—':(set[c]>=0?'+':'')+set[c]}</td>`).join('')}</tr>`).join('');
+  const mt = document.getElementById('majorTable');
+  mt.innerHTML = `<tr><th>TT</th><th>Chuyên ngành</th><th>Mã</th><th>Nhóm</th><th>D01 gốc</th></tr>`+
+    majors.map(m=>`<tr><td>${m.no}</td><td>${m.name}</td><td>${m.code}</td><td>${m.cat}</td><td>${rawFmt(m.score)} ${m.group==='foreign'?'(40)':'(30)'}</td></tr>`).join('');
+  const method = document.getElementById('methodTable');
+  const normalRows = ranges.normal.PT2.map((r,i)=>`<tr><td>Thường</td><td>${r[0]}–${r[1]}</td><td>${ranges.normal.PT2[i][2]}–${ranges.normal.PT2[i][3]}</td><td>${ranges.normal.PT3[i][2]}–${ranges.normal.PT3[i][3]}</td><td>${ranges.normal.PT5[i][2]}–${ranges.normal.PT5[i][3]}</td><td>${ranges.normal.TSA[i][2]}–${ranges.normal.TSA[i][3]}</td><td>${ranges.normal.HSA[i][2]}–${ranges.normal.HSA[i][3]}</td><td>${ranges.normal.HCM[i][2]}–${ranges.normal.HCM[i][3]}</td></tr>`).join('');
+  const foreignRows = ranges.foreign.PT2.map((r,i)=>`<tr><td>Ngoại ngữ</td><td>${r[0]}–${r[1]}</td><td>${ranges.foreign.PT2[i][2]}–${ranges.foreign.PT2[i][3]}</td><td>—</td><td>—</td><td>${ranges.foreign.TSA[i][2]}–${ranges.foreign.TSA[i][3]}</td><td>${ranges.foreign.HSA[i][2]}–${ranges.foreign.HSA[i][3]}</td><td>${ranges.foreign.HCM[i][2]}–${ranges.foreign.HCM[i][3]}</td></tr>`).join('');
+  method.innerHTML = `<tr><th>Nhóm</th><th>PT1 D01</th><th>PT2</th><th>PT3</th><th>PT5</th><th>TSA</th><th>HSA</th><th>ĐGNL TP.HCM</th></tr>${normalRows}${foreignRows}`;
+}
+
+buildTables(); filterMajors(); setupManual(); calcManual();
+</script>
+</body>
+</html>

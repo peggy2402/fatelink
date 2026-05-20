@@ -49,7 +49,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       }
       
       emit(state.copyWith(status: ChatStatus.loaded, messages: messages, showEmotionSuggestions: showSuggestions));
-      chatRepository.connectSocket(token);
+      
+      // Chỉ kết nối socket nếu nó chưa được kết nối
+      if (!chatRepository.isSocketConnected) {
+        chatRepository.connectSocket(token);
+      }
     } catch (e) {
       emit(state.copyWith(status: ChatStatus.error, errorMessage: "Lỗi tải lịch sử chat"));
       add(ClearNotificationEvents());
