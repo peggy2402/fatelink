@@ -52,8 +52,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           if (state is ProfileLoaded) {
+            // Dữ liệu đã được bóc tách sẵn từ ProfileBloc
             final data = state.profileData;
-
+            print('========== DEBUG Profile Data ==========');
+            print('Raw Profile Data: $data');
+            print('Field Name: ${data['name']}');
+            print('=======================================');
             // Lấy object 'emotions' từ Backend trả về, fallback bằng map mặc định nếu rỗng
             final emotions =
                 data['emotions'] ??
@@ -84,19 +88,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: NetworkImage(
-                          data['avatar'] ?? data['avatarUrl'] ??
-                              'https://ui-avatars.com/api/?name=User&background=random',
+                      child: ClipOval(
+                        child: Image.network(
+                          // Kiểm tra chuỗi rỗng ngoài việc check null
+                          (data['avatar'] != null && data['avatar'].toString().isNotEmpty)
+                              ? data['avatar']
+                              : ((data['avatarUrl'] != null && data['avatarUrl'].toString().isNotEmpty)
+                                  ? data['avatarUrl']
+                                  : 'https://ui-avatars.com/api/?name=${data['name'] ?? 'User'}&background=random&format=png'),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Bắt lỗi âm thầm nếu tải ảnh thất bại và thay bằng Icon mặc định
+                            debugPrint('⚠️ Lỗi tải avatar: \$error');
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              color: Colors.white.withOpacity(0.1),
+                              child: const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.white70,
+                              ),
+                            );
+                          },
                         ),
-                        backgroundColor: Colors.transparent,
                       ),
                     ),
                     const SizedBox(height: 16),
                     // Name
                     Text(
-                      data['name'] ?? 'Người dùng',
+                      (data['name'] != null && data['name'].toString().trim().isNotEmpty)
+                          ? data['name']
+                          : 'User'.tr(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -129,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context.read<AuthBloc>().add(AuthLogoutRequested());
                       },
                       icon: const Icon(Icons.logout, color: Colors.redAccent),
-                      label: Text('logout'.tr()),
+                      label: Text('Logout'.tr()),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.redAccent,
                         side: const BorderSide(color: Colors.redAccent),
@@ -184,17 +209,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           getTitle: (index, angle) {
             switch (index) {
               case 0:
-                return RadarChartTitle(text: 'Áp lực', angle: angle);
+                return RadarChartTitle(text: 'stress'.tr(), angle: angle);
               case 1:
-                return RadarChartTitle(text: 'Cô đơn', angle: angle);
+                return RadarChartTitle(text: 'loneliness'.tr(), angle: angle);
               case 2:
-                return RadarChartTitle(text: 'Buồn bã', angle: angle);
+                return RadarChartTitle(text: 'sadness'.tr(), angle: angle);
               case 3:
-                return RadarChartTitle(text: 'Bình tĩnh', angle: angle);
+                return RadarChartTitle(text: 'calmness'.tr(), angle: angle);
               case 4:
-                return RadarChartTitle(text: 'Ấm áp', angle: angle);
+                return RadarChartTitle(text: 'warmth'.tr(), angle: angle);
               case 5:
-                return RadarChartTitle(text: 'Vui vẻ', angle: angle);
+                return RadarChartTitle(text: 'happiness'.tr(), angle: angle);
               default:
                 return const RadarChartTitle(text: '');
             }

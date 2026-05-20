@@ -10,7 +10,7 @@ import '../../core/constants/app_colors.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/utils/toast_utils.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (!_isTermsAccepted) {
       ToastUtil.showWarning(
         context,
-        'Vui lòng đồng ý với Điều khoản dịch vụ để tiếp tục.',
+        'pleaseAcceptTerms'.tr(),
       );
       return;
     }
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         ToastUtil.showError(
           context,
-          'Đăng nhập thất bại, vui lòng thử lại!',
+          'loginFailed'.tr(),
         );
       }
     }
@@ -128,8 +128,8 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
-                        'Đăng nhập sinh trắc học',
+                      Text(
+                        'signInWithBiometrics'.tr(),
                         style: TextStyle(
                           color: AppColors.primary, // Đổi màu tiêu đề tươi hơn
                           fontSize: 22,
@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sử dụng khuôn mặt hoặc vân tay để đăng nhập an toàn mà không cần mật khẩu.',
+                        'signInWithBiometrics_description'.tr(),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 14),
                       ),

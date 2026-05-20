@@ -110,8 +110,8 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'The Matchmaker',
+                        Text(
+                          'theMatchmaker'.tr(),
                           style: TextStyle(
                             fontFamily: 'serif',
                             color: Colors.white,

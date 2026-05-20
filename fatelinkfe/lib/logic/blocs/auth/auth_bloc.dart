@@ -58,6 +58,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         // Lưu thông tin người dùng để hiển thị bên MainScreen và ProfileScreen
         final userData = data['data'] ?? data['user'];
+        
+        // [DEBUG] In ra Console để xem cấu trúc JSON trả về từ Backend
+        debugPrint('========== DEBUG API LOGIN ==========');
+        debugPrint('Raw Data: $data');
+        debugPrint('UserData Map: $userData');
+        debugPrint('Field Name hiện tại: ${userData?['name']}');
+        debugPrint('=====================================');
+
         if (userData != null) {
           await _secureStorage.write(key: 'avatarUrl', value: userData['avatar']?.toString() ?? '');
           await _secureStorage.write(key: 'userName', value: userData['name']?.toString() ?? '');

@@ -15,7 +15,8 @@ class MatchesRepository {
     final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
     final userId = jsonDecode(payload)['sub'] ?? jsonDecode(payload)['id'];
 
-    final url = Uri.parse('${AppConstants.baseUrl}${AppConstants.userMatches(userId)}?page=$page&limit=10');
+    final url = Uri.parse('${AppConstants.baseUrl}/${AppConstants.userMatches(userId)}?page=$page&limit=10');
+    print('CHECK URL MATCHES: $url');
     final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
 
     if (response.statusCode == 200 && response.body.trim().isNotEmpty) {

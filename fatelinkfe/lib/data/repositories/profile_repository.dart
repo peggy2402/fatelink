@@ -18,8 +18,8 @@ class ProfileRepository {
     );
     final userId = jsonDecode(payload)['sub'] ?? jsonDecode(payload)['id'];
 
-    final url = '${AppConstants.baseUrl}${AppConstants.userProfile(userId)}';
-
+    final url = '${AppConstants.baseUrl}/${AppConstants.userProfile(userId)}';
+    print('CHECK URL PROFILE: $url');
     final response = await ApiService.get(url, context, token: token);
     return response is Map<String, dynamic> ? response : {};
   }
