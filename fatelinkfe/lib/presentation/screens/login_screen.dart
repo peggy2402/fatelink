@@ -671,6 +671,28 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
+
+          // --- Nút Support ---
+          Positioned(
+            top: 0,
+            right: 8,
+            child: SafeArea(
+              child: IconButton(
+                tooltip: 'Hỗ trợ',
+                icon: Image.asset(
+                  'assets/icon/icon-support.png',
+                  width: 28,
+                  height: 28,
+                  color: Colors.blueGrey.shade400,
+                ),
+                onPressed: () {
+                  launchUrl(
+                    Uri.parse('${AppConstants.serverUrl}${AppConstants.support}'),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
