@@ -7,6 +7,7 @@ class AppConstants {
 
   // API Endpoints
   static const String loginWithGoogle = 'auth/google/login';
+  static const String logout = 'auth/logout';
   static const String userRecommendations = 'users/recommendations';
 
   static String userMatches(String userId) => 'users/$userId/matches';

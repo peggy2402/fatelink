@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -44,7 +45,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         Uri.parse('${AppConstants.baseUrl}/${AppConstants.loginWithGoogle}'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'token': event.googleIdToken}),
-      );
+      ).timeout(const Duration(seconds: 15)); // Thêm timeout để tránh treo app
       print(
         'Check url login: ${AppConstants.baseUrl}/${AppConstants.loginWithGoogle}',
       );
@@ -54,6 +55,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final String accessToken = data['accessToken'];
+
+        // Lưu thông tin người dùng để hiển thị bên MainScreen và ProfileScreen
+        final userData = data['data'] ?? data['user'];
+        if (userData != null) {
+          await _secureStorage.write(key: 'avatarUrl', value: userData['avatar']?.toString() ?? '');
+          await _secureStorage.write(key: 'userName', value: userData['name']?.toString() ?? '');
+          await _secureStorage.write(key: 'userId', value: userData['_id']?.toString() ?? '');
+        }
 
         await _secureStorage.write(key: 'accessToken', value: accessToken);
         emit(AuthAuthenticated(accessToken));
@@ -70,7 +79,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _secureStorage.delete(key: 'accessToken');
-    emit(AuthUnauthenticated());
+    emit(AuthLoading());
+    try {
+      final token = await _secureStorage.read(key: 'accessToken');
+      final urlEnpoints = '${AppConstants.baseUrl}/${AppConstants.logout}';
+      debugPrint('Gọi API logout tại: $urlEnpoints với token: $token');
+      if (token != null) {
+        // Gọi API báo Backend tăng tokenVersion vô hiệu hoá JWT
+        await http.post(
+          Uri.parse(urlEnpoints),
+          headers: {'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 10));
+      }
+    } catch (e) {
+      debugPrint('Lỗi khi đăng xuất: $e');
+    } finally {
+      await _secureStorage.deleteAll(); // Xoá sạch mọi thông tin token, avatar...
+      emit(AuthUnauthenticated());
+    }
   }
 }

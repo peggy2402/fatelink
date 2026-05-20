@@ -87,8 +87,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: CircleAvatar(
                         radius: 50,
                         backgroundImage: NetworkImage(
-                          data['avatarUrl'] ??
-                              'https://hinhanhcute.com/wp-content/uploads/2025/09/Hinh-anh-con-ca-heo-cute-sieu-de-thuong.webp',
+                          data['avatar'] ?? data['avatarUrl'] ??
+                              'https://ui-avatars.com/api/?name=User&background=random',
                         ),
                         backgroundColor: Colors.transparent,
                       ),

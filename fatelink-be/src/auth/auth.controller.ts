@@ -1,6 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Body, Controller, Post, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -21,5 +22,14 @@ export class AuthController {
       data: result.user,
       accessToken: result.accessToken,
     };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard) // Bắt buộc phải có token hợp lệ mới được đăng xuất
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đăng xuất người dùng (Vô hiệu hoá token hiện tại)' })
+  @ApiResponse({ status: 200, description: 'Đăng xuất thành công, token đã bị thu hồi.' })
+  async logout(@Request() req) {
+    return this.authService.logout(req.user.sub);
   }
 }
