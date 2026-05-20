@@ -16,8 +16,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     emit(ProfileLoading());
     try {
-      final data = await repository.fetchUserProfile(event.context);
-      emit(ProfileLoaded(data));
+      final rawData = await repository.fetchUserProfile(event.context);
+      
+      // Chuẩn hoá dữ liệu ngay tại Bloc: bóc tách lớp vỏ 'data' từ NestJS Backend
+      final userData = rawData['data'] ?? rawData['user'] ?? rawData;
+      emit(ProfileLoaded(userData));
     } catch (e) {
       emit(ProfileError(e.toString()));
     }

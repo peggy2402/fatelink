@@ -7,7 +7,7 @@ import 'package:fatelinkfe/data/models/chat_message.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_event.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_state.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 class ChatScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onNewMessage;
@@ -46,7 +46,7 @@ class ChatScreenState extends State<ChatScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF001520),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('✨ Đã thấu hiểu tâm hồn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        title: Text('✨ ${'soulUnderstood'.tr()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
         content: Text(message, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
         actions: [
           Container(
@@ -57,7 +57,7 @@ class ChatScreenState extends State<ChatScreen> {
                 Navigator.pop(context);
                 Navigator.pushReplacementNamed(context, '/matches');
               },
-              child: const Text('Khám phá Định mệnh', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text('discoverDestiny'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -179,7 +179,7 @@ class ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                     Text(
-                      'đang hoạt động...',
+                      'activeNow'.tr(),
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
                         fontSize: 12,
@@ -354,7 +354,12 @@ class ChatScreenState extends State<ChatScreen> {
 
   // Widget hiển thị danh sách gợi ý cảm xúc cho người dùng chọn nhanh
   Widget _buildEmotionSuggestions() {
-    final emotions = ['Bình yên 🍃', 'Áp lực 🌪️', 'Cô đơn 🌧️', 'Vui vẻ ✨'];
+    final emotions = [
+      'emotion_peaceful'.tr(),
+      'emotion_pressured'.tr(),
+      'emotion_lonely'.tr(),
+      'emotion_joyful'.tr(),
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Wrap(

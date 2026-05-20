@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:fatelinkfe/presentation/screens/home_screen.dart'; // Import MatchUser
 import 'package:fatelinkfe/data/models/match_user.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 class UserDetailScreen extends StatelessWidget {
   final MatchUser user;
 
@@ -57,8 +57,8 @@ class UserDetailScreen extends StatelessWidget {
                     icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
-                  title: const Text(
-                    'Hồ Sơ Tương Hợp',
+                  title: Text(
+                    'compatibilityProfile'.tr(),
                     style: TextStyle(color: Colors.white),
                   ),
                   centerTitle: true,
@@ -98,7 +98,7 @@ class UserDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tần số cảm xúc: ${user.emotion}',
+                  '${'emotionalFrequency'.tr()}: ${user.emotion}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 18,

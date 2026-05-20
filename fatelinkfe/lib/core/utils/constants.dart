@@ -4,7 +4,7 @@ class AppConstants {
 
   // Nối sẵn /api để dùng cho các request HTTP thông thường
   static const String baseUrl = '$serverUrl/api';
-
+  static const String apiVersion = 'v1'; // Nếu có versioning, có thể thêm vào URL như: '$baseUrl/$apiVersion'
   // API Endpoints
   static const String loginWithGoogle = 'auth/google/login';
   static const String logout = 'auth/logout';
@@ -15,6 +15,7 @@ class AppConstants {
   static String sendMessage(String chatId) => 'chats/$chatId/messages';
   static String fetchMessages(String chatId) => 'chats/$chatId/messages';
   static String userFCMToken(String userId) => 'users/$userId/fcm-token';
+  static String matchmakingRecommendations = 'matchmaking/recommendations';
   static const String updateFcmToken = 'users/fcm-token';
 
   // Điều khoản và dịch vụ, Chính sách v.v

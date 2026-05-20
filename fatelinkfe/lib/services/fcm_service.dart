@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-
+import 'package:fatelinkfe/core/utils/constants.dart';
 class FcmService {
   static final FirebaseMessaging _firebaseMessaging =
       FirebaseMessaging.instance;
@@ -76,11 +76,10 @@ class FcmService {
     try {
       final accessToken = await _secureStorage.read(key: 'accessToken');
       if (accessToken == null) return; // Chưa đăng nhập thì không gửi
-
+      final urlEndpoints = '${AppConstants.baseUrl}/${AppConstants.updateFcmToken}';
+      print('urlEndpoints fcm Token: $urlEndpoints');
       final response = await http.post(
-        Uri.parse(
-          'https://fatelink-be.fly.dev/api/users/fcm-token',
-        ), // URL Backend
+        Uri.parse(urlEndpoints),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',

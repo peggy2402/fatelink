@@ -7,7 +7,7 @@ import '../../logic/blocs/splash/splash_state.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
 import 'onboarding_screen.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -215,8 +215,8 @@ class _SplashScreenState extends State<SplashScreen>
                 AnimatedOpacity(
                   opacity: _showSlogan ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 1000),
-                  child: const Text(// "Destiny Connects" trong tiếng Việt
-                     'Kết nối trái tim, không khoảng cách',
+                  child: Text(// "Destiny Connects" trong tiếng Việt
+                     'connectHeartsNoDistance'.tr(),
                     style: TextStyle(
                       color: Color(0xFF6B7280), // Xám thanh lịch
                       fontSize: 16,

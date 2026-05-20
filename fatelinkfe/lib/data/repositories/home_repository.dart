@@ -17,8 +17,8 @@ class HomeRepository {
     if (token == null) throw Exception('Token is null');
 
     // Gọi đúng endpoint lấy danh sách người dùng được AI phân tích
-    final url = '${AppConstants.baseUrl}/matchmaking/recommendations';
-
+    final url = '${AppConstants.baseUrl}/${AppConstants.matchmakingRecommendations}';
+    print('CHECK URL RECOMMENDATIONS: $url');
     final response = await ApiService.get(url, context, token: token);
 
     if (response != null && response is List) {
