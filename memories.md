@@ -353,3 +353,19 @@
 #### 3. Hoàn thiện Logic Onboarding
 - Áp dụng `SharedPreferences` vào `onboarding_screen.dart`.
 - Ghi cờ `is_first_time = false` ngay khi người dùng nhấn "Bỏ qua" hoặc "Tôi Đồng Ý", kết hợp `pushReplacementNamed` để chặn nút Back của Android, đảm bảo trải nghiệm Onboarding một lần duy nhất hoàn hảo.
+
+## 📅 Ngày: 27/04/2026
+
+### 🎯 Trọng tâm hôm nay: Tối ưu hoá Khởi tạo ứng dụng & Xử lý lỗi toàn cục (Global Error Handling)
+
+#### 1. Frontend (Flutter) - Tối ưu `main.dart`
+- **Xử lý lỗi FCM an toàn trên Simulator**: 
+  - Tách biệt logic khởi tạo `FcmService.initialize()` vào một khối `try-catch` riêng.
+  - Khắc phục triệt để lỗi crash app trên máy ảo iOS (Simulator) do thiếu chứng chỉ APNs, giúp quá trình code/debug trên máy ảo không bị gián đoạn.
+- **Global Error Handling (Bảo vệ Crash Màn hình đỏ)**:
+  - Bọc toàn bộ các hàm khởi tạo cốt lõi (`EasyLocalization`, `Firebase`) trong khối `try-catch` toàn cục.
+  - Khi xảy ra sự cố nghiêm trọng cấp hệ thống (thiếu cấu hình Firebase, lỗi file dịch JSON), ứng dụng tự động render một giao diện `MaterialApp` cảnh báo lỗi thân thiện thay vì văng màn hình đỏ (Red Screen of Death).
+- **Cấu hình Dependency Injection (DI) Tập trung**:
+  - Xây dựng hoàn chỉnh cây Provider trong `MyApp` với `MultiRepositoryProvider` (Chat, Matches, Home, Profile).
+  - Khởi tạo và cung cấp toàn bộ trạng thái BLoC (`AuthBloc`, `MainBloc`, `ChatBloc`, `SplashBloc`...) qua `MultiBlocProvider` ở cấp độ cao nhất.
+  - Liên kết chặt chẽ hệ thống định tuyến (`AppRouter.onGenerateRoute`) với `easy_localization` để đảm bảo luồng dữ liệu và ngôn ngữ được đồng nhất toàn app.
