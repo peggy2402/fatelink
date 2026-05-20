@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
@@ -21,19 +22,16 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Khởi tạo AnimationController
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    // Hiệu ứng trượt từ dưới lên (Offset y từ 1.0 về 0.0)
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero).animate(
           CurvedAnimation(
@@ -42,12 +40,6 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
           ),
         );
 
-    // Hiệu ứng mờ dần sang rõ
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-
-    // Bắt đầu chạy animation khi Widget được render lần đầu
     _animationController.forward();
   }
 
@@ -59,100 +51,82 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
   @override
   Widget build(BuildContext context) {
+    // Lấy độ cao vùng an toàn dưới đáy (ví dụ: thanh Home indicator trên iPhone)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return SlideTransition(
       position: _slideAnimation,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SafeArea(
-          child: Container(
-            height: 72,
-            margin: const EdgeInsets.only(
-              left: 24,
-              right: 24,
-              bottom: 24,
-            ), // Thanh bar nổi (Floating)
-            decoration: BoxDecoration(
-              color: const Color(0xFF001520), // Xanh navy đậm
-              borderRadius: BorderRadius.circular(
-                100,
-              ), // Bo góc tròn cực đại (Capsule)
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
+      child: SizedBox(
+        height: 100.0 + bottomPadding, // Tính thêm padding đáy vào tổng chiều cao
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Thanh bar màu tối với đường cắt (notch)
+            ClipPath(
+              clipper: _BottomNavClipper(),
+              child: ClipRRect( // Thêm ClipRRect để hiệu ứng blur không bị tràn
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    height: 70.0 + bottomPadding, // Thanh bar cao hơn một chút để bao trọn viền đáy
+                    padding: EdgeInsets.only(bottom: bottomPadding), // Đẩy dàn icon lên trên vùng an toàn
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.75), // Nền kính mờ sáng
+                      border: Border(top: BorderSide(color: Colors.white.withOpacity(0.4), width: 1.5)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildNavItem(0, 'Trang chủ', Icons.home_filled),
+                        _buildNavItem(1, 'Khám phá', Icons.explore_rounded),
+                        const SizedBox(width: 80), // Chừa không gian khoét lõm
+                        _buildNavItem(2, 'Trò chuyện', Icons.chat_bubble_rounded, hasBadge: true),
+                        _buildNavItem(3, 'Tài khoản', Icons.person_rounded),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
+              ),
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Tính toán chiều rộng của mỗi item để di chuyển Highlight Pill
-                final itemWidth = constraints.maxWidth / 4;
-
-                return Stack(
-                  children: [
-                    // Vòng tròn highlight xanh sáng di chuyển
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      left: widget.currentIndex * itemWidth,
-                      top: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: itemWidth,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF1E88E5,
-                            ).withOpacity(0.25), // Xanh sáng nhẹ
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                        ),
-                      ),
+            
+            // Nút "Ghép đôi" hình trái tim lớn đặt chính giữa
+            Positioned(
+              top: 0,
+              child: GestureDetector(
+                onTap: () {
+                  // Sự kiện Ghép đôi
+                },
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF3B30), Color(0xFFFF69B4)], // Rose to Pink
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    // Các nút điều hướng
-                    SizedBox(
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                      child: Row(
-                        children: [
-                          _buildNavItem(
-                            0,
-                            'Home'.tr(),
-                            'assets/icon/home.png',
-                            activeAssetPath: 'assets/icon/home_active.png',
-                          ),
-                          _buildNavItem(
-                            1,
-                            'Chat'.tr(),
-                            'assets/icon/chat.png',
-                            activeAssetPath: 'assets/icon/chat_active.png',
-                            hasBadge: true,
-                          ),
-                          _buildNavItem(
-                            2,
-                            'Matches'.tr(),
-                            'assets/icon/matches.png',
-                            activeAssetPath: 'assets/icon/matches_active.png',
-                          ),
-                          _buildNavItem(
-                            3,
-                            'Profile'.tr(),
-                            '',
-                          ), // Index 3 sẽ dùng CircleAvatar
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF3B30).withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
                       ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.favorite_rounded,
+                      color: Colors.white,
+                      size: 32,
                     ),
-                  ],
-                );
-              },
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -161,23 +135,20 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
   Widget _buildNavItem(
     int index,
     String label,
-    String assetPath, {
-    String? activeAssetPath,
+    IconData iconData, {
     bool hasBadge = false,
   }) {
     final isSelected = widget.currentIndex == index;
+    final color = isSelected ? const Color(0xFF00B8D4) : Colors.blueGrey.shade400; // Màu Cyan đậm khi chọn, xám xanh khi không chọn
 
-    // Khôi phục lại logic đổi sang màu VÀNG NHẠT khi chọn
-    final color = isSelected ? const Color(0xFFFFF9C4) : Colors.white54;
-
-    return Expanded(
+    return SizedBox(
+      width: 60,
       child: GestureDetector(
         onTap: () => widget.onTap(index),
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // AnimatedContainer tạo hiệu ứng scale nhẹ khi chọn
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               transform: Matrix4.identity()..scale(isSelected ? 1.1 : 1.0),
@@ -185,75 +156,19 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  if (index == 3)
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFFFFF9C4)
-                              : Colors.transparent,
-                          width: 1.5,
-                        ),
-                      ),
-                      // ClipOval kết hợp errorBuilder giúp chống crash tuyệt đối
-                      child: ClipOval(
-                        child:
-                            widget.avatarUrl != null &&
-                                widget.avatarUrl!.isNotEmpty
-                            ? Image.network(
-                                widget.avatarUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildFallbackAvatar(color),
-                              )
-                            : _buildFallbackAvatar(color),
-                      ),
-                    )
-                  else
-                    Image.asset(
-                      (isSelected &&
-                              activeAssetPath != null &&
-                              activeAssetPath.isNotEmpty)
-                          ? activeAssetPath
-                          : assetPath,
-                      width: 26,
-                      height: 26,
-                      color: isSelected
-                          ? null
-                          : color, // Không ám màu nếu đang chọn (để giữ nguyên viền trắng, lõi vàng của ảnh active)
-                      errorBuilder: (context, error, stackTrace) =>
-                          Icon(_getFallbackIcon(index), color: color, size: 26),
-                    ),
-
-                  // Badge thông báo cho tab Chat
+                  Icon(iconData, color: color, size: 26),
                   if (hasBadge)
                     Positioned(
-                      right: -6,
-                      top: -6,
+                      right: -4,
+                      top: -4,
                       child: Container(
-                        padding: const EdgeInsets.all(
-                          4,
-                        ), // Tạo độ phồng cho hình tròn quanh số
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent,
+                          color: const Color(0xFFFF3B30),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF001520),
-                            width: 2,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const Text(
-                          '1', // Hiển thị số 1 (Bạn có thể biến thành tham số động sau này)
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            height: 1,
-                          ),
-                        ),
+                        child: const SizedBox(width: 4, height: 4),
                       ),
                     ),
                 ],
@@ -264,7 +179,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -273,34 +188,18 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       ),
     );
   }
+}
 
-  // Hàm phụ trợ tạo Avatar dự phòng cực kỳ an toàn
-  Widget _buildFallbackAvatar(Color color) {
-    return Image.asset(
-      'assets/images/default_avatar.png',
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: Colors.grey.withOpacity(0.5),
-        child: Icon(
-          Icons.person,
-          color: color,
-          size: 20,
-        ), // Trả về Icon rỗng nếu mất file ảnh
-      ),
+// Custom Clipper tạo đường cắt lún ôm trọn nút giữa
+class _BottomNavClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return const CircularNotchedRectangle().getOuterPath(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Rect.fromCircle(center: Offset(size.width / 2, 0), radius: 38), // Notch radius
     );
   }
 
-  // Hàm phụ trợ giúp hiển thị Icon mặc định trong trường hợp bạn chưa kịp thêm ảnh vào thư mục assets
-  IconData _getFallbackIcon(int index) {
-    switch (index) {
-      case 0:
-        return Icons.home_filled;
-      case 1:
-        return Icons.chat_bubble_outline;
-      case 2:
-        return Icons.favorite_border;
-      default:
-        return Icons.person;
-    }
-  }
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

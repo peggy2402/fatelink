@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:fatelinkfe/presentation/widgets/back.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fatelinkfe/core/utils/toast_utils.dart';
 import 'package:fatelinkfe/presentation/widgets/typing_indicator.dart';
 import 'package:fatelinkfe/data/models/chat_message.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_event.dart';
 import 'package:fatelinkfe/logic/blocs/chat/chat_state.dart';
 import 'package:easy_localization/easy_localization.dart';
+
+// Enum để quản lý 2 chế độ xem
+enum ChatView { list, room }
+
 class ChatScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onNewMessage;
+  final Function(ChatView) onViewChanged;
 
   const ChatScreen({
     super.key,
     required this.onBack,
     required this.onNewMessage,
+    required this.onViewChanged,
   });
 
   @override
@@ -23,87 +29,349 @@ class ChatScreen extends StatefulWidget {
 }
 
 class ChatScreenState extends State<ChatScreen> {
+  ChatView _currentView = ChatView.list;
   final _scrollController = ScrollController();
+  final _chatController = TextEditingController();
   int _previousMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
-    // Kích hoạt nạp lịch sử khi mới vào màn hình
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
   }
 
-  // Hàm gửi tin nhắn để `ChatInputBar` hoặc Modal gọi thông qua GlobalKey (nếu cần)
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _chatController.dispose();
+    super.dispose();
+  }
+
+  // Đổi thành public để MainScreen có thể gọi qua GlobalKey
   void sendMessage(String text) {
     if (text.trim().isEmpty) return;
     context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
+    _chatController.clear();
+    _scrollToBottom();
   }
 
-  void _showMatchReadyDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF001520),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('✨ ${'soulUnderstood'.tr()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        content: Text(message, style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
-        actions: [
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFBD114A), Color(0xFFD75656)]), borderRadius: BorderRadius.circular(24)),
-            child: TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/matches');
-              },
-              child: Text('discoverDestiny'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+  void _switchToRoomView() {
+    setState(() => _currentView = ChatView.room);
+    _scrollToBottom(animated: false); // Cuộn xuống ngay khi chuyển view
+    widget.onViewChanged(ChatView.room);
+  }
+
+  void _switchToListView() {
+    setState(() => _currentView = ChatView.list);
+    widget.onViewChanged(ChatView.list);
+  }
+
+  void _scrollToBottom({bool animated = true}) {
+    if (_scrollController.hasClients) {
+      if (animated) {
+        _scrollController.animateTo(0.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      } else {
+        _scrollController.jumpTo(0.0);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sử dụng AnimatedSwitcher để tạo hiệu ứng chuyển cảnh mượt mà
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: _currentView == ChatView.list
+          ? _buildChatListView()
+          : _buildChatRoomView(),
+    );
+  }
+
+  // --- WIDGETS CHO MÀN HÌNH DANH SÁCH CHAT ---
+
+  Widget _buildChatListView() {
+    return Scaffold(
+      key: const ValueKey('ChatListView'),
+      backgroundColor: const Color(0xFFF8F9FA), // Nền sáng
+      body: CustomScrollView(
+        slivers: [
+          _buildListAppBar(),
+          SliverToBoxAdapter(child: _buildSearchBar()),
+          SliverToBoxAdapter(child: _buildOnlineStatusList()),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Divider(color: Colors.grey.shade200, height: 1),
             ),
+          ),
+          _buildConversationList(),
+        ],
+      ),
+    );
+  }
+
+  SliverAppBar _buildListAppBar() {
+    return SliverAppBar(
+      backgroundColor: const Color(0xFFF8F9FA),
+      pinned: true,
+      expandedHeight: 120.0,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+        title: Text(
+          'Trò chuyện',
+          style: TextStyle(
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      actions: [
+        _buildAppBarIcon(Icons.search),
+        _buildAppBarIcon(Icons.add),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildAppBarIcon(IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: CircleAvatar(
+        backgroundColor: Colors.grey.shade200,
+        child: Icon(icon, color: Colors.grey.shade600, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: TextField(
+        decoration: InputDecoration(
+          hintText: 'Tìm kiếm tin nhắn...',
+          hintStyle: TextStyle(color: Colors.grey.shade500),
+          prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
+          filled: true,
+          fillColor: Colors.grey.shade200,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30.0),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnlineStatusList() {
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: 10, // Faye AI + 9 users
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _buildOnlineAvatar(
+              name: 'Faye AI',
+              imageUrl: 'assets/images/avt_faye_ai.png',
+              isBot: true,
+            );
+          }
+          return _buildOnlineAvatar(
+            name: 'User ${index + 1}',
+            imageUrl: 'assets/images/default_avatar.png',
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildOnlineAvatar({
+    required String name,
+    required String imageUrl,
+    bool isBot = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: isBot
+                      ? const LinearGradient(
+                          colors: [Color(0xFF00E5FF), Color(0xFFFF69B4)])
+                      : null,
+                  color: isBot ? null : Colors.grey.shade300,
+                ),
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundImage: AssetImage(imageUrl),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent.shade400,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                  ),
+                ),
+              ),
+              if (isBot)
+                Positioned(
+                  top: -4,
+                  left: -4,
+                  child: CircleAvatar(
+                    radius: 10,
+                    backgroundColor: const Color(0xFF9C27B0),
+                    child:
+                        Icon(Icons.auto_awesome, color: Colors.white, size: 12),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            name,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  void _scrollToBottom({bool animated = true}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        if (animated) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
+  SliverList _buildConversationList() {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          // Chỉ hiển thị cuộc trò chuyện với Faye AI
+          return _buildConversationItem(
+            name: 'Faye AI',
+            imageUrl: 'assets/images/avt_faye_ai.png',
+            lastMessage: 'Chào bạn, hôm nay của bạn thế nào?',
+            time: '10:36',
+            unreadCount: 1,
+            isBot: true,
+            onTap: _switchToRoomView,
           );
-        } else {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-        }
-      }
-    });
+        },
+        childCount: 1,
+      ),
+    );
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  Widget _buildConversationItem({
+    required String name,
+    required String imageUrl,
+    required String lastMessage,
+    required String time,
+    int unreadCount = 0,
+    bool isBot = false,
+    required VoidCallback onTap,
+  }) {
+    final bool hasUnread = unreadCount > 0;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        color: hasUnread ? Colors.cyan.withOpacity(0.05) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            _buildOnlineAvatar(name: '', imageUrl: imageUrl, isBot: isBot),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          hasUnread ? FontWeight.bold : FontWeight.normal,
+                      color: hasUnread
+                          ? Colors.grey.shade800
+                          : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: hasUnread
+                        ? const Color(0xFF00B8D4)
+                        : Colors.grey.shade500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (hasUnread)
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: const Color(0xFFFF3B30),
+                    child: Text(
+                      unreadCount.toString(),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 24),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // --- WIDGETS CHO MÀN HÌNH PHÒNG CHAT ---
+
+  Widget _buildChatRoomView() {
     return Scaffold(
-      backgroundColor: const Color(0xFF001520),
-      appBar: _buildAppBar(),
+      key: const ValueKey('ChatRoomView'),
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: _buildRoomAppBar(),
       body: BlocListener<ChatBloc, ChatState>(
+        listenWhen: (previous, current) {
+          return previous.messages.length != current.messages.length || previous.isTyping != current.isTyping;
+        },
         listener: (context, state) {
-          // Xử lý các Effect (Side-effects) 
-          if (state.errorMessage.isNotEmpty) {
-            ToastUtil.showError(context, state.errorMessage);
-          }
-          if (state.matchReadyMessage.isNotEmpty) {
-            _showMatchReadyDialog(state.matchReadyMessage);
-          }
-          // Theo dõi có tin nhắn mới thì cuộn + báo cho parent
+          _scrollToBottom();
           if (state.messages.length > _previousMessageCount) {
-            _scrollToBottom();
             if (state.messages.isNotEmpty && !state.messages.last.isSentByMe) {
               widget.onNewMessage();
             }
@@ -112,89 +380,97 @@ class ChatScreenState extends State<ChatScreen> {
         },
         child: Stack(
           children: [
-            _buildBackgroundBlobs(),
             BlocBuilder<ChatBloc, ChatState>(
               builder: (context, state) {
-                if (state.status == ChatStatus.loading) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFFBD114A)));
+                if (state.status == ChatStatus.loading &&
+                    state.messages.isEmpty) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFBD114A)));
                 }
-                return Column(
-                  children: [
-                    Expanded(
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.only(top: 16.0, bottom: 120.0),
-                        itemCount: state.messages.length + (state.showEmotionSuggestions ? 1 : 0) + (state.isTyping ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index < state.messages.length) {
-                            return _buildMessageBubble(state.messages[index]);
-                          } else if (index == state.messages.length && state.showEmotionSuggestions) {
-                            return _buildEmotionSuggestions();
-                          } else {
-                            return _buildTypingIndicator();
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+                return ListView.builder(
+                  controller: _scrollController,
+                  reverse: true, // Lật ngược danh sách (rất quan trọng)
+                  padding: const EdgeInsets.only(top: 100.0, bottom: 16.0), // Padding cũng được đổi ngược lại
+                  itemCount: state.messages.length + (state.isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (state.isTyping) {
+                      if (index == 0) return _buildRoomTypingIndicator(); // Khi gõ, bong bóng nằm kề đáy
+                      final msgIndex = state.messages.length - index;
+                      return _buildRoomMessageBubble(state.messages[msgIndex]);
+                    } else {
+                      final msgIndex = state.messages.length - 1 - index;
+                      return _buildRoomMessageBubble(state.messages[msgIndex]);
+                    }
+                  },
                 );
               },
             ),
+            // Input bar is now handled by MainScreen
           ],
         ),
       ),
     );
   }
 
-  // AppBar tùy chỉnh với hiệu ứng Glassmorphism
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildRoomAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(60.0),
       child: ClipRRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: AppBar(
-            backgroundColor: Colors.white.withOpacity(0.05),
+            backgroundColor: Colors.white.withOpacity(0.75),
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-              onPressed: widget.onBack, // Gọi hàm onBack từ MainScreen
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 16.0),
+              child: CustomBackButton(onPressed: _switchToListView),
             ),
+            leadingWidth: 60, // Tăng không gian cho nút back
             title: Row(
               children: [
                 const CircleAvatar(
                   backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-                  radius: 20,
+                  radius: 18,
                 ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Faye AI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Text('Faye AI',
+                            style: TextStyle(
+                                color: Colors.grey.shade800,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)]),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('BOT',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold)),
+                        )
+                      ],
                     ),
-                    Text(
-                      'activeNow'.tr(),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('Đang hoạt động...',
+                        style: TextStyle(
+                            color: Colors.green.shade600, fontSize: 12)),
                   ],
                 ),
               ],
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white70),
-                onPressed: () {
-                  // TODO: Implement more options
-                },
+                icon: Icon(Icons.more_vert, color: Colors.grey.shade700),
+                onPressed: () {},
               ),
             ],
           ),
@@ -203,54 +479,9 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // Widget nền blobs
-  Widget _buildBackgroundBlobs() {
-    return Stack(
-      children: [
-        Positioned(
-          top: -100,
-          right: -150,
-          child: Container(
-            width: 350,
-            height: 350,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF0066FF), // Đổi blob đỏ thành xanh dương
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-            child: const SizedBox(),
-          ),
-        ),
-      ],
-    );
-  }
-
   // Widget bong bóng chat
-  Widget _buildMessageBubble(ChatMessage message) {
+  Widget _buildRoomMessageBubble(ChatMessage message) {
     final isMe = message.isSentByMe;
-    final alignment = isMe ? MainAxisAlignment.end : MainAxisAlignment.start;
-    final bubbleColor = isMe
-        ? Colors.white.withOpacity(0.15)
-        : const Color(
-            0xFF0D47A1,
-          ).withOpacity(0.6); // Đổi màu bong bóng AI sang xanh đậm
-    final borderRadius = isMe
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            bottomLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-            bottomRight: Radius.circular(4),
-          )
-        : const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            bottomLeft: Radius.circular(4),
-            topRight: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-          );
 
     // Định dạng giờ phút (VD: 09:05)
     final timeString =
@@ -259,54 +490,63 @@ class ChatScreenState extends State<ChatScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
-        mainAxisAlignment: alignment,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
             const CircleAvatar(
               backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-              radius: 16,
+              radius: 14,
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.75,
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: bubbleColor,
-                    borderRadius: borderRadius,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 1,
+                    color: isMe
+                        ? Colors.blueGrey.shade700.withOpacity(0.6)
+                        : null,
+                    gradient: isMe
+                        ? null
+                        : const LinearGradient(
+                            colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(20).copyWith(
+                      bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+                      bottomRight:
+                          isMe ? Radius.zero : const Radius.circular(20),
                     ),
+                    boxShadow: isMe
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: const Color(0xFF1E40AF).withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
                   ),
                   child: Text(
                     message.text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
+                    style:
+                        const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   timeString,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
                 ),
               ],
             ),
@@ -316,76 +556,25 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // Widget hiển thị trạng thái AI đang gõ
-  Widget _buildTypingIndicator() {
+  Widget _buildRoomTypingIndicator() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           const CircleAvatar(
-            backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-            radius: 16,
-          ),
+              backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
+              radius: 14),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(
-                0xFF0D47A1,
-              ).withOpacity(0.6), // Đổi màu sang xanh đậm
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(4),
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
-            ),
-            child: const TypingIndicator(), // Sử dụng widget mới
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(20)
+                    .copyWith(bottomLeft: Radius.zero)),
+            child: const TypingIndicator(),
           ),
         ],
-      ),
-    );
-  }
-
-  // Widget hiển thị danh sách gợi ý cảm xúc cho người dùng chọn nhanh
-  Widget _buildEmotionSuggestions() {
-    final emotions = [
-      'emotion_peaceful'.tr(),
-      'emotion_pressured'.tr(),
-      'emotion_lonely'.tr(),
-      'emotion_joyful'.tr(),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Wrap(
-        spacing: 8.0,
-        runSpacing: 8.0,
-        alignment: WrapAlignment.end,
-        children: emotions
-            .map(
-              (emotion) => ActionChip(
-                backgroundColor: const Color(0xFF0D47A1).withOpacity(0.3),
-                surfaceTintColor: Colors.transparent,
-                elevation: 0,
-                side: BorderSide(
-                  color: const Color(0xFF0D47A1).withOpacity(0.8),
-                ),
-                label: Text(emotion),
-                labelStyle: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-                onPressed: () {
-                  sendMessage(emotion); // Gửi tin nhắn đi khi bấm
-                },
-              ),
-            )
-            .toList(),
       ),
     );
   }

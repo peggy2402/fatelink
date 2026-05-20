@@ -24,9 +24,17 @@ class MatchChatScreen extends StatefulWidget {
 
 class _MatchChatScreenState extends State<MatchChatScreen> {
   final TextEditingController _chatController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final _secureStorage = const FlutterSecureStorage();
   bool _isPartnerTyping = false; // Trạng thái đối phương đang gõ
   // TODO: Khai báo List<ChatMessage> _messages = []; giống hệt bên ChatScreen
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleUnmatch() async {
     try {
@@ -244,16 +252,18 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.only(top: 16.0, bottom: 120.0),
+                  controller: _scrollController,
+                  reverse: true, // Dùng list ngược để luôn dính đáy
+                  padding: const EdgeInsets.only(top: 120.0, bottom: 16.0),
                   itemCount: _isPartnerTyping
                       ? 1
                       : 0, // Cần cộng thêm _messages.length sau này
                   itemBuilder: (context, index) {
-                    // Khi chưa có tin nhắn, chỉ render TypingIndicator nếu isPartnerTyping = true
                     if (_isPartnerTyping) {
-                      return _buildTypingIndicator();
+                      if (index == 0) return _buildTypingIndicator();
+                      // return _buildMessageBubble(_messages[_messages.length - index]);
                     }
-                    return const SizedBox.shrink();
+                    return const SizedBox.shrink(); // return _buildMessageBubble(_messages[_messages.length - 1 - index]);
                   },
                 ),
               ),
@@ -265,11 +275,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             alignment: Alignment.bottomCenter,
             child: ChatInputBar(
               controller: _chatController,
-              onSend: () {
-                _chatController.clear();
+              onSubmitted: (text) {
+                if (text.trim().isNotEmpty) {
+                  // TODO: Implement logic to send message via socket
+                  _chatController.clear();
+                }
               },
-              onPlusTap: () {},
-              isPopupOpen: false,
             ),
           ),
 
