@@ -33,15 +33,35 @@ class ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final _chatController = TextEditingController();
   int _previousMessageCount = 0;
+  bool _isNearBottom = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
+  }
+
+  void _scrollListener() {
+    if (!_scrollController.hasClients) return;
+    
+    // Detect if user is within 100 pixels from the bottom
+    final isNearBottom = _scrollController.offset <= 100.0;
+    if (_isNearBottom != isNearBottom) {
+      setState(() {
+        _isNearBottom = isNearBottom;
+      });
+    }
+    
+    if (isNearBottom && _unreadCount > 0) {
+      setState(() => _unreadCount = 0);
+    }
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _chatController.dispose();
     super.dispose();
@@ -52,7 +72,6 @@ class ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty) return;
     context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
     _chatController.clear();
-    _scrollToBottom();
   }
 
   void _switchToRoomView() {
@@ -370,12 +389,28 @@ class ChatScreenState extends State<ChatScreen> {
           return previous.messages.length != current.messages.length || previous.isTyping != current.isTyping;
         },
         listener: (context, state) {
-          _scrollToBottom();
           if (state.messages.length > _previousMessageCount) {
-            if (state.messages.isNotEmpty && !state.messages.last.isSentByMe) {
+            final newMessage = state.messages.last;
+            final isMe = newMessage.isSentByMe;
+
+            // Tự động cuộn NẾU tin do mình gửi HOẶC đang ở sát đáy
+            if (isMe || _isNearBottom) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _scrollToBottom();
+              });
+            } else {
+              // Không cuộn, chỉ tăng số tin chưa đọc
+              setState(() => _unreadCount += (state.messages.length - _previousMessageCount));
+            }
+
+            if (!isMe) {
               widget.onNewMessage();
             }
             _previousMessageCount = state.messages.length;
+          } else if (state.isTyping && _isNearBottom) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToBottom();
+            });
           }
         },
         child: Stack(
@@ -390,7 +425,7 @@ class ChatScreenState extends State<ChatScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Lật ngược danh sách (rất quan trọng)
-                  padding: const EdgeInsets.only(top: 100.0, bottom: 16.0), // Padding cũng được đổi ngược lại
+                  padding: const EdgeInsets.only(top: 100.0, bottom: 90.0), // Chừa không gian cho input bar tránh đè UI
                   itemCount: state.messages.length + (state.isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (state.isTyping) {
@@ -406,6 +441,55 @@ class ChatScreenState extends State<ChatScreen> {
               },
             ),
             // Input bar is now handled by MainScreen
+            
+            // Nút Scroll xuống đáy / Báo tin nhắn chưa đọc
+            if (!_isNearBottom)
+              Positioned(
+                right: 16,
+                bottom: 80, // Nằm nổi trên Input bar
+                child: GestureDetector(
+                  onTap: () {
+                    _scrollToBottom();
+                    setState(() => _unreadCount = 0);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 28),
+                        if (_unreadCount > 0)
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFF3B30),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                _unreadCount > 9 ? '9+' : '$_unreadCount',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -28,9 +28,38 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   final _secureStorage = const FlutterSecureStorage();
   bool _isPartnerTyping = false; // Trạng thái đối phương đang gõ
   // TODO: Khai báo List<ChatMessage> _messages = []; giống hệt bên ChatScreen
+  bool _isNearBottom = true;
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    if (!_scrollController.hasClients) return;
+    
+    final isNearBottom = _scrollController.offset <= 100.0;
+    if (_isNearBottom != isNearBottom) {
+      setState(() {
+        _isNearBottom = isNearBottom;
+      });
+    }
+    if (isNearBottom && _unreadCount > 0) {
+      setState(() => _unreadCount = 0);
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _chatController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -254,7 +283,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 child: ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Dùng list ngược để luôn dính đáy
-                  padding: const EdgeInsets.only(top: 120.0, bottom: 16.0),
+                  // padding bottom 90 để không bị ChatInputBar che khuất
+                  padding: const EdgeInsets.only(top: 120.0, bottom: 90.0),
                   itemCount: _isPartnerTyping
                       ? 1
                       : 0, // Cần cộng thêm _messages.length sau này
@@ -270,6 +300,49 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             ],
           ),
 
+          // Nút cuộn xuống dưới cùng / Báo tin nhắn chưa đọc
+          if (!_isNearBottom)
+            Positioned(
+              right: 16,
+              bottom: 90, // Trên ChatInputBar một chút
+              child: GestureDetector(
+                onTap: () {
+                  _scrollToBottom();
+                  setState(() => _unreadCount = 0);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 28),
+                      if (_unreadCount > 0)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFF3B30),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(_unreadCount > 9 ? '9+' : '$_unreadCount',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // Chat Input Bar ở dưới cùng
           Align(
             alignment: Alignment.bottomCenter,
@@ -279,6 +352,10 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 if (text.trim().isNotEmpty) {
                   // TODO: Implement logic to send message via socket
                   _chatController.clear();
+                  // Bắt buộc cuộn xuống khi chính user chủ động gửi tin
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToBottom();
+                  });
                 }
               },
             ),

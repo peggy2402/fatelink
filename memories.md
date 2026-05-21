@@ -369,3 +369,21 @@
   - Xây dựng hoàn chỉnh cây Provider trong `MyApp` với `MultiRepositoryProvider` (Chat, Matches, Home, Profile).
   - Khởi tạo và cung cấp toàn bộ trạng thái BLoC (`AuthBloc`, `MainBloc`, `ChatBloc`, `SplashBloc`...) qua `MultiBlocProvider` ở cấp độ cao nhất.
   - Liên kết chặt chẽ hệ thống định tuyến (`AppRouter.onGenerateRoute`) với `easy_localization` để đảm bảo luồng dữ liệu và ngôn ngữ được đồng nhất toàn app.
+
+## 📅 Ngày: 28/04/2026
+
+### 🎯 Trọng tâm: Chuẩn hóa Tài liệu Dự án, Hệ thống AI Prompt & Tích hợp CI/CD
+
+#### 1. Tài liệu & Quy trình làm việc (Documentation & Workflow)
+- **Tài liệu Tổng quan (`README.md`)**: Hoàn thiện tài liệu dự án, định nghĩa rõ ràng tầm nhìn (Vision), tính năng cốt lõi (Emotional AI Chat, Matching Logic), kiến trúc hệ thống và luồng dữ liệu. Định vị FateLink là "Hệ sinh thái kết nối cảm xúc bằng AI".
+- **Git Workflow (`CODEWITHTEAM.md`)**: Thiết lập luồng làm việc nhóm (Team 2 người) chuẩn mực trên VSCode. Thống nhất quy tắc phân nhánh (`feature/*`), tạo Pull Request để review code và cấm commit trực tiếp vào `main`.
+- **Tài liệu CI/CD (`GUIDE_DEPLOY_TO_FLY_AND_ADD_TOKEN_FLY_TO_GITHUB.md`)**: Xây dựng hướng dẫn chi tiết các bước deploy NestJS backend lên Fly.io và thiết lập GitHub Actions tự động hóa quá trình deploy khi code được push lên nhánh `main`.
+
+#### 2. Nâng cấp Core AI (Prompt Engineering)
+- **Định hình Tính cách AI (`SYSTEMREADME.md` & `PROMPT.md`)**:
+  - Cấu trúc lại toàn bộ *System Prompt* cho FateLink AI (Faye).
+  - Thiết lập rõ quy trình hội thoại: Ưu tiên lắng nghe, đọc vị ngầm, xác nhận ngầm, sau đó mới chuyển hướng sang ghép cặp (Matchmaking) một cách tự nhiên.
+  - Ràng buộc Output AI: Tuyệt đối không dùng list/gạch đầu dòng, giữ văn phong như người thật (ngắn gọn, tinh tế). Bắt buộc phải trả về chuẩn JSON với các thông số: `reply`, `latestEmotion`, `detected_emotions`, `detected_personality`, `is_ready_to_match`, `confidence`.
+
+#### 3. Backend & Localization (NestJS)
+- **Đa ngôn ngữ cho Thời gian (Time Processing)**: Tích hợp và cấu hình thành công các gói ngôn ngữ địa phương (`locales`) cho thư viện `dayjs` trong `fatelink-be`. Cụ thể đã thêm Tiếng Việt (`vi.js`), Tiếng Bồ Đào Nha (`pt.js`, `pt-br.js`) vào hệ thống để hỗ trợ định dạng, hiển thị ngày giờ chuẩn xác theo đa vùng miền.
