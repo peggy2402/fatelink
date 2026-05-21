@@ -15,3 +15,5 @@ class ChangeTabEvent extends MainEvent {
   @override
   List<Object> get props => [tabIndex];
 }
+
+class PopTabEvent extends MainEvent {}

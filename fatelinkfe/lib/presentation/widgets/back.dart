@@ -17,7 +17,8 @@ class CustomBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onPressed ?? () => Navigator.of(context).pop(),
+      behavior: HitTestBehavior.opaque,
+      onTap: onPressed ?? () => Navigator.maybePop(context),
       child: Container(
         width: 44,
         height: 44,
