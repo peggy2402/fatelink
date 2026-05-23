@@ -10,7 +10,7 @@ import '../../logic/blocs/auth/auth_event.dart';
 import '../widgets/back.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
-
+import '../../presentation/widgets/menu.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -19,6 +19,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: AppMenuDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -97,8 +101,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       elevation: 0,
       backgroundColor: Colors.white.withOpacity(0.8),
       centerTitle: true,
-      title: const Text(
-        'Thẻ Tâm Hồn',
+      title: Text(
+        'MyProfile'.tr(),
         style: TextStyle(
           color: Color(0xFF1E293B), // Slate-800
           fontWeight: FontWeight.bold,
@@ -128,7 +132,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: GestureDetector(
-        onTap: () {}, // Thêm hành động mở menu vào đây sau
+        onTap: () {
+          _scaffoldKey.currentState?.openEndDrawer();
+        },
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.5),
