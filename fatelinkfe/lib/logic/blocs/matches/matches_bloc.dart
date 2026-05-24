@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../presentation/screens/matches_screen.dart'; // Lấy MatchedUser
+import '../../../presentation/screens/match/matches_screen.dart'; // Lấy MatchedUser
 import 'matches_event.dart';
 import 'matches_state.dart';
 import '../../../data/repositories/matches_repository.dart';

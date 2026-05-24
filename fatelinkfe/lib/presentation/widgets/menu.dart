@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../screens/settings/settings_detail_screen.dart';
 
 class AppMenuDrawer extends StatefulWidget {
   const AppMenuDrawer({super.key});
@@ -61,7 +62,13 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
                         _buildMenuListItem(
                           icon: Icons.settings_outlined,
                           title: 'Settings'.tr(),
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.pop(context); // Đóng drawer trước khi chuyển trang
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SettingsDetailScreen()),
+                            );
+                          },
                         ),
                         _buildMenuListItem(
                           icon: Icons.language_outlined,

@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
 import 'package:fatelinkfe/presentation/widgets/shimmer_user_card.dart';
-import 'package:fatelinkfe/presentation/screens/user_detail_screen.dart';
+import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';

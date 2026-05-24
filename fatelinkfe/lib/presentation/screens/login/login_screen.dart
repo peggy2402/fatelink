@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../../logic/blocs/auth/auth_bloc.dart';
-import '../../logic/blocs/auth/auth_event.dart';
-import '../../logic/blocs/auth/auth_state.dart';
-import '../../core/constants/app_colors.dart';
+import '../../../logic/blocs/auth/auth_bloc.dart';
+import '../../../logic/blocs/auth/auth_event.dart';
+import '../../../logic/blocs/auth/auth_state.dart';
+import '../../../core/constants/app_colors.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/utils/toast_utils.dart';
+import '../../../core/utils/toast_utils.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 class LoginScreen extends StatefulWidget {

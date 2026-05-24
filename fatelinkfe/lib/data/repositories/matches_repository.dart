@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/utils/constants.dart';
-import '../../presentation/screens/matches_screen.dart'; // Nơi chứa model MatchedUser
+import '../../presentation/screens/match/matches_screen.dart'; // Nơi chứa model MatchedUser
 
 class MatchesRepository {
   final _secureStorage = const FlutterSecureStorage();

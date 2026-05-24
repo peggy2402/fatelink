@@ -31,7 +31,6 @@ class ChatScreen extends StatefulWidget {
 class ChatScreenState extends State<ChatScreen> {
   ChatView _currentView = ChatView.list;
   final _scrollController = ScrollController();
-  final _chatController = TextEditingController();
   int _previousMessageCount = 0;
   bool _isNearBottom = true;
   int _unreadCount = 0;
@@ -63,15 +62,7 @@ class ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
-    _chatController.dispose();
     super.dispose();
-  }
-
-  // Đổi thành public để MainScreen có thể gọi qua GlobalKey
-  void sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-    context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
-    _chatController.clear();
   }
 
   void _switchToRoomView() {

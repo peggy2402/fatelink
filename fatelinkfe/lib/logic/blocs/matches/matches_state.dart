@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../presentation/screens/matches_screen.dart'; // Nơi chứa class MatchedUser
+import '../../../presentation/screens/match/matches_screen.dart'; // Nơi chứa class MatchedUser
 
 abstract class MatchesState extends Equatable {
   const MatchesState();

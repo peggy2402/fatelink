@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../presentation/screens/match_chat_screen.dart';
-import '../../presentation/screens/onboarding_screen.dart';
-import '../../presentation/screens/login_screen.dart';
+import '../../presentation/screens/match/match_chat_screen.dart';
+import '../../presentation/screens/onboarding/onboarding_screen.dart';
+import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/main_screen.dart';
 
 class AppRouter {

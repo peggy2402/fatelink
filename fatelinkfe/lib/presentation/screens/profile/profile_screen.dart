@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
-import '../../logic/blocs/profile/profile_bloc.dart';
-import '../../logic/blocs/profile/profile_event.dart';
-import '../../logic/blocs/profile/profile_state.dart';
-import '../../logic/blocs/auth/auth_bloc.dart';
-import '../../logic/blocs/auth/auth_event.dart';
-import '../widgets/back.dart';
-import '../../logic/blocs/main/main_bloc.dart';
-import '../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
-import '../../presentation/widgets/menu.dart';
+import '../../../logic/blocs/profile/profile_bloc.dart';
+import '../../../logic/blocs/profile/profile_event.dart';
+import '../../../logic/blocs/profile/profile_state.dart';
+import '../../../logic/blocs/auth/auth_bloc.dart';
+import '../../../logic/blocs/auth/auth_event.dart';
+import '../../widgets/back.dart';
+import '../../../logic/blocs/main/main_bloc.dart';
+import '../../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
+import '../../widgets/menu.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
