@@ -3,20 +3,21 @@ import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fatelinkfe/presentation/screens/home_screen.dart';
-import 'package:fatelinkfe/presentation/screens/chat_screen.dart';
-import 'package:fatelinkfe/presentation/screens/explore_screen.dart';
-import 'package:fatelinkfe/presentation/screens/profile_screen.dart';
+import 'package:fatelinkfe/presentation/screens/home/home_screen.dart';
+import 'package:fatelinkfe/presentation/screens/chat/chat_screen.dart';
+import 'package:fatelinkfe/presentation/screens/explore/explore_screen.dart';
+import 'package:fatelinkfe/presentation/screens/profile/profile_screen.dart';
 import 'package:fatelinkfe/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
-import 'package:fatelinkfe/presentation/screens/chat_screen.dart' show ChatView; // Import enum
 import 'package:easy_localization/easy_localization.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
 import '../../logic/blocs/main/main_state.dart';
 import '../../logic/blocs/auth/auth_bloc.dart';
 import '../../logic/blocs/auth/auth_state.dart';
+import '../../logic/blocs/chat/chat_bloc.dart';
+import '../../logic/blocs/chat/chat_event.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -33,8 +34,6 @@ class _MainScreenState extends State<MainScreen> {
   String? _avatarUrl; // Biến lưu URL ảnh đại diện
   ChatView _chatView = ChatView.list; // State để biết đang ở list hay room
 
-  final GlobalKey<ChatScreenState> _chatScreenKey =
-      GlobalKey<ChatScreenState>();
   final TextEditingController _chatController = TextEditingController();
   bool _isPopupOpen = false;
 
@@ -110,7 +109,6 @@ class _MainScreenState extends State<MainScreen> {
             ),
             const ExploreScreen(),
             ChatScreen(
-              key: _chatScreenKey,
               onBack: () {
                 context.read<MainBloc>().add(const ChangeTabEvent(0));
                 setState(() => _isPopupOpen = false); // Đóng popup nếu đang mở
@@ -202,7 +200,7 @@ class _MainScreenState extends State<MainScreen> {
                             controller: _chatController,
                             onSubmitted: (text) {
                               if (text.trim().isNotEmpty) {
-                                _chatScreenKey.currentState?.sendMessage(text);
+                                context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
                                 _chatController.clear();
                               }
                             },

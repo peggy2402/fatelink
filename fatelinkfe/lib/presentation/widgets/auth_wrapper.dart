@@ -6,8 +6,8 @@ import '../../logic/blocs/auth/auth_state.dart';
 import '../../logic/blocs/auth/auth_event.dart';
 
 // Import các màn hình của bạn
-import '../screens/splash_screen.dart';
-import '../screens/login_screen.dart'; // Đảm bảo bạn có import đúng
+import '../screens/splash/splash_screen.dart';
+import '../screens/login/login_screen.dart'; // Đảm bảo bạn có import đúng
 import '../screens/main_screen.dart'; // Đảm bảo bạn có import đúng
 
 class AuthWrapper extends StatefulWidget {

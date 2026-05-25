@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fatelinkfe/core/constants/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fatelinkfe/presentation/screens/login_screen.dart';
+import 'package:fatelinkfe/presentation/screens/login/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});

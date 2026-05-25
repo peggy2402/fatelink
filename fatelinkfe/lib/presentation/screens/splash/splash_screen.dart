@@ -1,12 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../logic/blocs/splash/splash_bloc.dart';
-import '../../logic/blocs/splash/splash_event.dart';
-import '../../logic/blocs/splash/splash_state.dart';
-import 'login_screen.dart';
-import 'main_screen.dart';
-import 'onboarding_screen.dart';
+import '../../../logic/blocs/splash/splash_bloc.dart';
+import '../../../logic/blocs/splash/splash_event.dart';
+import '../../../logic/blocs/splash/splash_state.dart';
+import '../login/login_screen.dart';
+import '../main_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

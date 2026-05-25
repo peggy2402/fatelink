@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui';
-import '../../logic/blocs/profile/profile_bloc.dart';
-import '../../logic/blocs/profile/profile_event.dart';
-import '../../logic/blocs/profile/profile_state.dart';
-import '../../logic/blocs/auth/auth_bloc.dart';
-import '../../logic/blocs/auth/auth_event.dart';
-import '../widgets/back.dart';
-import '../../logic/blocs/main/main_bloc.dart';
-import '../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
-import '../../presentation/widgets/menu.dart';
+import '../../../logic/blocs/profile/profile_bloc.dart';
+import '../../../logic/blocs/profile/profile_event.dart';
+import '../../../logic/blocs/profile/profile_state.dart';
+import '../../../logic/blocs/auth/auth_bloc.dart';
+import '../../../logic/blocs/auth/auth_event.dart';
+import '../../widgets/back.dart';
+import '../../../logic/blocs/main/main_bloc.dart';
+import '../../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
+import '../../widgets/menu.dart';
+import 'edit_profile_screen.dart'; // Import trang chỉnh sửa hồ sơ
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -361,7 +362,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditProfileScreen(),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E293B), // Slate-800
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -369,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               elevation: 0,
             ),
             icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
-            label: const Text('Viết lại tâm trạng', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+            label: const Text('Chỉnh sửa hồ sơ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
           ),
         ),
         const SizedBox(width: 12),

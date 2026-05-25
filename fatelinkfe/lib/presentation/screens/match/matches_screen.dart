@@ -3,10 +3,10 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:fatelinkfe/presentation/screens/match_chat_screen.dart'; // Màn hình chat mới
-import '../../logic/blocs/matches/matches_bloc.dart';
-import '../../logic/blocs/matches/matches_event.dart';
-import '../../logic/blocs/matches/matches_state.dart';
+import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart'; // Màn hình chat mới
+import '../../../logic/blocs/matches/matches_bloc.dart';
+import '../../../logic/blocs/matches/matches_event.dart';
+import '../../../logic/blocs/matches/matches_state.dart';
 
 class MatchedUser {
   final String id;
