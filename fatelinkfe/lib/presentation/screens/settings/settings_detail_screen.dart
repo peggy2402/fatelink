@@ -4,6 +4,14 @@ import '../../widgets/back.dart';
 import '../../widgets/settings_interface_bottom_sheet.dart';
 import '../../widgets/settings_match_bottom_sheet.dart';
 import '../../widgets/settings_distance_bottom_sheet.dart';
+import 'settings_list_block_screen.dart'; // Import trang danh sách chặn
+import 'settings_history_login_screen.dart'; // Import trang lịch sử đăng nhập
+import 'settings_manage_device_screen.dart'; // Import trang quản lý thiết bị
+import 'settings_profile_cancel_screen.dart'; // Import trang hủy tài khoản
+import 'settings_link_screen.dart'; // Import trang liên kết
+import 'settings_about_us_screen.dart'; // Import trang Về chúng tôi
+import 'settings_switch_account_screen.dart'; // Import trang Chuyển đổi tài khoản
+import '../../../core/utils/toast_utils.dart'; // Import ToastUtil
 
 class SettingsDetailScreen extends StatefulWidget {
   const SettingsDetailScreen({super.key});
@@ -34,6 +42,9 @@ class _SettingsDetailScreenState extends State<SettingsDetailScreen> {
   bool _showProfile = true;
   bool _activeStatus = true;
   String _showDistance = 'Hiện khoảng cách chính xác';
+  
+  // State lưu dung lượng bộ nhớ cache
+  String _cacheSize = '124 MB';
 
   void _openInterfaceBottomSheet() async {
     final result = await showModalBottomSheet<String>(
@@ -63,6 +74,43 @@ class _SettingsDetailScreenState extends State<SettingsDetailScreen> {
       builder: (context) => SettingsDistanceBottomSheet(currentValue: _showDistance),
     );
     if (result != null && mounted) setState(() => _showDistance = result);
+  }
+
+  // Hàm hiển thị Popup (Dialog) xác nhận xóa cache
+  void _showClearCacheDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Xóa bộ nhớ cache', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          content: const Text(
+            'Bạn có chắc chắn muốn xóa toàn bộ bộ nhớ cache không? Việc này sẽ giải phóng dung lượng nhưng có thể làm ứng dụng tải lại dữ liệu lâu hơn ở lần tiếp theo.',
+            style: TextStyle(color: Color(0xFF64748B)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy bỏ', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Đóng popup
+                setState(() {
+                  _cacheSize = '0 MB'; // Cập nhật dung lượng về 0
+                });
+                ToastUtil.showSuccess(context, 'Đã xóa bộ nhớ cache thành công');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE11D48), // Màu đỏ cảnh báo
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Xác nhận', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -140,7 +188,14 @@ class _SettingsDetailScreenState extends State<SettingsDetailScreen> {
           _buildActionTile(
             title: 'Danh sách chặn',
             icon: Icons.block_rounded,
-            onTap: () {}, // Mở trang danh sách chặn
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsListBlockScreen(),
+                ),
+              );
+            },
           ),
           _buildSwitchTile(
             title: 'Lọc nội dung nhạy cảm',
@@ -191,41 +246,83 @@ class _SettingsDetailScreenState extends State<SettingsDetailScreen> {
           _buildActionTile(
             title: 'Lịch sử đăng nhập',
             icon: Icons.history_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsHistoryLoginScreen(),
+                ),
+              );
+            },
           ),
           _buildActionTile(
             title: 'Quản lý thiết bị',
             icon: Icons.devices_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsManageDeviceScreen(),
+                ),
+              );
+            },
           ),
           _buildActionTile(
             title: 'Hủy tài khoản',
             icon: Icons.delete_forever_rounded,
             isDestructive: true,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsProfileCancelScreen(),
+                ),
+              );
+            },
           ),
 
           _buildSectionHeader('Khác'),
           _buildActionTile(
             title: 'Liên kết',
             icon: Icons.link_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsLinkScreen(),
+                ),
+              );
+            },
           ),
           _buildActionTile(
             title: 'Xóa bộ nhớ cache',
             icon: Icons.cleaning_services_rounded,
-            trailingText: '124 MB', // Giả lập hiển thị MB bộ nhớ cache
-            onTap: () {},
+            trailingText: _cacheSize, // Hiển thị state dung lượng cache
+            onTap: _showClearCacheDialog,
           ),
           _buildActionTile(
             title: 'Về chúng tôi',
             icon: Icons.info_outline_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsAboutUsScreen(),
+                ),
+              );
+            },
           ),
           _buildActionTile(
             title: 'Chuyển đổi tài khoản',
             icon: Icons.swap_horiz_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsSwitchAccountScreen(),
+                ),
+              );
+            },
           ),
           
           const SizedBox(height: 40), // Spacing ở cuối
