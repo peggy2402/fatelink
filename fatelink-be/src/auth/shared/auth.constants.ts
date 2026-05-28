@@ -1,0 +1,12 @@
+export const AUTH_ENV = {
+  GOOGLE_CLIENT_ID: 'GOOGLE_CLIENT_ID',
+  JWT_SECRET: 'JWT_SECRET',
+  REFRESH_JWT_SECRET: 'REFRESH_JWT_SECRET',
+  ACCESS_TOKEN_EXPIRES_IN: 'ACCESS_TOKEN_EXPIRES_IN',
+  REFRESH_TOKEN_EXPIRES_IN: 'REFRESH_TOKEN_EXPIRES_IN',
+} as const;
+
+export type AuthConfig = Record<
+  (typeof AUTH_ENV)[keyof typeof AUTH_ENV],
+  string
+>;

@@ -2,12 +2,12 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
-import { CreateUserDto } from '../users/dto/create-user.dto';
-import { UsersService } from '../users/users.service';
-import { AUTH_ENV } from './shared/auth.constants';
+import { CreateUserDto } from '../../users/dto/create-user.dto';
+import { UsersService } from '../../users/users.service';
+import { AUTH_ENV } from '../shared/auth.constants';
 
 @Injectable()
-export class AuthService {
+export class LegacyAuthService {
   private googleClient: OAuth2Client;
 
   constructor(
