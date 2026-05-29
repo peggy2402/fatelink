@@ -16,6 +16,7 @@ import { SecurityService } from './v2/security/security.service';
 import { AuthTokenService } from './v2/services/auth-token.service';
 import { AuthUserService } from './v2/services/auth-user.service';
 import { GoogleTokenService } from './v2/services/google-token.service';
+import { RefreshTokenStoreService } from './v2/services/refresh-token-store.service';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { GoogleTokenService } from './v2/services/google-token.service';
     AuthTokenService,
     AuthUserService,
     GoogleTokenService,
+    RefreshTokenStoreService,
   ],
   exports: [JwtModule, AuthService, JwtAuthGuard], // Export để các module khác có thể sử dụng JwtService
 })

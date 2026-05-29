@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength } from 'class-validator';
+import { IsEnum, IsString, MinLength } from 'class-validator';
+import { DeviceType } from './device-type.enum';
 
 export class GoogleAuthTokenDto {
   @ApiProperty({
@@ -9,4 +10,13 @@ export class GoogleAuthTokenDto {
   @IsString()
   @MinLength(1)
   readonly token!: string;
+
+  @ApiProperty({
+    enum: DeviceType,
+    example: DeviceType.MOBILE,
+    description:
+      'Loại thiết bị đang đăng nhập. Mỗi user chỉ có tối đa 1 session hoạt động cho mỗi loại thiết bị.',
+  })
+  @IsEnum(DeviceType)
+  readonly deviceType!: DeviceType;
 }

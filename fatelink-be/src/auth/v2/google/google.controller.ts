@@ -14,6 +14,6 @@ export class GoogleController {
   @Post()
   @ApiV2GoogleAuthenticate()
   async authenticate(@Body() body: GoogleAuthTokenDto) {
-    return this.googleService.authenticate(body.token);
+    return this.googleService.authenticate(body.token, body.deviceType);
   }
 }

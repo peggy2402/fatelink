@@ -1,26 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
-import { StringValue } from 'ms';
 import { AppError } from '../../../common/errors/app-error';
 import { APP_ERROR_CODES } from '../../../common/errors/app-error-codes';
 import { AppLoggerService } from '../../../common/logger/logger.service';
 import { UserDocument } from '../../../users/schemas/user.schema';
 import { UsersService } from '../../../users/users.service';
-import { AUTH_ENV } from '../../shared/auth.constants';
-
-type RefreshTokenPayload = {
-  sub: string;
-  email: string;
-  tokenVersion: number;
-  refreshTokenVersion: number;
-  jti: string;
-  type: 'refresh';
-};
+import { DeviceType } from '../dto/device-type.enum';
+import {
+  RefreshTokenStoreService,
+  V2AuthUserSnapshot,
+} from './refresh-token-store.service';
 
 type IssuedTokenPair = {
-  user: UserDocument;
+  user: V2AuthUserSnapshot;
   accessToken: string;
   refreshToken: string;
 };
@@ -28,161 +20,85 @@ type IssuedTokenPair = {
 @Injectable()
 export class AuthTokenService {
   constructor(
-    private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly usersService: UsersService,
     private readonly logger: AppLoggerService,
+    private readonly usersService: UsersService,
+    private readonly refreshTokenStoreService: RefreshTokenStoreService,
   ) {}
 
-  issueAccessToken(user: UserDocument): string {
+  issueAccessToken(user: V2AuthUserSnapshot, deviceType: DeviceType): string {
     const payload = {
       sub: user._id,
       email: user.email,
       tokenVersion: user.tokenVersion || 0,
+      deviceType,
     };
 
     return this.jwtService.sign(payload, {
-      expiresIn: this.configService.getOrThrow<StringValue>(
-        AUTH_ENV.ACCESS_TOKEN_EXPIRES_IN,
-      ),
+      expiresIn: '5m',
     });
   }
 
-  private buildRefreshTokenPayload(
-    user: UserDocument,
-    refreshTokenId: string,
-  ): RefreshTokenPayload {
+  private toAuthUserSnapshot(user: UserDocument): V2AuthUserSnapshot {
     return {
-      sub: user.id,
+      _id: user.id,
       email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      googleId: user.googleId,
+      latestEmotion: user.latestEmotion,
+      personality: user.personality,
+      bio: user.bio,
+      fcmToken: user.fcmToken,
       tokenVersion: user.tokenVersion ?? 0,
       refreshTokenVersion: user.refreshTokenVersion ?? 0,
-      jti: refreshTokenId,
-      type: 'refresh',
+      currentRefreshTokenId: user.currentRefreshTokenId ?? '',
     };
   }
 
-  async issueTokenPair(user: UserDocument): Promise<IssuedTokenPair> {
-    const refreshTokenId = randomUUID();
-    const rotatedUser: UserDocument | null =
-      await this.usersService.rotateRefreshToken(user.id, refreshTokenId);
-
-    if (!rotatedUser) {
-      throw new AppError(
-        APP_ERROR_CODES.AUTH_SESSION_INIT_FAILED,
-        undefined,
-        { userId: user.id },
-        {
-          domain: 'auth',
-          layer: 'repository',
-          kind: 'infrastructure',
-          source: 'AuthTokenService.issueTokenPair',
-          provider: 'mongodb',
-          retryable: true,
-          entityType: 'user',
-          entityId: user.id,
-          userId: user.id,
-          actorId: user.id,
-        },
-      );
-    }
-
-    const refreshPayload = this.buildRefreshTokenPayload(
-      rotatedUser,
-      refreshTokenId,
+  async issueTokenPair(
+    user: UserDocument,
+    deviceType: DeviceType,
+  ): Promise<IssuedTokenPair> {
+    const authUser = this.toAuthUserSnapshot(user);
+    const refreshToken = await this.refreshTokenStoreService.issue(
+      authUser,
+      deviceType,
     );
 
-    const refreshToken = this.jwtService.sign(refreshPayload, {
-      secret: this.configService.getOrThrow<string>(
-        AUTH_ENV.REFRESH_JWT_SECRET,
-      ),
-      expiresIn: this.configService.getOrThrow<StringValue>(
-        AUTH_ENV.REFRESH_TOKEN_EXPIRES_IN,
-      ),
-    });
-
     return {
-      user: rotatedUser,
-      accessToken: this.issueAccessToken(rotatedUser),
+      user: authUser,
+      accessToken: this.issueAccessToken(authUser, deviceType),
       refreshToken,
     };
   }
 
   async refreshTokenPair(refreshToken: string): Promise<IssuedTokenPair> {
     try {
-      const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(
-        refreshToken,
-        {
-          secret: this.configService.getOrThrow<string>(
-            AUTH_ENV.REFRESH_JWT_SECRET,
-          ),
-        },
-      );
-
-      if (payload.type !== 'refresh') {
-        throw new AppError(
-          APP_ERROR_CODES.AUTH_REFRESH_TOKEN_INVALID_TYPE,
-          undefined,
-          { tokenType: payload.type },
-          {
-            domain: 'auth',
-            layer: 'service',
-            kind: 'business',
-            source: 'AuthTokenService.refreshTokenPair',
-            provider: 'jwt',
-            retryable: false,
-          },
-        );
-      }
-
-      const user = await this.usersService.findById(payload.sub);
-      if (!user) {
-        throw new AppError(
-          APP_ERROR_CODES.AUTH_REFRESH_USER_NOT_FOUND,
-          undefined,
-          { userId: payload.sub },
-          {
-            domain: 'auth',
-            layer: 'repository',
-            kind: 'infrastructure',
-            source: 'AuthTokenService.refreshTokenPair',
-            provider: 'mongodb',
-            retryable: false,
-            entityType: 'user',
-            entityId: payload.sub,
-            userId: payload.sub,
-          },
-        );
-      }
-
-      if (
-        user.tokenVersion !== payload.tokenVersion ||
-        user.refreshTokenVersion !== payload.refreshTokenVersion ||
-        user.currentRefreshTokenId !== payload.jti
-      ) {
+      const rotated = await this.refreshTokenStoreService.rotate(refreshToken);
+      if (!rotated) {
         throw new AppError(
           APP_ERROR_CODES.AUTH_REFRESH_TOKEN_REVOKED,
           undefined,
           {
-            userId: user.id,
-            tokenVersion: payload.tokenVersion,
-            refreshTokenVersion: payload.refreshTokenVersion,
-          },
-          {
             domain: 'auth',
             layer: 'service',
             kind: 'business',
             source: 'AuthTokenService.refreshTokenPair',
-            provider: 'jwt',
+            provider: 'redis',
             retryable: false,
-            entityType: 'user',
-            entityId: user.id,
-            userId: user.id,
           },
         );
       }
 
-      return this.issueTokenPair(user);
+      return {
+        user: rotated.session.user,
+        accessToken: this.issueAccessToken(
+          rotated.session.user,
+          rotated.session.deviceType,
+        ),
+        refreshToken: rotated.refreshToken,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -197,7 +113,7 @@ export class AuthTokenService {
           layer: 'service',
           kind: 'integration',
           source: 'AuthTokenService.refreshTokenPair',
-          provider: 'jwt',
+          provider: 'redis',
           retryable: false,
         },
         error,
@@ -205,7 +121,11 @@ export class AuthTokenService {
     }
   }
 
-  async revokeAllTokens(userId: string): Promise<{ message: string }> {
+  async revokeAllTokens(
+    userId: string,
+    deviceType?: DeviceType,
+  ): Promise<{ message: string }> {
+    await this.refreshTokenStoreService.revokeByUserId(userId, deviceType);
     await this.usersService.revokeAuthSessions(userId);
     this.logger.infoEvent('auth_sessions_revoked', {
       message: 'All auth sessions revoked',

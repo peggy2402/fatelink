@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency: fly-deploy
 
     defaults:
       run:
@@ -17,6 +18,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate Redis secret
+        run: |
+          if [ -z "${{ secrets.FLY_REDIS_URL }}" ]; then
+            echo "Missing GitHub Actions secret: FLY_REDIS_URL"
+            exit 1
+          fi
+
+      - name: Sync Fly runtime secrets
+        run: |
+          flyctl secrets set REDIS_URL="${{ secrets.FLY_REDIS_URL }}" --app fatelink-be
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - run: flyctl deploy --remote-only
         env:

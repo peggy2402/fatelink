@@ -18,6 +18,7 @@ import {
 type AuthenticatedRequest = Request & {
   user: {
     sub: string;
+    deviceType?: import('../dto/device-type.enum').DeviceType;
   };
 };
 
@@ -30,7 +31,7 @@ export class SecurityController {
   @UseGuards(JwtAuthGuard)
   @ApiV2Logout()
   async logout(@NestRequest() req: AuthenticatedRequest) {
-    return this.securityService.logout(req.user.sub);
+    return this.securityService.logout(req.user.sub, req.user.deviceType);
   }
 
   @Post('refresh')
