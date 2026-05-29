@@ -31,6 +31,20 @@
 $ npm install
 ```
 
+## Local Redis for auth/session development
+
+Run Redis locally with Docker Compose:
+
+```bash
+$ docker compose -f docker-compose.dev.yml up -d
+```
+
+Use this env value in local development:
+
+```bash
+REDIS_URL=redis://localhost:6379
+```
+
 ## Compile and run the project
 
 ```bash

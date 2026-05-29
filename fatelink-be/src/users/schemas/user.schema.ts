@@ -44,7 +44,12 @@ export class User {
 
   @Prop({ default: 0 })
   tokenVersion!: number; // Dùng để vô hiệu hoá JWT khi logout
-  
+
+  @Prop({ default: 0 })
+  refreshTokenVersion!: number;
+
+  @Prop({ default: '' })
+  currentRefreshTokenId!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
