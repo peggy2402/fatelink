@@ -22,21 +22,54 @@ export class GoogleTokenService {
   }
 
   async verifyIdToken(token: string): Promise<GoogleProfile> {
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken: token,
-      audience: this.googleClientId,
-    });
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: token,
+        audience: this.googleClientId,
+      });
 
-    const payload = ticket.getPayload();
-    if (!payload?.email) {
-      throw new AppError(APP_ERROR_CODES.AUTH_GOOGLE_EMAIL_MISSING);
+      const payload = ticket.getPayload();
+      if (!payload?.email) {
+        throw new AppError(
+          APP_ERROR_CODES.AUTH_GOOGLE_EMAIL_MISSING,
+          undefined,
+          undefined,
+          {
+            domain: 'auth',
+            layer: 'external_api',
+            kind: 'integration',
+            source: 'GoogleTokenService.verifyIdToken',
+            provider: 'google',
+            retryable: false,
+          },
+        );
+      }
+
+      return {
+        email: payload.email,
+        name: payload.name ?? '',
+        avatar: payload.picture ?? '',
+        googleId: payload.sub,
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError(
+        APP_ERROR_CODES.AUTH_GOOGLE_TOKEN_INVALID_OR_EXPIRED,
+        undefined,
+        undefined,
+        {
+          domain: 'auth',
+          layer: 'external_api',
+          kind: 'integration',
+          source: 'GoogleTokenService.verifyIdToken',
+          provider: 'google',
+          retryable: false,
+        },
+        error,
+      );
     }
-
-    return {
-      email: payload.email,
-      name: payload.name ?? '',
-      avatar: payload.picture ?? '',
-      googleId: payload.sub,
-    };
   }
 }

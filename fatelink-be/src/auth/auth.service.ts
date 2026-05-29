@@ -34,8 +34,6 @@ export class AuthService {
         );
       }
 
-      console.log('Thông tin user từ Google:', payload);
-
       const userProfile: CreateUserDto = {
         email: payload.email,
         name: payload.name || '',
@@ -56,8 +54,7 @@ export class AuthService {
         user,
         accessToken,
       };
-    } catch (error) {
-      console.error('Lỗi xác thực Google Token:', error);
+    } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn.');
     }
   }

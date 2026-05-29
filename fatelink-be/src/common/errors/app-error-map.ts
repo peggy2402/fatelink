@@ -7,6 +7,10 @@ type AppErrorDefinition = {
 };
 
 export const APP_ERROR_MAP: Record<AppErrorCode, AppErrorDefinition> = {
+  [APP_ERROR_CODES.AUTH_GOOGLE_TOKEN_INVALID_OR_EXPIRED]: {
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Google token không hợp lệ hoặc đã hết hạn.',
+  },
   [APP_ERROR_CODES.AUTH_GOOGLE_EMAIL_MISSING]: {
     status: HttpStatus.UNAUTHORIZED,
     message: 'Không thể lấy thông tin email từ Google token.',

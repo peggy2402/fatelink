@@ -2,10 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AppLoggerService } from './common/logger/logger.service';
 declare const module: any;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(AppLoggerService));
   app.useGlobalPipes(new ValidationPipe());
   app.setGlobalPrefix('api');
   const config = new DocumentBuilder()
@@ -20,7 +22,11 @@ async function bootstrap() {
 
   // Cấu hình CORS bảo mật
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://fatelink-be.fly.dev', 'http://10.0.2.2:3000'], // Bạn có thể thêm Domain của Frontend Flutter Web vào đây
+    origin: [
+      'http://localhost:3000',
+      'https://fatelink-be.fly.dev',
+      'http://10.0.2.2:3000',
+    ], // Bạn có thể thêm Domain của Frontend Flutter Web vào đây
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

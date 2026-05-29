@@ -1,7 +1,6 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -14,10 +13,12 @@ import { AiModule } from './ai/ai.module';
 import { MessageModule } from './message/message.module';
 import { MatchmakingModule } from './matchmaking/matchmaking.module';
 import { AdminModule } from './admin/admin.module';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { LoggerModule } from './common/logger/logger.module';
+import { RequestContextMiddleware } from './common/http/request-id.middleware';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -52,10 +53,10 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
       provide: 'APP_GUARD',
       useClass: ThrottlerGuard,
     },
-    {
-      provide: APP_FILTER,
-      useClass: GlobalExceptionFilter,
-    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}

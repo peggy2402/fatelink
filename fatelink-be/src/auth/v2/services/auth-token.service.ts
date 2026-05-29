@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { StringValue } from 'ms';
 import { AppError } from '../../../common/errors/app-error';
 import { APP_ERROR_CODES } from '../../../common/errors/app-error-codes';
+import { AppLoggerService } from '../../../common/logger/logger.service';
 import { UserDocument } from '../../../users/schemas/user.schema';
 import { UsersService } from '../../../users/users.service';
 import { AUTH_ENV } from '../../shared/auth.constants';
@@ -30,6 +31,7 @@ export class AuthTokenService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   issueAccessToken(user: UserDocument): string {
@@ -66,7 +68,23 @@ export class AuthTokenService {
       await this.usersService.rotateRefreshToken(user.id, refreshTokenId);
 
     if (!rotatedUser) {
-      throw new AppError(APP_ERROR_CODES.AUTH_SESSION_INIT_FAILED);
+      throw new AppError(
+        APP_ERROR_CODES.AUTH_SESSION_INIT_FAILED,
+        undefined,
+        { userId: user.id },
+        {
+          domain: 'auth',
+          layer: 'repository',
+          kind: 'infrastructure',
+          source: 'AuthTokenService.issueTokenPair',
+          provider: 'mongodb',
+          retryable: true,
+          entityType: 'user',
+          entityId: user.id,
+          userId: user.id,
+          actorId: user.id,
+        },
+      );
     }
 
     const refreshPayload = this.buildRefreshTokenPayload(
@@ -102,12 +120,39 @@ export class AuthTokenService {
       );
 
       if (payload.type !== 'refresh') {
-        throw new AppError(APP_ERROR_CODES.AUTH_REFRESH_TOKEN_INVALID_TYPE);
+        throw new AppError(
+          APP_ERROR_CODES.AUTH_REFRESH_TOKEN_INVALID_TYPE,
+          undefined,
+          { tokenType: payload.type },
+          {
+            domain: 'auth',
+            layer: 'service',
+            kind: 'business',
+            source: 'AuthTokenService.refreshTokenPair',
+            provider: 'jwt',
+            retryable: false,
+          },
+        );
       }
 
       const user = await this.usersService.findById(payload.sub);
       if (!user) {
-        throw new AppError(APP_ERROR_CODES.AUTH_REFRESH_USER_NOT_FOUND);
+        throw new AppError(
+          APP_ERROR_CODES.AUTH_REFRESH_USER_NOT_FOUND,
+          undefined,
+          { userId: payload.sub },
+          {
+            domain: 'auth',
+            layer: 'repository',
+            kind: 'infrastructure',
+            source: 'AuthTokenService.refreshTokenPair',
+            provider: 'mongodb',
+            retryable: false,
+            entityType: 'user',
+            entityId: payload.sub,
+            userId: payload.sub,
+          },
+        );
       }
 
       if (
@@ -115,7 +160,26 @@ export class AuthTokenService {
         user.refreshTokenVersion !== payload.refreshTokenVersion ||
         user.currentRefreshTokenId !== payload.jti
       ) {
-        throw new AppError(APP_ERROR_CODES.AUTH_REFRESH_TOKEN_REVOKED);
+        throw new AppError(
+          APP_ERROR_CODES.AUTH_REFRESH_TOKEN_REVOKED,
+          undefined,
+          {
+            userId: user.id,
+            tokenVersion: payload.tokenVersion,
+            refreshTokenVersion: payload.refreshTokenVersion,
+          },
+          {
+            domain: 'auth',
+            layer: 'service',
+            kind: 'business',
+            source: 'AuthTokenService.refreshTokenPair',
+            provider: 'jwt',
+            retryable: false,
+            entityType: 'user',
+            entityId: user.id,
+            userId: user.id,
+          },
+        );
       }
 
       return this.issueTokenPair(user);
@@ -124,12 +188,32 @@ export class AuthTokenService {
         throw error;
       }
 
-      throw new AppError(APP_ERROR_CODES.AUTH_REFRESH_TOKEN_INVALID_OR_EXPIRED);
+      throw new AppError(
+        APP_ERROR_CODES.AUTH_REFRESH_TOKEN_INVALID_OR_EXPIRED,
+        undefined,
+        undefined,
+        {
+          domain: 'auth',
+          layer: 'service',
+          kind: 'integration',
+          source: 'AuthTokenService.refreshTokenPair',
+          provider: 'jwt',
+          retryable: false,
+        },
+        error,
+      );
     }
   }
 
   async revokeAllTokens(userId: string): Promise<{ message: string }> {
     await this.usersService.revokeAuthSessions(userId);
+    this.logger.infoEvent('auth_sessions_revoked', {
+      message: 'All auth sessions revoked',
+      user_id: userId,
+      actor_id: userId,
+      entity_type: 'user',
+      entity_id: userId,
+    });
     return { message: 'Đăng xuất thành công, token đã bị thu hồi.' };
   }
 }
