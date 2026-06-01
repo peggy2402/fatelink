@@ -10,6 +10,12 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "baseUrl": "./",
+    "paths": {
+      "@composition/*": ["src/composition/*"],
+      "@contexts/*": ["src/contexts/*"],
+      "@shared/*": ["src/shared/*"]
+    },
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",

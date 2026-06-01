@@ -1,0 +1,15 @@
+export const ADMIN_APPLICATION_TOKENS = {
+  banUser: 'application.admin.ban-user',
+  listUsers: 'application.admin.list-users',
+  login: 'application.admin.login',
+  testAiChat: 'application.admin.test-ai-chat',
+  createAiModel: 'application.admin.create-ai-model',
+  deleteAiModel: 'application.admin.delete-ai-model',
+  getAdminLogFile: 'application.admin.get-admin-log-file',
+  getAiModels: 'application.admin.get-ai-models',
+  getSystemConfig: 'application.admin.get-system-config',
+  reorderAiModels: 'application.admin.reorder-ai-models',
+  saveAdminLog: 'application.admin.save-admin-log',
+  updateAiModel: 'application.admin.update-ai-model',
+  updateSystemConfig: 'application.admin.update-system-config',
+} as const;
