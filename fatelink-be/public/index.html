@@ -215,6 +215,7 @@
                                     <option value="OpenAI">OpenAI / Groq</option>
                                     <option value="HuggingFace">HuggingFace</option>
                                     <option value="LlamaLocal">Llama (Local)</option>
+                                    <option value="Claude">Claude (Anthropic)</option>
                                 </select>
                                 <select id="modelFilter" onchange="filterModels()" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                                     <option value="all">Trạng thái (Tất cả)</option>
@@ -325,6 +326,7 @@
                         <option value="OpenAI">OpenAI / Groq</option>
                         <option value="HuggingFace">HuggingFace</option>
                         <option value="LlamaLocal">Llama (Local)</option>
+                        <option value="Claude">Claude (Anthropic)</option>
                     </select>
                 </div>
                 <div>
@@ -738,10 +740,13 @@
         modelForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('modelIdField').value;
+            const existingModel = allModelsData.find(m => m._id === id);
             const dto = {
                 displayName: document.getElementById('displayName').value,
                 providerName: document.getElementById('providerName').value,
                 modelId: document.getElementById('modelIdentifier').value,
+                isEnabled: true,
+                priority: existingModel && existingModel.priority !== undefined ? existingModel.priority : 0
             };
 
             const url = id ? `${API_URL}/admin/models/${id}` : `${API_URL}/admin/models`;
@@ -758,6 +763,11 @@
                     addTerminalLog(`Đã ${id ? 'cập nhật' : 'thêm mới'} Model <b class="text-white">${dto.displayName}</b> (${dto.modelId}) của nhà cung cấp ${dto.providerName}.`, 'SUCCESS');
                     hideModelModal();
                     loadAiModels();
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    let errMsg = errData.message || 'Dữ liệu không hợp lệ hoặc Model ID đã tồn tại!';
+                    if (Array.isArray(errMsg)) errMsg = errMsg.join(', ');
+                    showToast(`Lỗi: ${errMsg}`, 'error');
                 }
             } catch (err) {
                 showToast('Lỗi thực thi', 'error');
