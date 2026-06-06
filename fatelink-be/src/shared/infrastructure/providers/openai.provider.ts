@@ -10,6 +10,7 @@ export class OpenAiProvider implements IAiProvider {
   readonly providerName = 'OpenAI';
   private readonly client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_BASE_URL,
   });
 
   async generateContent(
