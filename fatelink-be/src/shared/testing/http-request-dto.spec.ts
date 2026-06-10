@@ -1,12 +1,15 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { GoogleLoginDto } from '@contexts/auth/presentation/http/dtos/auth.request.dto';
+import { LoginWithGoogleDto } from '@contexts/auth/presentation/http/dtos/auth.request.dto';
 import { SendAiMessageDto } from '@contexts/chat/presentation/http/dtos/chat-ai.request.dto';
 import { UpdateFcmTokenDto } from '@contexts/users/presentation/http/dtos/users.request.dto';
 
 describe('HTTP request DTOs', () => {
   it('rejects empty google token', async () => {
-    const dto = plainToInstance(GoogleLoginDto, { token: '' });
+    const dto = plainToInstance(LoginWithGoogleDto, {
+      token: '',
+      deviceId: 'device-1',
+    });
     const errors = await validate(dto);
 
     expect(errors).not.toHaveLength(0);

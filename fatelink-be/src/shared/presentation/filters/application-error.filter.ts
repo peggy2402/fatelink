@@ -21,12 +21,13 @@ export class ApplicationErrorFilter implements ExceptionFilter {
   catch(exception: ApplicationError, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
     const status =
-      statusByCode[exception.code] ?? HttpStatus.INTERNAL_SERVER_ERROR;
+      statusByCode[exception.category] ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
     response.status(status).json({
       statusCode: status,
       message: exception.message,
-      error: exception.code,
+      error: exception.category,
+      errorCode: exception.errorCode,
     });
   }
 }

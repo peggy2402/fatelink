@@ -1,6 +1,16 @@
 export const AUTH_APPLICATION_TOKENS = {
-  googleLogin: 'application.auth.google-login',
+  loginWithGoogle: 'application.auth.login-with-google',
+  registerWithEmail: 'application.auth.register-with-email',
+  loginWithEmail: 'application.auth.login-with-email',
+  requestPhoneOtp: 'application.auth.request-phone-otp',
+  loginWithPhoneOtp: 'application.auth.login-with-phone-otp',
+  requestMagicLink: 'application.auth.request-magic-link',
+  loginWithMagicLink: 'application.auth.login-with-magic-link',
+  loginWithFacebook: 'application.auth.login-with-facebook',
+  listAuthSessions: 'application.auth.list-auth-sessions',
+  revokeAuthSession: 'application.auth.revoke-auth-session',
   logout: 'application.auth.logout',
+  refreshToken: 'application.auth.refresh-token',
   validateAdminToken: 'application.auth.validate-admin-token',
   validateUserToken: 'application.auth.validate-user-token',
 } as const;

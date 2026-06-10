@@ -3,6 +3,7 @@ import {
   BadRequestApplicationError,
   ConflictApplicationError,
 } from '@shared/errors/application-error';
+import { ERROR_CODES } from '@shared/errors/error-codes';
 import { ApplicationErrorFilter } from './application-error.filter';
 
 describe('ApplicationErrorFilter', () => {
@@ -21,11 +22,20 @@ describe('ApplicationErrorFilter', () => {
     const filter = new ApplicationErrorFilter();
 
     filter.catch(
-      new BadRequestApplicationError('invalid payload'),
+      new BadRequestApplicationError(
+        'invalid payload',
+        ERROR_CODES.AUTH_GOOGLE_TOKEN_REQUIRED,
+      ),
       createHost(response),
     );
 
     expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: 'BAD_REQUEST',
+        errorCode: ERROR_CODES.AUTH_GOOGLE_TOKEN_REQUIRED,
+      }),
+    );
   });
 
   it('maps CONFLICT to 409', () => {
@@ -36,10 +46,19 @@ describe('ApplicationErrorFilter', () => {
     const filter = new ApplicationErrorFilter();
 
     filter.catch(
-      new ConflictApplicationError('already exists'),
+      new ConflictApplicationError(
+        'already exists',
+        ERROR_CODES.AUTH_EMAIL_ALREADY_REGISTERED,
+      ),
       createHost(response),
     );
 
     expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: 'CONFLICT',
+        errorCode: ERROR_CODES.AUTH_EMAIL_ALREADY_REGISTERED,
+      }),
+    );
   });
 });
