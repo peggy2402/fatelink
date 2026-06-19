@@ -38,14 +38,10 @@ export class AdminTestAiChatUseCase {
           );
           return response.rawText;
         } catch (error) {
-          throw new InternalApplicationError(
-            `Lỗi từ ${input.providerName}/${input.modelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          );
+          // Specific model failed → fallback to auto-priority
+          void error;
         }
       }
-      throw new InternalApplicationError(
-        `Provider "${input.providerName}" không tồn tại trong hệ thống`,
-      );
     }
 
     const activeModels = (await this.aiModelCatalogRepository.getAiModels())

@@ -882,8 +882,10 @@ async function sendTestChat(e) {
       <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm shrink-0 mb-1">🤖</div>
       <div class="max-w-[70%]">
         <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-sm shadow-sm break-words">${replyText.replace(/\n/g, '<br>')}</div>
-        <div class="flex items-center gap-2 mt-0.5 ml-1">
+        <div class="flex items-center gap-2 mt-0.5 ml-1 flex-wrap">
           <span class="text-[10px] text-gray-400">${time}</span>
+          <span class="text-[10px] text-gray-400">·</span>
+          <span class="text-[10px] text-gray-400">${modelLabel}</span>
           <button onclick="showDetailModal(${idx})" class="text-[10px] text-blue-500 hover:text-blue-600">Chi tiết</button>
           <span class="ml-auto flex gap-0.5" id="stars-${idx}">${starsHtml}</span>
         </div>
