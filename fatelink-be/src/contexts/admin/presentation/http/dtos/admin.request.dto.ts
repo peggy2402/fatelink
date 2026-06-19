@@ -134,6 +134,11 @@ export class TestAiChatDto {
   @IsOptional()
   @IsString()
   providerName?: string;
+
+  @ApiPropertyOptional({ example: [{ role: 'user', text: 'hi' }, { role: 'assistant', text: 'Chao ban!' }] })
+  @IsOptional()
+  @IsArray()
+  history?: { role: string; text: string }[];
 }
 
 export class SaveAdminLogDto {

@@ -3,10 +3,12 @@ import type { IAiProvider } from '@shared/contracts/ai-provider.service';
 import type { AiModelCatalogRepository } from '@contexts/admin/domain/repositories/ai-model-catalog.repository';
 import type { SystemConfigRepository } from '@contexts/admin/domain/repositories/system-config.repository';
 
+type HistoryItem = { role: string; text: string };
 type TestAiChatCommand = {
   message: string;
   modelId?: string;
   providerName?: string;
+  history?: HistoryItem[];
 };
 
 export class AdminTestAiChatUseCase {
@@ -22,7 +24,7 @@ export class AdminTestAiChatUseCase {
   ) {}
 
   async execute(input: TestAiChatCommand): Promise<string> {
-    const finalPrompt = await this.buildPrompt(input.message);
+    const finalPrompt = await this.buildPrompt(input.message, input.history);
 
     if (input.modelId && input.providerName) {
       const provider = this.providers.find(
@@ -83,7 +85,7 @@ export class AdminTestAiChatUseCase {
     );
   }
 
-  private async buildPrompt(message: string) {
+  private async buildPrompt(message: string, history?: HistoryItem[]) {
     if (Date.now() > this.cacheExpiration) {
       const config = await this.systemConfigRepository.getConfig();
       this.cachedSystemPrompt =
@@ -97,6 +99,13 @@ export class AdminTestAiChatUseCase {
       ? `\n\n[KIEN THUC TAM LY HOC HANH VI DE BAN THAM KHAO AP DUNG]:\n${this.cachedKnowledge}`
       : '';
 
-    return `HUONG DAN HE THONG DANH CHO BAN: ${this.cachedSystemPrompt}${knowledgePrompt}\n\nTIN NHAN TEST TU ADMIN: ${message}`;
+    const jsonInstruction = `\n\nQUAN TRONG: Ban BAT BUOC phai tra ve phan hoi duoi dinh dang JSON chinh xac nhu sau, tuyet doi khong boc trong markdown, chi tra ve JSON thuan:\n{\n  "reply": "Cau tra loi tu nhien cua ban danh cho user, ngan gon, khong phan tich",\n  "latestEmotion": "Vui | Buon | Co don | Ap luc | Rong tuech | Phan khich",\n  "detected_emotions": { "stress": 0, "loneliness": 0, "sadness": 0, "calmness": 0, "warmth": 0, "happiness": 0 },\n  "detected_personality": [5, 5, 5],\n  "is_ready_to_match": false\n}`;
+
+    const historyText =
+      history && history.length > 0
+        ? history.map((item) => `${item.role === 'user' ? 'User' : 'Faye'}: ${item.text}`).join('\n')
+        : 'Chua co tin nhan truoc do.';
+
+    return `HUONG DAN HE THONG DANH CHO BAN: ${this.cachedSystemPrompt}${knowledgePrompt}${jsonInstruction}\n\nLICH SU TRO CHUYEN:\n${historyText}\n\nTIN NHAN MOI TU USER: ${message}\n\nHay tra loi chi voi JSON theo dung dinh dang da huong dan, khong them bat ky text nao khac ngoai JSON.`;
   }
 }

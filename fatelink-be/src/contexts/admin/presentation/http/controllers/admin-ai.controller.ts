@@ -102,6 +102,7 @@ export class AdminAiController {
       message: dto.message,
       modelId: dto.modelId,
       providerName: dto.providerName,
+      history: dto.history,
     });
   }
 }

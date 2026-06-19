@@ -1,6 +1,14 @@
 const API_URL = '/api';
 let token = localStorage.getItem('admin_token');
 let _statusCache = {};
+let _chatMessages = [];
+let _feedbackIdx = -1;
+let _modelRatings = JSON.parse(localStorage.getItem('fate_model_ratings') || '{}');
+
+function loadFeedback() {
+  try { _chatMessages = JSON.parse(localStorage.getItem('fate_feedback') || '[]'); } catch(e) { _chatMessages = []; }
+}
+loadFeedback();
 
 // ==================== TAB PERSISTENCE ====================
 function getSavedTab() {
@@ -101,8 +109,9 @@ function switchTab(tabId) {
   document.getElementById('usersTab').classList.add('hidden');
   document.getElementById('modelsTab').classList.add('hidden');
   document.getElementById('testChatTab').classList.add('hidden');
+  document.getElementById('feedbackTab').classList.add('hidden');
 
-  ['configTab', 'usersTab', 'modelsTab', 'testChatTab'].forEach(id => {
+  ['configTab', 'usersTab', 'modelsTab', 'testChatTab', 'feedbackTab'].forEach(id => {
     const btn = document.getElementById(`btn-${id}`);
     btn.classList.remove('bg-gray-800', 'text-white');
     btn.classList.add('text-gray-400');
@@ -127,6 +136,10 @@ function switchTab(tabId) {
   } else if (tabId === 'testChatTab') {
     document.getElementById('pageTitle').innerText = 'Test AI Chat';
     loadModelSelector();
+    renderFateInsight();
+  } else if (tabId === 'feedbackTab') {
+    document.getElementById('pageTitle').innerText = 'Góp ý AI';
+    renderFeedback();
   }
 
   if (window.innerWidth < 768) {
@@ -166,6 +179,127 @@ async function saveConfig() {
   } catch (err) {
     showToast('Lỗi khi lưu cấu hình', 'error');
   }
+}
+
+function setDefaultSystemPrompt() {
+  const prev = document.getElementById('systemPrompt').value;
+  if (prev && prev.trim()) localStorage.setItem('fate_system_prompt_backup', prev);
+
+  let prompt;
+  try {
+    prompt = JSON.parse(prev);
+  } catch(e) {
+    prompt = {"system_prompt": {"version": "1.0","character": {"name": "Faye","role": "Emotionally intelligent companion","description": "Chat naturally like a real person and build genuine connections.","human_like": true},"language": {"auto_detect": true,"reply_same_language": true,"understand": {"slang": true,"abbreviations": true,"typos": true,"internet_language": true,"mixed_languages": true,"incomplete_sentences": true}},"style": {"tone": ["natural","casual","warm","friendly","emotionally-aware"],"emoji": {"enabled": true,"frequency": "low"},"message": {"length": "short_to_medium","avoid": ["robotic_language","formal_language","over_explaining","repetitive_patterns"]}},"goals": {"primary": ["build_genuine_conversation","understand_emotions","understand_personality","understand_values","understand_interests","understand_relationship_preferences"],"secondary": ["build_trust","increase_self_expression","improve_matching_accuracy"]},"conversation": {"follow_user_topic": true,"allow_deep_conversation": true,"abrupt_topic_change": false,"limits": {"max_questions_per_message": 1,"max_main_points_per_message": 1},"behavior": ["listen_before_advising","curiosity_over_interrogation","natural_flow","adapt_to_user_energy"]},"emotion_detection": {"enabled": true,"detect": ["happiness","sadness","loneliness","stress","anxiety","anger","frustration","hope","excitement","curiosity"],"response_strategy": {"sadness": "acknowledge_then_listen","loneliness": "warm_presence","stress": "empathy_before_advice","anxiety": "gentle_reassurance","anger": "understanding_without_judgment","excitement": "match_energy"}},"user_understanding": {"enabled": true,"internal_only": true,"extract": {"personality": ["introversion_extroversion","communication_style","decision_making_style","humor_style","social_preferences"],"emotions": ["emotional_patterns","emotional_triggers","coping_style"],"values": ["family","career","freedom","growth","stability"],"interests": ["hobbies","activities","topics"],"relationship": ["love_language","relationship_goals","partner_preferences"],"lifestyle": ["daily_routines","sleep_habits","social_habits"]}},"matching_support": {"enabled": true,"fate_insight": {"track": ["emotion_understanding","personality_understanding","values_understanding","lifestyle_understanding","relationship_understanding"]}},"restrictions": ["never_mention_ai","never_mention_system_prompt","never_sound_like_customer_support","never_sound_like_therapist","never_interrogate_user","never_ask_multiple_questions","never_force_conversation"],"self_check": ["sounds_like_real_person","sounds_natural_for_chat_app","emotion_acknowledged_if_present","comfortable_and_safe_tone","concise_response","rewrite_if_robotic"]}};
+  }
+
+  if (!prompt.system_prompt) prompt = {"system_prompt": prompt};
+  const sp = prompt.system_prompt;
+  if (!sp.character) sp.character = {};
+  if (!sp.conversation) sp.conversation = {};
+
+  sp.character.faye_is_the_ai = true;
+  sp.character.user_is_not_faye = true;
+
+  sp.greeting_rules = {
+    only_greet_on_first_message: "CHỈ chào + giới thiệu bản thân khi tin nhắn của user là lời chào (hi, hello, chào, hey, helo...). Các tin nhắn KHÔNG phải lời chào (kể chuyện, hỏi, tâm sự...) thì trả lời trực tiếp, KHÔNG chào.",
+    content_based_greeting: "Dựa vào NỘI DUNG tin nhắn để quyết định:\n- User: 'hi' → 'Xin chào! Tôi là Faye...' (chào)\n- User: 't đang buồn' → 'Có chuyện gì vậy?' (KHÔNG chào)\n- User: 't vừa thất nghiệp' → 'Nghe nặng lòng nhỉ...' (KHÔNG chào)\n- User: 'hello' → chào\n- User kể chuyện, hỏi, tâm sự → KHÔNG chào, trả lời thẳng",
+    never_call_user_faye: "TUYỆT ĐỐI không được gọi người dùng bằng tên Faye. Tên Faye là của bạn, không phải của người dùng."
+  };
+
+  sp.output_rules = {
+    reply_is_natural_conversation_only: "Trường 'reply' trong JSON trả về CHỈ được chứa câu trả lời tự nhiên, giống như đang nhắn tin với bạn bè. KHÔNG bao gồm phân tích, giải thích, danh sách đánh số, hoặc nội dung 'hệ thống'.",
+    analysis_goes_to_json_fields: "Tất cả phân tích cảm xúc, tính cách, suy luận chỉ được đặt trong các trường JSON riêng (detected_emotions, detected_personality, latestEmotion, is_ready_to_match). KHÔNG đưa vào 'reply'.",
+    forbidden_reply_content: ["phân tích", "giải thích hệ thống", "danh sách đánh số", "tóm tắt kiến thức", "liệt kê các bước", "dưới đây là", "system prompt", "kiến thức bổ sung"],
+    reply_must_be: "ngắn gọn (2-4 câu), tự nhiên, như bạn bè nhắn tin, có cảm xúc, có thể dùng emoji nhẹ nhàng."
+  };
+
+  document.getElementById('systemPrompt').value = JSON.stringify(prompt, null, 2);
+  showToast('Đã merge output_rules vào System Prompt (giữ nguyên cấu trúc JSON cũ + bổ sung). Có thể Undo!', 'success');
+}
+
+function undoSystemPrompt() {
+  const backup = localStorage.getItem('fate_system_prompt_backup');
+  if (backup) {
+    document.getElementById('systemPrompt').value = backup;
+    showToast('Đã hoàn tác về System Prompt trước đó', 'success');
+  } else {
+    showToast('Không có bản sao lưu nào', 'warning');
+  }
+}
+
+function setDefaultKnowledge() {
+  document.getElementById('additionalKnowledge').value = JSON.stringify({
+    "psychology_principles": {
+      "introversion_extroversion": {
+        "introvert": "Thích không gian yên tĩnh, cần thời gian ở một mình để nạp năng lượng, thường nói ít nhưng suy nghĩ sâu. Khi nói ngắn gọn = đang thoải mái. Khi nói dài = rất tin tưởng.",
+        "extrovert": "Nạp năng lượng từ giao tiếp, thích kể chuyện, dễ mở lòng. Nói nhiều = trạng thái tốt. Im lặng bất thường = đang có vấn đề."
+      },
+      "communication_styles": {
+        "direct": "Nói thẳng, ít cảm xúc. Cần câu trả lời rõ ràng. Không thích vòng vo.",
+        "indirect": "Nói bóng gió, hay dùng ẩn ý. Cần đọc vị cảm xúc. 'Không sao' thường = có sao.",
+        "emotional": "Dùng nhiều từ cảm xúc. Cần xác nhận cảm xúc trước, giải pháp sau.",
+        "logical": "Phân tích lý trí. Đưa giải pháp trước, cảm xúc sau."
+      },
+      "emotional_cues": {
+        "short_reply": "Mệt mỏi, đang bận, hoặc không thoải mái với chủ đề. Đừng hỏi dồn.",
+        "long_reply": "Đầu tư vào cuộc trò chuyện, đang cởi mở. Có thể khai thác sâu hơn.",
+        "avoiding_topic": "Chuyển chủ đề = chưa sẵn sàng. Tôn trọng, quay lại sau.",
+        "self_disclosure": "Chia sẻ thông tin cá nhân = tin tưởng. Đây là cơ hội để hiểu sâu.",
+        "humor_deflection": "Dùng hài hước để né cảm xúc thật. Nhẹ nhàng quay lại sau.",
+        "silence": "Im lặng trong chat = đang suy nghĩ, không phải từ chối."
+      }
+    },
+    "attachment_styles": {
+      "secure": "Dễ gần, giao tiếp lành mạnh, cân bằng. Tôn trọng không gian của đối phương.",
+      "anxious": "Cần xác nhận nhiều, sợ bị bỏ rơi, hay nhắn tin liên tục. Trấn an nhẹ nhàng.",
+      "avoidant": "Giữ khoảng cách, ngại cam kết, cần không gian riêng. Đừng tạo áp lực.",
+      "fearful_avoidant": "Vừa muốn gần vừa sợ gần. Kiên nhẫn và ổn định là chìa khóa."
+    },
+    "reading_signals": {
+      "over_enthusiasm_early": "Quá nhiệt tình ban đầu có thể là red flag (love bombing) hoặc tính cách tự nhiên. Cần quan sát thêm.",
+      "inconsistent_messages": "Lúc nóng lúc lạnh = đang do dự, hoặc avoidant attachment.",
+      "future_faking": "Nói về tương lai xa quá sớm = có thể đang tưởng tượng hơn là thực tế.",
+      "mirroring": "Bắt chước cách nói/cảm xúc = đang cố tạo kết nối (có thể tốt hoặc giả tạo).",
+      "defensive_humor": "Khi bị hỏi về cảm xúc mà đùa = chưa sẵn sàng đối diện."
+    },
+    "conversation_psychology": {
+      "open_ended_triggers": [
+        "Kể tôi nghe về...",
+        "Điều gì làm bạn...",
+        "Bạn cảm thấy thế nào khi..."
+      ],
+      "trust_building": "Chia sẻ một chút về bản thân trước khi hỏi sâu. Con người tin tưởng người có điểm chung.",
+      "validation_first": "Luôn xác nhận cảm xúc trước khi đưa ra góc nhìn khác. 'Mình hiểu bạn cảm thấy thế...'",
+      "pause_power": "Sau khi hỏi câu sâu, im lặng (trong chat là chờ đợi) tạo không gian cho đối phương mở lòng."
+    },
+    "personality_indicators": {
+      "storyteller": "Kể chuyện dài, nhiều chi tiết → giàu cảm xúc, thích kết nối sâu.",
+      "fact_giver": "Chỉ nói sự kiện, ít cảm xúc → lý trí, có thể là avoidant hoặc chưa thoải mái.",
+      "question_asker": "Toàn hỏi về đối phương → né tránh nói về bản thân hoặc thực sự quan tâm.",
+      "philosopher": "Nói về cuộc sống, ý nghĩa → người suy tư, thích kết nối tri kỷ."
+    },
+    "vietnamese_culture": {
+      "indirect_communication": "Người Việt thường nói giảm nói tránh, đặc biệt trong tình cảm. 'Để suy nghĩ thêm' thường là từ chối nhẹ.",
+      "family_influence": "Gia đình là yếu tố quan trọng trong quyết định tình cảm của người Việt.",
+      "face_saving": "Tránh làm mất mặt đối phương. Phê bình nên nhẹ nhàng, khen nên rõ ràng.",
+      "age_respect": "Tuổi tác có vai trò trong giao tiếp. Xưng hô phù hợp tạo thiện cảm."
+    },
+    "emotional_intelligence_tips": [
+      "Khi ai đó nói 'tôi không biết' - họ thực sự biết nhưng chưa sẵn sàng nói.",
+      "Người hay nói 'không sao' - thường là có sao.",
+      "Giận dữ thường là mặt nạ của tổn thương hoặc sợ hãi.",
+      "Người hay tự ti thường cần validation hơn người tự tin.",
+      "Khi ai đó hỏi ý kiến bạn nhưng không nghe - họ chỉ cần xác nhận quyết định của họ."
+    ],
+    "matching_knowledge": {
+      "complementary_vs_similar": "Tính cách tương đồng tạo thấu hiểu ban đầu. Tính cách bổ sung tạo phát triển lâu dài.",
+      "proximity_effect": "Con người dễ yêu người gần gũi, thường xuyên tương tác.",
+      "mere_exposure": "Tiếp xúc nhiều lần làm tăng thiện cảm. Dùng trong chat thường xuyên.",
+      "similarity_attraction": "Điểm chung nhỏ nhất (cùng thích nhạc, cùng quê) tạo kết nối mạnh.",
+      "reciprocal_liking": "Biết đối phương thích mình → tự động thích lại. Tạo không gian an toàn cho cảm xúc."
+    }
+  }, null, 2);
+  showToast('Đã tải kiến thức tâm lý học hành vi', 'success');
 }
 
 // ==================== USERS ====================
@@ -682,59 +816,426 @@ async function sendTestChat(e) {
 
   const select = document.getElementById('chatModelSelector');
   const selectedVal = select ? select.value : '';
-  let modelId = '';
-  let providerName = '';
-  if (selectedVal) {
-    [providerName, modelId] = selectedVal.split('|');
-  }
+  let modelId = '', providerName = '';
+  if (selectedVal) [providerName, modelId] = selectedVal.split('|');
 
   const chatBox = document.getElementById('chatBox');
+  const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const modelLabel = select && select.selectedOptions[0]
     ? select.selectedOptions[0].textContent.trim()
     : 'Theo thứ tự ưu tiên';
-  chatBox.innerHTML += `<div class="text-right mb-4"><span class="bg-blue-600 text-white px-4 py-2 rounded-xl inline-block shadow-sm">${message}</span></div>`;
-  chatBox.innerHTML += `<div id="typing" class="text-left mb-4"><span class="bg-gray-200 text-gray-500 px-4 py-2 rounded-xl inline-block animate-pulse">AI đang phân tích <small class="text-gray-400 ml-2">(${modelLabel})</small>...</span></div>`;
+  const msgId = Date.now();
+
+  // Remove empty state
+  const empty = chatBox.querySelector('.text-center.text-gray-400');
+  if (empty) empty.remove();
+
+  // User bubble
+  chatBox.innerHTML += `<div class="flex justify-end mb-3 items-end gap-2">
+    <div class="max-w-[70%]">
+      <div class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm shadow-sm break-words">${message}</div>
+      <div class="text-[10px] text-gray-400 text-right mt-0.5 mr-1">${time}</div>
+    </div>
+    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm shrink-0 mb-1">👤</div>
+  </div>`;
+  // Typing indicator
+  chatBox.innerHTML += `<div id="typing-${msgId}" class="flex justify-start mb-3 items-end gap-2">
+    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm shrink-0 mb-1">🤖</div>
+    <div class="bg-gray-200 text-gray-500 px-4 py-2.5 rounded-2xl rounded-bl-sm animate-pulse text-sm">Faye đang trả lời <small class="text-gray-400 ml-1">(${modelLabel})</small>... </div>
+  </div>`;
   chatBox.scrollTop = chatBox.scrollHeight;
 
   try {
-    const body = { message };
-    if (modelId && providerName) {
-      body.modelId = modelId;
-      body.providerName = providerName;
-    }
+    const body = { message, history: [] };
+    _chatMessages.slice(-10).forEach(m => {
+      body.history.push({ role: 'user', text: m.userMessage });
+      if (m.aiReply) body.history.push({ role: 'assistant', text: m.aiReply });
+    });
+    if (modelId && providerName) { body.modelId = modelId; body.providerName = providerName; }
     const res = await fetch(`${API_URL}/admin/ai-chat`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    document.getElementById('typing').remove();
+    document.getElementById(`typing-${msgId}`).remove();
     const textResponse = await res.text();
     let parsed = null;
     try { parsed = JSON.parse(textResponse); } catch(e) {}
 
-    if (parsed && parsed.reply) {
-      chatBox.innerHTML += `<div class="text-left mb-4">
-        <div class="inline-block max-w-full">
-          <div class="bg-white border border-gray-200 px-4 py-2 rounded-xl text-gray-800 shadow-sm">${parsed.reply.replace(/\n/g, '<br>')}</div>
-          <div class="mt-1 text-[10px] text-gray-400 px-2">Dùng: ${modelLabel}</div>
-          <pre class="text-[11px] bg-gray-900 text-green-400 p-3 mt-2 rounded-lg overflow-x-auto">Dữ liệu bóc tách (JSON):\n${textResponse}</pre>
+    const replyText = parsed && parsed.reply ? parsed.reply : textResponse;
+    const idx = _chatMessages.length;
+
+    _chatMessages.push({
+      id: msgId, time, userMessage: message, aiReply: replyText,
+      rawResponse: textResponse, parsed,
+      modelLabel, modelId, providerName,
+      rating: 0, feedback: ''
+    });
+    localStorage.setItem('fate_feedback', JSON.stringify(_chatMessages));
+
+    analyzeFateInsight(message);
+    _fate.history.push(getFateOverall());
+    renderFateInsight();
+
+    const starsHtml = renderStars(idx, 0);
+    chatBox.innerHTML += `<div id="msg-${msgId}" class="flex justify-start mb-3 items-end gap-2">
+      <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm shrink-0 mb-1">🤖</div>
+      <div class="max-w-[70%]">
+        <div class="bg-white border border-gray-200 text-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-sm shadow-sm break-words">${replyText.replace(/\n/g, '<br>')}</div>
+        <div class="flex items-center gap-2 mt-0.5 ml-1">
+          <span class="text-[10px] text-gray-400">${time}</span>
+          <button onclick="showDetailModal(${idx})" class="text-[10px] text-blue-500 hover:text-blue-600">Chi tiết</button>
+          <span class="ml-auto flex gap-0.5" id="stars-${idx}">${starsHtml}</span>
         </div>
-      </div>`;
-    } else {
-      chatBox.innerHTML += `<div class="text-left mb-4">
-        <div class="inline-block max-w-full">
-          <pre class="text-[11px] bg-gray-900 text-yellow-400 p-3 rounded-lg overflow-x-auto shadow-sm">${textResponse}</pre>
-          <div class="mt-1 text-[10px] text-gray-400 px-2">Dùng: ${modelLabel}</div>
-        </div>
-      </div>`;
-    }
+      </div>
+    </div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
   } catch (err) {
-    if (document.getElementById('typing')) document.getElementById('typing').remove();
+    const el = document.getElementById(`typing-${msgId}`);
+    if (el) el.remove();
     showToast('Lỗi gửi tin nhắn', 'error');
   }
 }
 
 function clearChat() {
-  document.getElementById('chatBox').innerHTML = '<div class="text-center text-gray-400 italic mt-10">Lịch sử chat đã được xóa.</div>';
+  document.getElementById('chatBox').innerHTML = '<div class="text-center text-gray-400 italic mt-10">Bắt đầu trò chuyện để kiểm tra AI nhé!</div>';
+  _chatMessages = [];
+  localStorage.setItem('fate_feedback', JSON.stringify(_chatMessages));
+  resetFateInsight();
 }
+
+// ==================== FATE INSIGHT ====================
+const FATE_WEIGHTS = { emotion: 0.25, personality: 0.25, values: 0.20, lifestyle: 0.15, relationship: 0.15 };
+const FATE_KEYWORDS = {
+  emotion: ['vui', 'buồn', 'lo lắng', 'căng thẳng', 'cô đơn', 'tự tin', 'sợ hãi', 'hạnh phúc', 'tức giận', 'thất vọng', 'hy vọng', 'yêu thương', 'ghét', 'nhớ nhung', 'đau khổ', 'mệt mỏi', 'chán nản', 'phấn khích', 'bình yên', 'cô độc', 'tuyệt vọng', 'biết ơn'],
+  personality: ['hướng nội', 'hướng ngoại', 'chủ động', 'điềm tĩnh', 'sáng tạo', 'nhút nhát', 'tự ti', 'kiên nhẫn', 'nóng tính', 'dễ gần', 'khó tính', 'thẳng thắn', 'tế nhị', 'hài hước', 'nghiêm túc', 'sôi nổi', 'trầm tính', 'cẩn thận', 'bốc đồng', 'lý trí', 'tình cảm'],
+  values: ['gia đình', 'sự nghiệp', 'tự do', 'học tập', 'trách nhiệm', 'tiền bạc', 'tình yêu', 'bạn bè', 'sức khỏe', 'công việc', 'đam mê', 'tín ngưỡng', 'lương thiện', 'trung thực', 'bao dung', 'thành công', 'hạnh phúc gia đình'],
+  lifestyle: ['thể thao', 'du lịch', 'thức khuya', 'dậy sớm', 'ẩm thực', 'cà phê', 'sách vở', 'xem phim', 'âm nhạc', 'chơi game', 'nấu ăn', 'chạy bộ', 'yoga', 'thiền định', 'vẽ tranh', 'ca hát', 'dã ngoại', 'câu cá', 'làm vườn'],
+  relationship: ['người yêu', 'kết hôn', 'bạn đồng hành', 'tri kỷ', 'tâm sự', 'hẹn hò', 'kết bạn', 'tình cảm', 'chia sẻ', 'đồng điệu', 'tâm hồn', 'cưới hỏi', 'yêu đương', 'quan tâm', 'thấu hiểu', 'chung thủy', 'lãng mạn']
+};
+
+let _fate = {
+  scores: { emotion: 0, personality: 0, values: 0, lifestyle: 0, relationship: 0 },
+  history: [],
+  messages: 0
+};
+
+function resetFateInsight() {
+  _fate = {
+    scores: { emotion: 0, personality: 0, values: 0, lifestyle: 0, relationship: 0 },
+    history: [],
+    messages: 0
+  };
+  renderFateInsight();
+}
+
+function analyzeFateInsight(message) {
+  const lower = message.toLowerCase();
+  _fate.messages++;
+  let totalHits = 0;
+  Object.keys(FATE_KEYWORDS).forEach(dim => {
+    const hits = FATE_KEYWORDS[dim].filter(kw => lower.includes(kw)).length;
+    if (hits > 0) {
+      totalHits += hits;
+      const gain = Math.min(12, hits * 4) + (lower.length > 50 ? 3 : 0) + (lower.length > 150 ? 4 : 0);
+      _fate.scores[dim] = Math.min(100, _fate.scores[dim] + gain);
+    }
+  });
+  if (totalHits === 0 && lower.length > 20) {
+    const dims = Object.keys(_fate.scores);
+    const minDim = dims.reduce((a, b) => _fate.scores[a] < _fate.scores[b] ? a : b);
+    _fate.scores[minDim] = Math.min(100, _fate.scores[minDim] + 2);
+  }
+}
+
+function getFateOverall() {
+  const s = _fate.scores;
+  return Math.round(
+    s.emotion * 0.25 + s.personality * 0.25 + s.values * 0.20 + s.lifestyle * 0.15 + s.relationship * 0.15
+  );
+}
+
+function getFateLevel(score) {
+  if (score <= 20) return { name: 'Stranger', desc: 'AI mới bắt đầu tìm hiểu bạn.' };
+  if (score <= 40) return { name: 'Acquaintance', desc: 'AI đã hiểu một phần tính cách của bạn.' };
+  if (score <= 60) return { name: 'Companion', desc: 'AI đã có đủ dữ liệu để bắt đầu đề xuất kết nối.' };
+  if (score <= 80) return { name: 'Soul Explorer', desc: 'AI hiểu khá rõ con người thật của bạn.' };
+  return { name: 'Deep Insight', desc: 'AI đã xây dựng được hồ sơ cảm xúc và tính cách chi tiết để ghép nối chính xác.' };
+}
+
+function getFateColor(score) {
+  if (score <= 30) return { hex: '#EF4444', text: 'text-red-500', bar: 'bg-red-500', label: 'Đỏ' };
+  if (score <= 60) return { hex: '#F59E0B', text: 'text-amber-500', bar: 'bg-amber-500', label: 'Cam' };
+  if (score <= 80) return { hex: '#EAB308', text: 'text-yellow-600', bar: 'bg-yellow-500', label: 'Vàng' };
+  return { hex: '#22C55E', text: 'text-green-500', bar: 'bg-green-500', label: 'Xanh' };
+}
+
+function getFateArrow(current, prev) {
+  if (prev === null || prev === undefined) return { icon: '—', color: 'text-gray-400' };
+  if (current > prev) return { icon: '↑', color: 'text-green-500' };
+  if (current < prev) return { icon: '↓', color: 'text-red-500' };
+  return { icon: '→', color: 'text-yellow-500' };
+}
+
+function renderFateInsight() {
+  const panel = document.getElementById('fateInsightPanel');
+  if (!panel) return;
+
+  const overall = getFateOverall();
+  const level = getFateLevel(overall);
+  const color = getFateColor(overall);
+  const prev = _fate.history.length > 0 ? _fate.history[_fate.history.length - 1] : null;
+  const arrow = getFateArrow(overall, prev);
+
+  const dimMeta = {
+    emotion: { label: '❤️ Emotion', icon: '❤️' },
+    personality: { label: '🎭 Personality', icon: '🎭' },
+    values: { label: '🌱 Core Values', icon: '🌱' },
+    lifestyle: { label: '🏃 Lifestyle', icon: '🏃' },
+    relationship: { label: '💕 Relationship', icon: '💕' }
+  };
+
+  let details = '';
+  Object.entries(_fate.scores).forEach(([key, val]) => {
+    const c = getFateColor(val);
+    details += `
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-0.5"><span class="font-medium text-gray-600">${dimMeta[key].label}</span><span class="${c.text} font-bold">${val}%</span></div>
+        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-700 ${c.bar}" style="width:${val}%"></div></div>
+      </div>`;
+  });
+
+  panel.innerHTML = `
+    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+      <div class="text-center mb-3">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">✨ Fate Insight</div>
+        <div class="flex items-baseline justify-center gap-1">
+          <span class="text-4xl font-black" style="color:${color.hex}">${overall}</span>
+          <span class="text-lg font-bold" style="color:#374151">%</span>
+          <span class="text-2xl font-black ${arrow.color}">${arrow.icon}</span>
+        </div>
+        <div class="flex items-center justify-center gap-2 mt-1">
+          <span class="inline-block w-2 h-2 rounded-full" style="background:${color.hex}"></span>
+          <span class="text-sm font-semibold" style="color:${color.hex}">${level.name}</span>
+        </div>
+        <div class="w-full h-3 bg-gray-200 rounded-full mt-2 overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-1000 ease-out" style="width:${overall}%;background:${color.hex}"></div>
+        </div>
+        <div class="text-[10px] text-gray-400 mt-1">${color.label} · ${_fate.messages} tin nhắn</div>
+      </div>
+      <div class="border-t border-gray-100 pt-2 mb-2">
+        ${details}
+      </div>
+      <div class="mt-1 text-center bg-gray-50 rounded-lg p-2">
+        <div class="text-xs font-bold text-gray-700 mb-0.5">Tôi hiểu bạn ${overall}%</div>
+        <div class="text-[10px] text-gray-500 italic leading-relaxed">${level.desc}</div>
+      </div>
+    </div>
+    <div class="mt-3 text-center text-[10px] text-gray-400">
+      Nhấn <button onclick="resetFateInsight()" class="text-blue-500 hover:underline">Đặt lại</button> để bắt đầu lại
+    </div>`;
+}
+
+// ==================== PER-MESSAGE RATING ====================
+function renderStars(idx, current) {
+  let s = '';
+  for (let i = 1; i <= 5; i++) s += `<span onclick="rateMessage(${idx},${i})" class="text-sm cursor-pointer ${i <= current ? 'text-amber-400' : 'text-gray-300'} hover:scale-110 transition">★</span>`;
+  return s;
+}
+
+function rateMessage(idx, stars) {
+  if (!_chatMessages[idx]) return;
+  _chatMessages[idx].rating = stars === _chatMessages[idx].rating ? 0 : stars;
+  localStorage.setItem('fate_feedback', JSON.stringify(_chatMessages));
+  const el = document.getElementById(`stars-${idx}`);
+  if (el) el.innerHTML = renderStars(idx, _chatMessages[idx].rating);
+}
+
+// ==================== DETAIL MODAL ====================
+function showDetailModal(idx) {
+  const msg = _chatMessages[idx];
+  if (!msg) return;
+  const body = document.getElementById('detailModalBody');
+  const p = msg.parsed;
+  let html = `<div class="mb-3 pb-3 border-b border-gray-100">
+    <span class="text-xs text-gray-400">Bạn: </span><span class="text-sm text-gray-800">${msg.userMessage}</span>
+    <div class="text-xs text-gray-400 mt-1">${msg.time} · ${msg.modelLabel}</div>
+  </div>`;
+
+  if (p && p.detected_emotions) {
+    html += `<div class="mb-3"><div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">❤️ Cảm xúc phát hiện</div>`;
+    Object.entries(p.detected_emotions).forEach(([k, v]) => {
+      const bar = v > 0 ? `<div class="w-full h-1.5 bg-gray-200 rounded-full mt-0.5"><div class="h-full rounded-full bg-gradient-to-r from-red-400 to-orange-400" style="width:${(v / 10) * 100}%"></div></div>` : '';
+      html += `<div class="flex justify-between text-xs mb-1"><span>${k}</span><span class="font-bold">${v}/10</span></div>${bar}`;
+    });
+    html += `</div>`;
+  }
+
+  if (p && p.detected_personality) {
+    const labels = ['Hướng ngoại', 'Tận tâm', 'Cởi mở'];
+    html += `<div class="mb-3"><div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🎭 Tính cách</div>`;
+    p.detected_personality.forEach((v, i) => {
+      html += `<div class="flex justify-between text-xs mb-1"><span>${labels[i] || '#' + (i + 1)}</span><span class="font-bold">${v}/10</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (p && p.latestEmotion) {
+    html += `<div class="mb-3"><span class="text-xs font-bold text-gray-500">Cảm xúc gần nhất: </span><span class="text-sm font-bold text-purple-600">${p.latestEmotion}</span></div>`;
+  }
+
+  if (p && p.is_ready_to_match !== undefined) {
+    html += `<div class="mb-3"><span class="text-xs font-bold text-gray-500">Sẵn sàng ghép đôi: </span><span class="text-sm ${p.is_ready_to_match ? 'text-green-600' : 'text-gray-400'}">${p.is_ready_to_match ? '✅ Có' : '⏳ Chưa'}</span></div>`;
+  }
+
+  html += `<div class="mt-3 pt-3 border-t border-gray-100">
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">📦 Phản hồi thô (JSON)</div>
+    <pre class="text-[11px] bg-gray-900 text-green-400 p-3 rounded-lg whitespace-pre-wrap break-all max-h-48 overflow-y-auto">${msg.rawResponse}</pre>
+  </div>`;
+
+  body.innerHTML = html;
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+
+function hideDetailModal() {
+  document.getElementById('detailModal').classList.add('hidden');
+}
+
+// ==================== FEEDBACK MODAL ====================
+function showFeedbackModal(idx) {
+  _feedbackIdx = idx;
+  const msg = _chatMessages[idx];
+  if (!msg) return;
+  document.getElementById('feedbackModalContent').innerHTML = `
+    <div class="bg-gray-50 rounded-lg p-3">
+      <div class="text-xs text-gray-500 mb-1">Bạn:</div>
+      <div class="text-sm text-gray-800 mb-2">${msg.userMessage}</div>
+      <div class="text-xs text-gray-500 mb-1">Faye:</div>
+      <div class="text-sm text-gray-800">${msg.aiReply}</div>
+    </div>`;
+  const starsContainer = document.getElementById('feedbackModalStars');
+  starsContainer.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const star = document.createElement('span');
+    star.className = `cursor-pointer hover:scale-110 transition ${i <= msg.rating ? 'text-amber-400' : 'text-gray-300'}`;
+    star.textContent = '★';
+    star.onclick = () => {
+      msg.rating = i === msg.rating ? 0 : i;
+      starsContainer.querySelectorAll('span').forEach((s, j) => s.className = `cursor-pointer hover:scale-110 transition ${j < msg.rating ? 'text-amber-400' : 'text-gray-300'}`);
+    };
+    starsContainer.appendChild(star);
+  }
+  document.getElementById('feedbackModalText').value = msg.feedback || '';
+  document.getElementById('feedbackModal').classList.remove('hidden');
+}
+
+function hideFeedbackModal() {
+  document.getElementById('feedbackModal').classList.add('hidden');
+  _feedbackIdx = -1;
+}
+
+function saveFeedbackFromModal() {
+  if (_feedbackIdx < 0) return;
+  const msg = _chatMessages[_feedbackIdx];
+  if (!msg) return;
+  const starsContainer = document.getElementById('feedbackModalStars');
+  const rating = starsContainer.querySelectorAll('.text-amber-400').length;
+  msg.rating = rating;
+  msg.feedback = document.getElementById('feedbackModalText').value;
+  localStorage.setItem('fate_feedback', JSON.stringify(_chatMessages));
+  const el = document.getElementById(`stars-${_feedbackIdx}`);
+  if (el) el.innerHTML = renderStars(_feedbackIdx, rating);
+  hideFeedbackModal();
+  showToast('Đã lưu góp ý', 'success');
+}
+
+// ==================== FEEDBACK TAB ====================
+function renderFeedback() {
+  const grid = document.getElementById('feedbackGrid');
+  const empty = document.getElementById('feedbackEmpty');
+  const withFeedback = _chatMessages.filter(m => m.rating > 0 || m.feedback.trim());
+  if (withFeedback.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  grid.innerHTML = withFeedback.slice().reverse().map((msg, i) => {
+    const origIdx = _chatMessages.indexOf(msg);
+    const stars = '★'.repeat(msg.rating) + '☆'.repeat(5 - msg.rating);
+    return `<div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition">
+      <div class="flex justify-between items-start mb-2">
+        <span class="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">#Chat ${msg.id % 1000}</span>
+        <span class="text-[10px] text-gray-400">${msg.time}</span>
+      </div>
+      <div class="text-xs text-gray-500 mb-1">👤 Bạn: <span class="text-gray-800">${msg.userMessage.length > 60 ? msg.userMessage.slice(0, 60) + '...' : msg.userMessage}</span></div>
+      <div class="text-xs text-gray-500 mb-2">🤖 Faye: <span class="text-gray-800">${msg.aiReply.length > 60 ? msg.aiReply.slice(0, 60) + '...' : msg.aiReply}</span></div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-sm text-amber-400">${stars}</span>
+        <span class="text-[10px] text-gray-400">(${msg.rating}/5)</span>
+      </div>
+      ${msg.feedback ? `<div class="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 italic">"${msg.feedback}"</div>` : ''}
+      <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        <span class="text-[10px] text-gray-400">${msg.modelLabel}</span>
+        <button onclick="showFeedbackModal(${origIdx})" class="text-[10px] text-blue-500 hover:text-blue-700">Sửa góp ý</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function clearAllFeedback() {
+  if (!confirm('Xoá tất cả góp ý?')) return;
+  _chatMessages = [];
+  localStorage.setItem('fate_feedback', JSON.stringify(_chatMessages));
+  renderFeedback();
+  showToast('Đã xoá tất cả góp ý', 'success');
+}
+
+// ==================== MODEL RATING STARS ====================
+function renderModelRating(providerName, modelId) {
+  const key = `${providerName}|${modelId}`;
+  const current = _modelRatings[key] || 0;
+  let s = '';
+  for (let i = 1; i <= 5; i++) {
+    s += `<span onclick="event.stopPropagation();rateModel('${providerName}','${modelId}',${i})" class="text-sm cursor-pointer ${i <= current ? 'text-amber-400' : 'text-gray-300'} hover:scale-110 transition inline-block" style="line-height:1">★</span>`;
+  }
+  s += `<span class="text-[10px] text-gray-400 ml-1">${current > 0 ? current + '/5' : ''}</span>`;
+  return s;
+}
+
+function rateModel(providerName, modelId, stars) {
+  const key = `${providerName}|${modelId}`;
+  _modelRatings[key] = stars === _modelRatings[key] ? 0 : stars;
+  localStorage.setItem('fate_model_ratings', JSON.stringify(_modelRatings));
+  // Re-render model selector stars
+  const container = document.getElementById('modelRatingContainer');
+  if (container) container.innerHTML = renderModelRating(providerName, modelId);
+}
+
+// Patch loadModelSelector to include rating
+const _origLoadModelSelector = loadModelSelector;
+loadModelSelector = async function() {
+  await _origLoadModelSelector.call(this);
+  const select = document.getElementById('chatModelSelector');
+  if (!select) return;
+  const updateRating = () => {
+    const val = select.value;
+    if (!val) { const c = document.getElementById('modelRatingContainer'); if (c) c.innerHTML = ''; return; }
+    const [p, m] = val.split('|');
+    const c = document.getElementById('modelRatingContainer');
+    if (c) c.innerHTML = renderModelRating(p, m);
+  };
+  select.addEventListener('change', updateRating);
+  // Add rating container after select
+  if (!document.getElementById('modelRatingContainer')) {
+    const wrapper = select.closest('.flex');
+    if (wrapper) {
+      const el = document.createElement('span');
+      el.id = 'modelRatingContainer';
+      el.className = 'shrink-0 flex items-center gap-0.5';
+      wrapper.appendChild(el);
+    }
+  }
+  updateRating();
+};
+
