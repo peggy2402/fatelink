@@ -124,6 +124,16 @@ export class TestAiChatDto {
   @IsString()
   @IsNotEmpty()
   message!: string;
+
+  @ApiPropertyOptional({ example: 'gemini-2.5-flash' })
+  @IsOptional()
+  @IsString()
+  modelId?: string;
+
+  @ApiPropertyOptional({ example: 'Gemini' })
+  @IsOptional()
+  @IsString()
+  providerName?: string;
 }
 
 export class SaveAdminLogDto {

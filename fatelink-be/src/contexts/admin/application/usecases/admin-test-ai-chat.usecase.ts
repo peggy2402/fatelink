@@ -5,6 +5,8 @@ import type { SystemConfigRepository } from '@contexts/admin/domain/repositories
 
 type TestAiChatCommand = {
   message: string;
+  modelId?: string;
+  providerName?: string;
 };
 
 export class AdminTestAiChatUseCase {
@@ -21,6 +23,29 @@ export class AdminTestAiChatUseCase {
 
   async execute(input: TestAiChatCommand): Promise<string> {
     const finalPrompt = await this.buildPrompt(input.message);
+
+    if (input.modelId && input.providerName) {
+      const provider = this.providers.find(
+        (item) => item.providerName === input.providerName,
+      );
+      if (provider) {
+        try {
+          const response = await provider.generateContent(
+            finalPrompt,
+            input.modelId,
+          );
+          return response.rawText;
+        } catch (error) {
+          throw new InternalApplicationError(
+            `Lỗi từ ${input.providerName}/${input.modelId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      }
+      throw new InternalApplicationError(
+        `Provider "${input.providerName}" không tồn tại trong hệ thống`,
+      );
+    }
+
     const activeModels = (await this.aiModelCatalogRepository.getAiModels())
       .filter((model) => model.isEnabled)
       .sort((a, b) => a.priority - b.priority);
