@@ -10,18 +10,17 @@ import '../../../logic/blocs/auth/auth_event.dart';
 import '../../widgets/back.dart';
 import '../../../logic/blocs/main/main_bloc.dart';
 import '../../../logic/blocs/main/main_event.dart'; // Đảm bảo file này chứa event chuyển tab của bạn
-import '../../widgets/menu.dart';
 import 'edit_profile_screen.dart'; // Import trang chỉnh sửa hồ sơ
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback? onMenuTap;
+
+  const ProfileScreen({super.key, this.onMenuTap});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
   @override
   void initState() {
     super.initState();
@@ -31,8 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey,
-      endDrawer: AppMenuDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -79,8 +76,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildVibeCorner(),
                           const SizedBox(height: 32),
                           _buildPersonalityChart(),
-                          const SizedBox(height: 40),
-                          _buildLogoutButton(context),
                           const SizedBox(height: 60),
                         ],
                       ),
@@ -134,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(8.0),
       child: GestureDetector(
         onTap: () {
-          _scaffoldKey.currentState?.openEndDrawer();
+          widget.onMenuTap?.call();
         },
         child: Container(
           decoration: BoxDecoration(
@@ -610,28 +605,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // G. Nút Rời Khỏi Không Gian Này (Logout)
-  Widget _buildLogoutButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: TextButton.icon(
-        onPressed: () {
-          context.read<AuthBloc>().add(AuthLogoutRequested());
-        },
-        style: TextButton.styleFrom(
-          backgroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFFFE4E6), width: 1.5), // Rose-100
-          ),
-        ),
-        icon: const Icon(Icons.exit_to_app_rounded, color: Color(0xFFE11D48), size: 20),
-        label: const Text(
-          'Rời khỏi không gian này',
-          style: TextStyle(color: Color(0xFFE11D48), fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-      ),
-    );
-  }
 }

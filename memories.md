@@ -370,7 +370,31 @@
   - Khởi tạo và cung cấp toàn bộ trạng thái BLoC (`AuthBloc`, `MainBloc`, `ChatBloc`, `SplashBloc`...) qua `MultiBlocProvider` ở cấp độ cao nhất.
   - Liên kết chặt chẽ hệ thống định tuyến (`AppRouter.onGenerateRoute`) với `easy_localization` để đảm bảo luồng dữ liệu và ngôn ngữ được đồng nhất toàn app.
 
-## 📅 Ngày: 28/04/2026
+## 📅 Ngày: 20/06/2026
+
+### 🎯 Trọng tâm hôm nay: Viết Concept Document, Refactor Menu & Settings UI
+
+#### 1. Concept Document cho "Faye Resonate" (Cộng hưởng cảm xúc)
+- **Ý tưởng**: AI Onboarding Chat sau đăng nhập để thấu hiểu cảm xúc user (8 nhóm: Tích cực, Tình cảm, Xã hội, Áp lực, Tiêu cực, Phát triển bản thân, Giải trí, Định hướng tương lai), áp dụng Similarity Match (giá trị sống/mục tiêu) + Complementary Match (bổ trợ cảm xúc/tính cách) thay vì ghép "cảm xúc giống nhau".
+- **Phạm vi**: Thay thế Onboarding 3 slide tĩnh bằng AI Chat, mở rộng emotion system (hiện tại chỉ có 4), xây dựng scoring kết hợp Similarity + Complementary.
+
+#### 2. Refactor Menu (AppMenuDrawer)
+- **Xóa nút "Rời khỏi không gian này"** khỏi `profile_screen.dart` (method `_buildLogoutButton`).
+- **Kích hoạt nút "Đăng xuất"** trong `menu.dart` — kết nối `AuthBloc` + `AuthLogoutRequested()`, gọi API `auth/logout`.
+- **Fix Z-index**: Chuyển menu từ `endDrawer` (trong ProfileScreen's Scaffold, bị bottom nav/AI bubble che) lên MainScreen's Stack overlay — menu luôn nằm trên tất cả.
+- **Thêm animation đóng/mở**: `AnimationController` + `FractionalTranslation` (slide từ phải) + fade backdrop, dùng `Curves.easeOutCubic` / `easeInCubic` (350ms).
+- **Fix `LateInitializationError`**: Chuyển `late AnimationController` sang nullable (`AnimationController?`) với null-safe access.
+
+#### 3. Concept Document cho "FateLink Settings" (Trung tâm thiết lập)
+- **Các nhóm chức năng**: Tài khoản & Giao diện (vân tay, sáng/tối), Ghép nối (giới tính), Thông báo (4 loại ON/OFF), Chặn & An toàn (danh sách chặn, lọc nội dung), Quyền riêng tư (6 thiết lập + hiển thị khoảng cách), Trung tâm bảo mật (lịch sử đăng nhập, quản lý thiết bị, hủy tài khoản), Khác (liên kết mạng xã hội, cache, về chúng tôi, chuyển đổi tài khoản).
+- **Giá trị**: User toàn quyền kiểm soát trải nghiệm — phù hợp với app tâm lý/nhạy cảm.
+
+#### 4. Phiên bản (Versioning)
+- **Chỉ cần sửa `pubspec.yaml`** (dòng `version: 1.0.0+1`) — `build.gradle.kts` và `Info.plist` dùng biến Flutter nên tự động đồng bộ.
+- Xcode: nếu để `$(FLUTTER_BUILD_NAME)` / `$(FLUTTER_BUILD_NUMBER)` thì cũng tự động lấy từ `pubspec.yaml`.
+
+---
+
 
 ### 🎯 Trọng tâm: Chuẩn hóa Tài liệu Dự án, Hệ thống AI Prompt & Tích hợp CI/CD
 
