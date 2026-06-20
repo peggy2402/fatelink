@@ -11,7 +11,11 @@
     <!-- Thêm icon từ FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .hidden { display: none !important; }
+        .hidden { display: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans antialiased text-gray-900">
@@ -90,7 +94,7 @@
                 </div>
             </header>
             
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-0 sm:p-6">
                 
                 <!-- TAB 1: CẤU HÌNH AI -->
                 <div id="configTab" class="bg-white rounded-xl shadow-sm p-6 max-w-4xl">
@@ -268,11 +272,17 @@
                 </div>
 
                 <!-- TAB 4: TEST AI CHAT -->
-                <div id="testChatTab" class="hidden h-[75vh] flex bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+                <div id="testChatTab" class="hidden h-full flex bg-white sm:rounded-xl sm:shadow-sm sm:overflow-hidden sm:border sm:border-gray-200">
+                    <!-- Chat Column -->
                     <div class="flex-1 flex flex-col min-w-0">
                         <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
                             <h3 class="text-lg font-medium text-gray-700">Chat thử nghiệm với Faye</h3>
-                            <button onclick="clearChat()" class="text-sm text-gray-500 hover:text-red-500"><i class="fas fa-trash-alt"></i> Xoá</button>
+                            <div class="flex items-center gap-2">
+                                <button id="miniInsightBtn" type="button" class="md:hidden cursor-pointer text-[11px] bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-semibold hover:bg-purple-200 transition flex items-center gap-1.5 whitespace-nowrap active:scale-95">
+                                    <span>✨ Mức độ hiểu: <span id="miniInsightScore">0%</span></span>
+                                </button>
+                                <button onclick="clearChat()" class="text-sm text-gray-500 hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
+                            </div>
                         </div>
                         <div class="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-2 text-sm shrink-0">
                             <i class="fas fa-microchip text-gray-400 shrink-0"></i>
@@ -281,23 +291,34 @@
                                 <option value="">⟳ Theo thứ tự ưu tiên (mặc định)</option>
                             </select>
                         </div>
-                        <div id="chatBox" class="flex-1 p-4 overflow-y-auto overflow-x-hidden space-y-4 bg-gray-100 text-sm break-words">
+                        <div id="chatBox" class="flex-1 p-4 overflow-y-auto overflow-x-hidden space-y-4 bg-gray-100 text-sm break-words custom-scrollbar">
                             <div class="text-center text-gray-400 italic mt-10">Bắt đầu trò chuyện để kiểm tra xem System Prompt có hoạt động tốt không nhé!</div>
                         </div>
                         <div class="p-4 border-t border-gray-200 bg-white shrink-0">
-                            <form id="chatForm" class="flex space-x-2" onsubmit="sendTestChat(event)">
-                                <input type="text" id="chatInput" placeholder="Nhắn gì đó cho Faye..." class="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" autocomplete="off" required>
-                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shrink-0"><i class="fas fa-paper-plane"></i></button>
+                            <form id="chatForm" class="flex items-center gap-2" onsubmit="sendTestChat(event)">
+                                <input type="text" id="chatInput" placeholder="Nhắn gì đó cho Faye..." class="flex-1 min-w-0 px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none bg-gray-50" autocomplete="off" required>
+                                <button type="submit" class="w-11 h-11 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition shrink-0 flex items-center justify-center shadow-md hover:shadow-lg active:scale-95"><i class="fas fa-paper-plane text-sm"></i></button>
                             </form>
                         </div>
                     </div>
-                    <div id="fateInsightPanel" class="w-72 p-4 bg-gray-50 overflow-y-auto overflow-x-hidden border-l border-gray-200 shrink-0">
+                    <!-- Desktop Fate Insight Panel (hidden on mobile) -->
+                    <div id="fateInsightPanel" class="hidden md:block w-80 p-4 bg-gray-50 overflow-y-auto overflow-x-hidden border-l border-gray-200 shrink-0 custom-scrollbar">
                         <div class="text-center text-gray-400 text-xs italic mt-10">Gửi tin nhắn để AI bắt đầu phân tích bạn...</div>
                     </div>
                 </div>
 
+                <!-- Mobile Fate Insight Drawer -->
+                <div id="insightDrawerOverlay" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300"></div>
+                <div id="insightDrawer" class="hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gray-50 z-50 shadow-2xl translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0">
+                        <h4 class="font-bold text-gray-700 text-sm flex items-center gap-2"><span>✨</span> Fate Insight</h4>
+                        <button id="closeInsightDrawer" type="button" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 hover:text-gray-700 transition cursor-pointer"><i class="fas fa-times text-sm"></i></button>
+                    </div>
+                    <div id="insightDrawerBody" class="flex-1 overflow-y-auto p-4 custom-scrollbar"></div>
+                </div>
+
                 <!-- TAB 5: GÓP Ý AI -->
-                <div id="feedbackTab" class="hidden">
+                <div id="feedbackTab" class="hidden p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-gray-800">Góp ý & Đánh giá AI</h3>
                         <button onclick="clearAllFeedback()" class="text-sm text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i> Xoá tất cả</button>

@@ -984,6 +984,9 @@ function renderFateInsight() {
   if (!panel) return;
 
   const overall = getFateOverall();
+  const miniScore = document.getElementById('miniInsightScore');
+  if (miniScore) miniScore.textContent = overall + '%';
+
   const level = getFateLevel(overall);
   const color = getFateColor(overall);
   const prev = _fate.history.length > 0 ? _fate.history[_fate.history.length - 1] : null;
@@ -1240,4 +1243,41 @@ loadModelSelector = async function() {
   }
   updateRating();
 };
+
+// ==================== MOBILE INSIGHT DRAWER ====================
+(function() {
+  const miniBtn = document.getElementById('miniInsightBtn');
+  const drawer = document.getElementById('insightDrawer');
+  const overlay = document.getElementById('insightDrawerOverlay');
+  const closeBtn = document.getElementById('closeInsightDrawer');
+  const drawerBody = document.getElementById('insightDrawerBody');
+
+  function openDrawer() {
+    const panel = document.getElementById('fateInsightPanel');
+    if (panel && drawerBody) drawerBody.innerHTML = panel.innerHTML;
+    if (overlay) { overlay.classList.remove('hidden'); }
+    if (drawer) {
+      drawer.classList.remove('hidden');
+      setTimeout(() => {
+        drawer.classList.remove('translate-x-full');
+        drawer.classList.add('translate-x-0');
+      }, 10);
+    }
+  }
+
+  function closeDrawer() {
+    if (drawer) {
+      drawer.classList.remove('translate-x-0');
+      drawer.classList.add('translate-x-full');
+    }
+    setTimeout(() => {
+      if (drawer) drawer.classList.add('hidden');
+      if (overlay) overlay.classList.add('hidden');
+    }, 300);
+  }
+
+  if (miniBtn) miniBtn.addEventListener('click', openDrawer);
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+  if (overlay) overlay.addEventListener('click', closeDrawer);
+})();
 
