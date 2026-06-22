@@ -1,11 +1,16 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../screens/settings/settings_detail_screen.dart';
+import '../../logic/blocs/auth/auth_bloc.dart';
+import '../../logic/blocs/auth/auth_event.dart';
 
 class AppMenuDrawer extends StatefulWidget {
-  const AppMenuDrawer({super.key});
+  final VoidCallback? onClose;
+
+  const AppMenuDrawer({super.key, this.onClose});
 
   @override
   State<AppMenuDrawer> createState() => _AppMenuDrawerState();
@@ -36,78 +41,75 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
   @override
   Widget build(BuildContext context) {
     // Nền của Drawer phải trong suốt để hiệu ứng blur hoạt động
-    return Drawer(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: ClipRRect(
-        // Bo góc bên trái vì Drawer trượt ra từ bên phải
-        borderRadius: const BorderRadius.horizontal(left: Radius.circular(32)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8, // Giới hạn chiều rộng
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
-              border: Border(left: BorderSide(color: Colors.white.withOpacity(0.2))),
-            ),
-            child: SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      children: [
-                        _buildMenuListItem(
-                          icon: Icons.settings_outlined,
-                          title: 'Settings'.tr(),
-                          onTap: () {
-                            Navigator.pop(context); // Đóng drawer trước khi chuyển trang
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SettingsDetailScreen()),
-                            );
-                          },
-                        ),
-                        _buildMenuListItem(
-                          icon: Icons.language_outlined,
-                          title: 'Language'.tr(),
-                          onTap: () {},
-                        ),
-                        _buildMenuListItem(
-                          icon: Icons.share_outlined,
-                          title: 'inviteFriends'.tr(),
-                          onTap: () {},
-                        ),
-                        _buildMenuListItem(
-                          icon: Icons.help_outline_rounded,
-                          title: 'Support'.tr(),
-                          onTap: () {},
-                        ),
-                        _buildMenuListItem(
-                          icon: Icons.description_outlined,
-                          title: 'termsAndPolicies'.tr(),
-                          onTap: () {},
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          child: Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
-                        ),
-                        _buildMenuListItem(
-                          icon: Icons.logout_rounded,
-                          title: 'Logout'.tr(),
-                          onTap: () {
-                            // context.read<AuthBloc>().add(AuthLogoutRequested());
-                          },
-                          isDanger: true,
-                        ),
-                      ],
-                    ),
+    return ClipRRect(
+      // Bo góc bên trái vì Drawer trượt ra từ bên phải
+      borderRadius: const BorderRadius.horizontal(left: Radius.circular(32)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8, // Giới hạn chiều rộng
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.85),
+            border: Border(left: BorderSide(color: Colors.white.withOpacity(0.2))),
+          ),
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    children: [
+                      _buildMenuListItem(
+                        icon: Icons.settings_outlined,
+                        title: 'Settings'.tr(),
+                        onTap: () {
+                          widget.onClose?.call();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SettingsDetailScreen()),
+                          );
+                        },
+                      ),
+                      _buildMenuListItem(
+                        icon: Icons.language_outlined,
+                        title: 'Language'.tr(),
+                        onTap: () {},
+                      ),
+                      _buildMenuListItem(
+                        icon: Icons.share_outlined,
+                        title: 'inviteFriends'.tr(),
+                        onTap: () {},
+                      ),
+                      _buildMenuListItem(
+                        icon: Icons.help_outline_rounded,
+                        title: 'Support'.tr(),
+                        onTap: () {},
+                      ),
+                      _buildMenuListItem(
+                        icon: Icons.description_outlined,
+                        title: 'termsAndPolicies'.tr(),
+                        onTap: () {},
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Divider(color: Colors.grey.shade300, height: 1, thickness: 1),
+                      ),
+                      _buildMenuListItem(
+                        icon: Icons.logout_rounded,
+                        title: 'Logout'.tr(),
+                        onTap: () {
+                          widget.onClose?.call();
+                          context.read<AuthBloc>().add(AuthLogoutRequested());
+                        },
+                        isDanger: true,
+                      ),
+                    ],
                   ),
-                  _buildFooter(),
-                ],
-              ),
+                ),
+                _buildFooter(),
+              ],
             ),
           ),
         ),
@@ -161,7 +163,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
           ),
           IconButton(
             icon: const Icon(Icons.close_rounded, color: Color(0xFF475569)),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => widget.onClose?.call(),
             tooltip: 'Close Menu',
           ),
         ],

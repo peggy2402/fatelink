@@ -10,6 +10,7 @@ import 'package:fatelinkfe/presentation/screens/profile/profile_screen.dart';
 import 'package:fatelinkfe/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
+import 'package:fatelinkfe/presentation/widgets/menu.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
@@ -26,7 +27,8 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
   bool _showOnboarding = false;
   bool _hasStartedChat = false;
   bool _isLoading = true; // Để hiển thị loading khi check SharedPreferences
@@ -36,11 +38,46 @@ class _MainScreenState extends State<MainScreen> {
 
   final TextEditingController _chatController = TextEditingController();
   bool _isPopupOpen = false;
+  bool _isMenuOpen = false;
+  AnimationController? _menuController;
+  Animation<Offset>? _menuSlide;
+  Animation<double>? _menuFade;
 
   @override
   void initState() {
     super.initState();
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _menuController = controller;
+    _menuSlide = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    ));
+    _menuFade = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOutCubic,
+    ));
     _checkFirstTime();
+  }
+
+  void _openMenu() {
+    setState(() => _isMenuOpen = true);
+    _menuController?.forward();
+  }
+
+  void _closeMenu() {
+    _menuController?.reverse().then((_) {
+      if (mounted) setState(() => _isMenuOpen = false);
+    });
   }
 
   Future<void> _checkFirstTime() async {
@@ -80,6 +117,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _chatController.dispose();
+    _menuController?.dispose();
     super.dispose();
   }
 
@@ -125,7 +163,7 @@ class _MainScreenState extends State<MainScreen> {
                 }
               },
             ),
-            const ProfileScreen(),
+            ProfileScreen(onMenuTap: _openMenu),
           ];
 
           return Stack(
@@ -233,6 +271,35 @@ class _MainScreenState extends State<MainScreen> {
                       _hasUnreadMessages = false; // Tắt chấm đỏ khi đã vào Chat
                     });
                   },
+                ),
+
+              // Menu overlay (đặt cuối cùng, có animation đóng/mở)
+              if (_isMenuOpen || (_menuController?.value ?? 0) > 0)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _closeMenu,
+                    child: AnimatedBuilder(
+                      animation: _menuController!,
+                      builder: (context, _) {
+                        return Stack(
+                          children: [
+                            Container(
+                              color: Colors.black.withOpacity(
+                                0.3 * (_menuFade?.value ?? 0),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FractionalTranslation(
+                                translation: _menuSlide?.value ?? Offset.zero,
+                                child: AppMenuDrawer(onClose: _closeMenu),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
             ],
           );

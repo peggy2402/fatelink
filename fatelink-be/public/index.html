@@ -11,7 +11,11 @@
     <!-- Thêm icon từ FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .hidden { display: none !important; }
+        .hidden { display: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans antialiased text-gray-900">
@@ -67,6 +71,9 @@
                 <button onclick="switchTab('testChatTab')" id="btn-testChatTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-comments w-5"></i> <span>Test AI Chat</span>
                 </button>
+                <button onclick="switchTab('feedbackTab')" id="btn-feedbackTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
+                    <i class="fas fa-star w-5"></i> <span>Góp ý AI</span>
+                </button>
             </nav>
             <div class="p-4 border-t border-gray-800">
                 <button onclick="logout()" class="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-gray-800 rounded-lg text-left">
@@ -87,7 +94,7 @@
                 </div>
             </header>
             
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-0 sm:p-6">
                 
                 <!-- TAB 1: CẤU HÌNH AI -->
                 <div id="configTab" class="bg-white rounded-xl shadow-sm p-6 max-w-4xl">
@@ -104,10 +111,13 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">System Prompt (Tính cách của Faye AI)</label>
                             <textarea id="systemPrompt" rows="12" class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"></textarea>
+                            <button onclick="setDefaultSystemPrompt()" class="mt-2 text-xs text-blue-500 hover:text-blue-700 transition"><i class="fas fa-download"></i> Tải System Prompt (Giữ JSON + fix greeting)</button>
+                            <button onclick="undoSystemPrompt()" class="mt-2 text-xs text-orange-500 hover:text-orange-700 transition ml-3"><i class="fas fa-undo"></i> Undo</button>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Kiến thức bổ sung (Sách Tâm lý học hành vi / Nguyên tắc đọc vị)</label>
-                            <textarea id="additionalKnowledge" rows="6" placeholder="Ví dụ: Khi người dùng nói ngắn gọn, hãy hiểu là họ đang mệt mỏi..." class="block w-full px-4 py-3 border border-blue-200 bg-blue-50 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"></textarea>
+                            <textarea id="additionalKnowledge" rows="10" placeholder='{\n  "psychology": {...}\n}' class="block w-full px-4 py-3 border border-blue-200 bg-blue-50 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"></textarea>
+                            <button onclick="setDefaultKnowledge()" class="mt-2 text-xs text-blue-500 hover:text-blue-700 transition"><i class="fas fa-book"></i> Tải kiến thức mặc định (Tâm lý học hành vi)</button>
                         </div>
                         <div class="flex justify-end">
                             <button onclick="saveConfig()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center space-x-2 transition">
@@ -204,6 +214,17 @@
                         </button>
                       </div>
                     </div>
+                    <!-- Priority Display Cards (informational) -->
+                    <div id="priorityZones" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="border-2 border-amber-400 bg-amber-50 rounded-xl p-4 text-center min-h-[80px] flex flex-col items-center justify-center">
+                            <div class="text-sm font-bold text-amber-700 mb-1">🔥 Thứ tự #1</div>
+                            <div id="primaryZoneModel" class="text-xs text-gray-500">Đang tải...</div>
+                        </div>
+                        <div class="border-2 border-blue-400 bg-blue-50 rounded-xl p-4 text-center min-h-[80px] flex flex-col items-center justify-center">
+                            <div class="text-sm font-bold text-blue-700 mb-1">🔁 Models fallback</div>
+                            <div id="fallbackZoneModel" class="text-xs text-gray-500">Đang tải...</div>
+                        </div>
+                    </div>
                     <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 flex-1 flex flex-col border border-gray-200">
                         <!-- Thanh công cụ Search & Filter cho Models -->
                         <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -212,7 +233,8 @@
                                 <select id="providerFilter" onchange="filterModels()" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                                     <option value="all">Tất cả Providers</option>
                                     <option value="Gemini">Gemini</option>
-                                    <option value="OpenAI">OpenAI / Groq</option>
+                                    <option value="OpenAI">OpenAI</option>
+                                    <option value="Groq">Groq</option>
                                     <option value="HuggingFace">HuggingFace</option>
                                     <option value="LlamaLocal">Llama (Local)</option>
                                     <option value="Claude">Claude (Anthropic)</option>
@@ -224,46 +246,13 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="overflow-y-auto flex-1">
-                            <table class="min-w-full divide-y divide-gray-200 block sm:table">
-                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm hidden sm:table-header-group">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên hiển thị</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái API</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="modelsTableBody" class="bg-gray-50 sm:bg-white divide-y divide-gray-200 block sm:table-row-group p-4 sm:p-0 space-y-4 sm:space-y-0">
-                                    <!-- Dữ liệu Models sẽ được Javascript đổ vào đây -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Phân trang Models -->
-                        <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-sm text-gray-700">Hiển thị:</span>
-                                <select id="modelsPerPage" onchange="changeModelsPerPage()" class="border-gray-300 rounded-md text-sm py-1 pl-2 pr-8 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-pointer">
-                                    <option value="5">5</option>
-                                    <option value="10">10</option>
-                                    <option value="20" selected>20</option>
-                                </select>
-                                <span class="text-sm text-gray-700">dòng</span>
+                        <div class="overflow-y-auto flex-1 p-4">
+                            <div id="modelsCardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                <!-- Cards được JS render ở đây -->
                             </div>
-                            <div class="flex items-center space-x-4">
-                                <div class="text-sm text-gray-700">
-                                    Trang <span id="currentModelPageDisplay" class="font-bold text-gray-900">1</span> / <span id="totalModelPagesDisplay" class="font-bold text-gray-900">1</span>
-                                    (Tổng: <span id="totalModelsDisplay" class="font-bold text-gray-900">0</span>)
-                                </div>
-                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                    <button onclick="prevModelPage()" id="btnPrevModelPage" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
-                                        <i class="fas fa-chevron-left text-xs"></i>
-                                    </button>
-                                    <button onclick="nextModelPage()" id="btnNextModelPage" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300 transition">
-                                        <i class="fas fa-chevron-right text-xs"></i>
-                                    </button>
-                                </nav>
+                            <div id="modelsEmptyState" class="hidden text-center text-gray-400 py-12">
+                                <i class="fas fa-robot text-5xl mb-4"></i>
+                                <p>Không tìm thấy Models nào</p>
                             </div>
                         </div>
                     </div>
@@ -283,20 +272,62 @@
                 </div>
 
                 <!-- TAB 4: TEST AI CHAT -->
-                <div id="testChatTab" class="hidden h-[75vh] flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-                    <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <h3 class="text-lg font-medium text-gray-700">Chat thử nghiệm với Faye</h3>
-                        <button onclick="clearChat()" class="text-sm text-gray-500 hover:text-red-500"><i class="fas fa-trash"></i> Xóa lịch sử</button>
+                <div id="testChatTab" class="hidden h-full flex bg-white sm:rounded-xl sm:shadow-sm sm:overflow-hidden sm:border sm:border-gray-200">
+                    <!-- Chat Column -->
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+                            <h3 class="text-lg font-medium text-gray-700">Chat thử nghiệm với Faye</h3>
+                            <div class="flex items-center gap-2">
+                                <button id="miniInsightBtn" type="button" class="md:hidden cursor-pointer text-[11px] bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-semibold hover:bg-purple-200 transition flex items-center gap-1.5 whitespace-nowrap active:scale-95">
+                                    <span>✨ Mức độ hiểu: <span id="miniInsightScore">0%</span></span>
+                                </button>
+                                <button onclick="clearChat()" class="text-sm text-gray-500 hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </div>
+                        <div class="px-4 py-2 border-b border-gray-200 bg-white flex items-center gap-2 text-sm shrink-0">
+                            <i class="fas fa-microchip text-gray-400 shrink-0"></i>
+                            <span class="text-gray-600 font-medium shrink-0">Model:</span>
+                            <select id="chatModelSelector" class="flex-1 min-w-0 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer truncate">
+                                <option value="">⟳ Theo thứ tự ưu tiên (mặc định)</option>
+                            </select>
+                        </div>
+                        <div id="chatBox" class="flex-1 p-4 overflow-y-auto overflow-x-hidden space-y-4 bg-gray-100 text-sm break-words custom-scrollbar">
+                            <div class="text-center text-gray-400 italic mt-10">Bắt đầu trò chuyện để kiểm tra xem System Prompt có hoạt động tốt không nhé!</div>
+                        </div>
+                        <div class="p-4 border-t border-gray-200 bg-white shrink-0">
+                            <form id="chatForm" class="flex items-center gap-2" onsubmit="sendTestChat(event)">
+                                <input type="text" id="chatInput" placeholder="Nhắn gì đó cho Faye..." class="flex-1 min-w-0 px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none bg-gray-50" autocomplete="off" required>
+                                <button type="submit" class="w-11 h-11 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition shrink-0 flex items-center justify-center shadow-md hover:shadow-lg active:scale-95"><i class="fas fa-paper-plane text-sm"></i></button>
+                            </form>
+                        </div>
                     </div>
-                    <div id="chatBox" class="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-100 text-sm">
-                        <div class="text-center text-gray-400 italic mt-10">Bắt đầu trò chuyện để kiểm tra xem System Prompt có hoạt động tốt không nhé!</div>
+                    <!-- Desktop Fate Insight Panel (hidden on mobile) -->
+                    <div id="fateInsightPanel" class="hidden md:block w-80 p-4 bg-gray-50 overflow-y-auto overflow-x-hidden border-l border-gray-200 shrink-0 custom-scrollbar">
+                        <div class="text-center text-gray-400 text-xs italic mt-10">Gửi tin nhắn để AI bắt đầu phân tích bạn...</div>
                     </div>
-                    <div class="p-4 border-t border-gray-200 bg-white">
-                        <form id="chatForm" class="flex space-x-2" onsubmit="sendTestChat(event)">
-                            <input type="text" id="chatInput" placeholder="Nhắn gì đó cho Faye..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" autocomplete="off" required>
-                            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"><i class="fas fa-paper-plane"></i></button>
-                        </form>
+                </div>
+
+                <!-- Mobile Fate Insight Drawer -->
+                <div id="insightDrawerOverlay" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300"></div>
+                <div id="insightDrawer" class="hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-gray-50 z-50 shadow-2xl translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-white shrink-0">
+                        <h4 class="font-bold text-gray-700 text-sm flex items-center gap-2"><span>✨</span> Fate Insight</h4>
+                        <button id="closeInsightDrawer" type="button" class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-500 hover:text-gray-700 transition cursor-pointer"><i class="fas fa-times text-sm"></i></button>
                     </div>
+                    <div id="insightDrawerBody" class="flex-1 overflow-y-auto p-4 custom-scrollbar"></div>
+                </div>
+
+                <!-- TAB 5: GÓP Ý AI -->
+                <div id="feedbackTab" class="hidden p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Góp ý & Đánh giá AI</h3>
+                        <button onclick="clearAllFeedback()" class="text-sm text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i> Xoá tất cả</button>
+                    </div>
+                    <div id="feedbackEmpty" class="text-center text-gray-400 py-16">
+                        <i class="fas fa-star text-5xl mb-4 text-gray-300"></i>
+                        <p>Chưa có góp ý nào. Hãy chat và đánh giá từng câu trả lời của AI nhé!</p>
+                    </div>
+                    <div id="feedbackGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
                 </div>
 
             </main>
@@ -307,6 +338,58 @@
     <div id="toast" class="fixed bottom-5 right-5 transform transition-all duration-300 translate-y-20 opacity-0 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 z-50">
         <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
         <span id="toastMsg">Thành công!</span>
+    </div>
+
+    <!-- MODAL XÁC NHẬN THIẾT LẬP #1 / FALLBACK -->
+    <div id="priorityModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold mb-1">Xác nhận thiết lập</h2>
+            <p id="priorityModalModelName" class="text-gray-500 text-sm mb-6">Đang tải...</p>
+            <div class="flex flex-col space-y-3">
+                <button onclick="setPriorityForModel('primary')" class="w-full py-4 bg-amber-500 text-white rounded-xl hover:bg-amber-600 font-bold text-lg transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-crown"></i> Đặt làm Thứ tự #1
+                </button>
+                <button onclick="setPriorityForModel('fallback')" class="w-full py-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600 font-bold text-lg transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <i class="fas fa-shield-alt"></i> Đặt làm Fallback
+                </button>
+                <button onclick="hidePriorityModal()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 font-medium transition">
+                    Hủy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHI TIẾT AI ANALYSIS -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">🧠 AI Analysis</h3>
+                <button onclick="hideDetailModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="detailModalBody" class="p-5 overflow-y-auto text-sm space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- MODAL GÓP Ý CHO ĐOẠN CHAT -->
+    <div id="feedbackModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">💬 Góp ý cho đoạn chat</h3>
+                <button onclick="hideFeedbackModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-5">
+                <div id="feedbackModalContent" class="text-sm space-y-3"></div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Đánh giá của bạn:</label>
+                    <div id="feedbackModalStars" class="flex gap-1 text-2xl mb-3 cursor-pointer"></div>
+                    <textarea id="feedbackModalText" rows="3" placeholder="Nhập góp ý của bạn về câu trả lời này..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button onclick="hideFeedbackModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm">Huỷ</button>
+                    <button onclick="saveFeedbackFromModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Lưu góp ý</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL THÊM/SỬA MODEL -->
@@ -321,13 +404,14 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Provider</label>
-                    <select id="providerName" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg" required>
-                        <option value="Gemini">Gemini</option>
-                        <option value="OpenAI">OpenAI / Groq</option>
-                        <option value="HuggingFace">HuggingFace</option>
-                        <option value="LlamaLocal">Llama (Local)</option>
-                        <option value="Claude">Claude (Anthropic)</option>
-                    </select>
+                                    <select id="providerName" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg" required>
+                                        <option value="Gemini">Gemini</option>
+                                        <option value="OpenAI">OpenAI</option>
+                                        <option value="Groq">Groq</option>
+                                        <option value="HuggingFace">HuggingFace</option>
+                                        <option value="LlamaLocal">Llama (Local)</option>
+                                        <option value="Claude">Claude (Anthropic)</option>
+                                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Model ID</label>
@@ -340,756 +424,6 @@
             </form>
         </div>
     </div>
-
-    <script>
-        // --- HELPER: GHI LOG TERMINAL CHUYÊN NGHIỆP ---
-        function addTerminalLog(message, type = 'INFO') {
-            const container = document.getElementById('aiStatusContainer');
-            const time = new Date().toLocaleTimeString('vi-VN');
-            let colorClass = 'text-blue-400';
-            if (type === 'SUCCESS') colorClass = 'text-green-400';
-            if (type === 'ERROR') colorClass = 'text-red-400';
-            if (type === 'WARN') colorClass = 'text-yellow-400';
-            
-            const placeholder = container.querySelector('.italic');
-            if (placeholder) placeholder.remove();
-            
-            container.innerHTML += `<p class="border-l-2 border-gray-600 pl-3"><span class="${colorClass} font-bold">[${time}] [${type}]</span> <span class="text-gray-300 ml-1 leading-relaxed">${message}</span></p>`;
-            container.scrollTop = container.scrollHeight;
-
-            // Gọi API lưu xuống file .txt trên Server
-            fetch(`${API_URL}/admin/logs`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, type })
-            }).catch(e => console.error("Lỗi lưu log server", e));
-        }
-
-        function clearTerminalLogs() {
-            document.getElementById('aiStatusContainer').innerHTML = '<p class="text-gray-500 italic">Đã dọn dẹp hệ thống logs. Sẵn sàng ghi nhận mới...</p>';
-        }
-
-        // --- HIỆU ỨNG SIDEBAR MOBILE ---
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-
-        // --- TẢI FILE LOGS ---
-        async function downloadLogs() {
-            try {
-                const res = await fetch(`${API_URL}/admin/logs/download`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'fatelink_admin_logs.txt';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                } else {
-                    showToast('Chưa có file log', 'error');
-                }
-            } catch (e) {
-                showToast('Lỗi tải file', 'error');
-            }
-        }
-
-        // Code xử lý Logic Giao diện & Gọi API
-        const API_URL = '/api'; // Thêm /api vì backend NestJS của bạn đang sử dụng Global Prefix
-        let token = localStorage.getItem('admin_token');
-        let allUsersData = []; // Biến lưu toàn bộ user để phục vụ việc Filter
-        let filteredUsersData = []; // Dữ liệu user sau khi lọc
-        let currentPage = 1;
-        let itemsPerPage = 5;
-
-        // Biến phân trang cho Models
-        let allModelsData = [];
-        let filteredModelsData = [];
-        let currentModelPage = 1;
-        let modelsPerPage = 20;
-
-        const loginScreen = document.getElementById('loginScreen');
-        const dashboardScreen = document.getElementById('dashboardScreen');
-        const loginForm = document.getElementById('loginForm');
-
-        // Kiểm tra xem đã đăng nhập chưa
-        if (token) {
-            showDashboard();
-        }
-
-        // XỬ LÝ ĐĂNG NHẬP
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                const res = await fetch(`${API_URL}/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    token = data.accessToken;
-                    localStorage.setItem('admin_token', token);
-                    showDashboard();
-                    showToast('Đăng nhập thành công', 'success');
-                } else {
-                    showToast('Sai tài khoản hoặc mật khẩu!', 'error');
-                }
-            } catch (err) {
-                showToast('Lỗi kết nối server', 'error');
-            }
-        });
-
-        function logout() {
-            localStorage.removeItem('admin_token');
-            token = null;
-            loginScreen.classList.remove('hidden');
-            dashboardScreen.classList.add('hidden');
-        }
-
-        function showDashboard() {
-            loginScreen.classList.add('hidden');
-            dashboardScreen.classList.remove('hidden');
-            loadConfig();
-        }
-
-        // ĐIỀU HƯỚNG TAB
-        function switchTab(tabId) {
-            document.getElementById('configTab').classList.add('hidden');
-            document.getElementById('usersTab').classList.add('hidden');
-            document.getElementById('modelsTab').classList.add('hidden');
-            document.getElementById('testChatTab').classList.add('hidden');
-            
-            document.getElementById('btn-configTab').classList.replace('bg-gray-800', 'text-gray-400');
-            document.getElementById('btn-configTab').classList.remove('text-white');
-            document.getElementById('btn-usersTab').classList.replace('bg-gray-800', 'text-gray-400');
-            document.getElementById('btn-usersTab').classList.remove('text-white');
-            document.getElementById('btn-modelsTab').classList.replace('bg-gray-800', 'text-gray-400');
-            document.getElementById('btn-modelsTab').classList.remove('text-white');
-            document.getElementById('btn-testChatTab').classList.replace('bg-gray-800', 'text-gray-400');
-            document.getElementById('btn-testChatTab').classList.remove('text-white');
-
-            document.getElementById(tabId).classList.remove('hidden');
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            activeBtn.classList.remove('text-gray-400');
-            activeBtn.classList.add('bg-gray-800', 'text-white');
-
-            if (tabId === 'configTab') {
-                document.getElementById('pageTitle').innerText = 'Cấu hình AI';
-                loadConfig();
-            } else if (tabId === 'usersTab') {
-                document.getElementById('pageTitle').innerText = 'Quản lý Users';
-                loadUsers();
-            } else if (tabId === 'modelsTab') {
-                document.getElementById('pageTitle').innerText = 'Quản lý AI Models';
-                loadAiModels();
-            } else if (tabId === 'testChatTab') {
-                document.getElementById('pageTitle').innerText = 'Test AI Chat';
-            }
-
-            // Tự động đóng menu trên mobile khi click
-            if (window.innerWidth < 768) {
-                document.getElementById('sidebar').classList.add('-translate-x-full');
-                document.getElementById('sidebarOverlay').classList.add('hidden');
-            }
-        }
-
-        // CALL API: LẤY VÀ LƯU CẤU HÌNH AI
-        async function loadConfig() {
-            try {
-                const res = await fetch(`${API_URL}/admin/config`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    document.getElementById('systemPrompt').value = data.systemPrompt || '';
-                    document.getElementById('additionalKnowledge').value = data.additionalKnowledge || '';
-                } else if(res.status === 401) {
-                    logout();
-                }
-            } catch (err) {
-                showToast('Lỗi tải cấu hình', 'error');
-            }
-        }
-
-        async function saveConfig() {
-            const systemPrompt = document.getElementById('systemPrompt').value;
-            const additionalKnowledge = document.getElementById('additionalKnowledge').value;
-
-            try {
-                const res = await fetch(`${API_URL}/admin/config`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ systemPrompt, additionalKnowledge })
-                });
-                if (res.ok) {
-                    showToast('Lưu cấu hình thành công', 'success');
-                }
-            } catch (err) {
-                showToast('Lỗi khi lưu cấu hình', 'error');
-            }
-        }
-
-        // HÀM VẼ BIỂU ĐỒ (PIE CHART)
-        let emotionChartInstance = null;
-        function updateDashboardStats(users) {
-            document.getElementById('statTotalUsers').innerText = users.length;
-            document.getElementById('statActiveUsers').innerText = users.filter(u => !u.isBanned).length;
-            document.getElementById('statBannedUsers').innerText = users.filter(u => u.isBanned).length;
-
-            const emotions = {};
-            users.forEach(u => {
-                const emo = u.latestEmotion || 'Chưa cập nhật';
-                emotions[emo] = (emotions[emo] || 0) + 1;
-            });
-
-            const ctx = document.getElementById('emotionChart').getContext('2d');
-            if (emotionChartInstance) emotionChartInstance.destroy();
-            
-            emotionChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(emotions),
-                    datasets: [{
-                        data: Object.values(emotions),
-                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#6b7280', '#ec4899'],
-                        borderWidth: 0, cutout: '70%'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } } }
-            });
-        }
-
-        // CALL API: QUẢN LÝ NGƯỜI DÙNG
-        async function loadUsers() {
-            try {
-                const res = await fetch(`${API_URL}/admin/users`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    allUsersData = await res.json();
-                    filterUsers(); // Gọi hàm lọc ngay sau khi lấy data
-                    updateDashboardStats(allUsersData);
-                }
-            } catch (err) {
-                showToast('Lỗi tải danh sách users', 'error');
-            }
-        }
-
-        // HÀM LỌC USER
-        function filterUsers() {
-            const filterValue = document.getElementById('userFilter').value;
-            const searchValue = document.getElementById('userSearch').value.toLowerCase();
-            
-            filteredUsersData = allUsersData.filter(u => {
-                const name = (u.name || u.email || 'Người dùng ẩn danh').toLowerCase();
-                const matchesSearch = name.includes(searchValue) || (u._id && u._id.includes(searchValue));
-                
-                const matchesStatus = filterValue === 'all' ? true 
-                                    : (filterValue === 'active' ? !u.isBanned : u.isBanned);
-                
-                return matchesSearch && matchesStatus;
-            });
-            currentPage = 1;
-            renderPagination();
-        }
-
-        function renderPagination() {
-            const totalUsers = filteredUsersData.length;
-            const totalPages = Math.ceil(totalUsers / itemsPerPage) || 1;
-            
-            document.getElementById('totalUsersDisplay').innerText = totalUsers;
-            document.getElementById('totalPagesDisplay').innerText = totalPages;
-            document.getElementById('currentPageDisplay').innerText = currentPage;
-            
-            document.getElementById('btnPrevPage').disabled = currentPage === 1;
-            document.getElementById('btnNextPage').disabled = currentPage === totalPages;
-            
-            const startIdx = (currentPage - 1) * itemsPerPage;
-            const endIdx = startIdx + itemsPerPage;
-            const currentUsers = filteredUsersData.slice(startIdx, endIdx);
-            
-            renderUsers(currentUsers);
-        }
-
-        function prevPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderPagination();
-            }
-        }
-
-        function nextPage() {
-            const totalPages = Math.ceil(filteredUsersData.length / itemsPerPage) || 1;
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderPagination();
-            }
-        }
-
-        function changeItemsPerPage() {
-            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value, 10);
-            currentPage = 1;
-            renderPagination();
-        }
-
-        function renderUsers(users) {
-            const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = '';
-            
-            users.forEach(user => {
-                const tr = document.createElement('tr');
-                const isBanned = user.isBanned || false;
-                // Lấy tên hoặc email để hiển thị (tùy theo cấu trúc DB của bạn)
-                const name = user.name || user.email || 'Người dùng ẩn danh';
-                const date = new Date(user.createdAt || Date.now()).toLocaleDateString('vi-VN');
-                
-                tr.className = "block sm:table-row border border-gray-200 sm:border-none mb-4 sm:mb-0 bg-white sm:bg-transparent shadow-sm sm:shadow-none rounded-xl sm:rounded-none hover:bg-gray-50 transition-colors";
-                tr.innerHTML = `
-                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                        <div class="flex items-center justify-between sm:justify-start">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <img class="h-10 w-10 rounded-full object-cover shadow-sm" src="${user.avatarUrl || 'https://ui-avatars.com/api/?name='+name+'&background=0D8ABC&color=fff'}" alt="Avatar">
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">${name}</div>
-                                    <div class="text-xs text-gray-500 font-mono mt-1">ID: ${user._id}</div>
-                                </div>
-                            </div>
-                            <span class="sm:hidden px-2 py-1 inline-flex text-[10px] leading-5 font-bold rounded-full ${isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${isBanned ? 'Đã khóa' : 'Hoạt động'}</span>
-                        </div>
-                    </td>
-                    <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isBanned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                            ${isBanned ? 'Đã khóa' : 'Hoạt động'}
-                        </span>
-                    </td>
-                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-500 flex justify-between sm:table-cell border-t border-gray-100 sm:border-none">
-                        <span class="sm:hidden font-semibold text-gray-600">Ngày tham gia:</span> <span>${date}</span>
-                    </td>
-                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium border-t border-gray-100 sm:border-none">
-                        <button onclick="toggleBan('${user._id}', ${isBanned})" class="w-full sm:w-auto px-4 py-2 sm:px-3 sm:py-1 rounded border ${isBanned ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} transition shadow-sm font-bold sm:font-normal">
-                            ${isBanned ? 'MỞ KHÓA TÀI KHOẢN' : 'KHÓA (BAN)'}
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        async function toggleBan(userId, currentStatus) {
-            if(!confirm(`Bạn có chắc muốn ${currentStatus ? 'mở khóa' : 'khóa'} tài khoản này?`)) return;
-            
-            try {
-                const res = await fetch(`${API_URL}/admin/users/${userId}/ban`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ isBanned: !currentStatus })
-                });
-                if (res.ok) {
-                    showToast(!currentStatus ? 'Đã khóa tài khoản' : 'Đã mở khóa', 'success');
-                    loadUsers(); // Cập nhật lại giao diện
-                }
-            } catch (err) {
-                showToast('Lỗi thực thi lệnh', 'error');
-            }
-        }
-
-        // --- LOGIC CRUD AI MODELS ---
-        const modelModal = document.getElementById('modelModal');
-        const modelForm = document.getElementById('modelForm');
-
-        function showModelModal(model = null) {
-            modelForm.reset();
-            if (model) {
-                document.getElementById('modelModalTitle').innerText = 'Chỉnh sửa Model AI';
-                document.getElementById('modelIdField').value = model._id;
-                document.getElementById('displayName').value = model.displayName;
-                document.getElementById('providerName').value = model.providerName;
-                document.getElementById('modelIdentifier').value = model.modelId;
-            } else {
-                document.getElementById('modelModalTitle').innerText = 'Thêm Model AI Mới';
-                document.getElementById('modelIdField').value = '';
-            }
-            modelModal.classList.remove('hidden');
-        }
-
-        function hideModelModal() {
-            modelModal.classList.add('hidden');
-        }
-
-        modelForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('modelIdField').value;
-            const existingModel = allModelsData.find(m => m._id === id);
-            const dto = {
-                displayName: document.getElementById('displayName').value,
-                providerName: document.getElementById('providerName').value,
-                modelId: document.getElementById('modelIdentifier').value,
-                isEnabled: true,
-                priority: existingModel && existingModel.priority !== undefined ? existingModel.priority : 0
-            };
-
-            const url = id ? `${API_URL}/admin/models/${id}` : `${API_URL}/admin/models`;
-            const method = id ? 'PUT' : 'POST';
-
-            try {
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dto)
-                });
-                if (res.ok) {
-                    showToast(id ? 'Cập nhật thành công!' : 'Thêm model thành công!', 'success');
-                    addTerminalLog(`Đã ${id ? 'cập nhật' : 'thêm mới'} Model <b class="text-white">${dto.displayName}</b> (${dto.modelId}) của nhà cung cấp ${dto.providerName}.`, 'SUCCESS');
-                    hideModelModal();
-                    loadAiModels();
-                } else {
-                    const errData = await res.json().catch(() => ({}));
-                    let errMsg = errData.message || 'Dữ liệu không hợp lệ hoặc Model ID đã tồn tại!';
-                    if (Array.isArray(errMsg)) errMsg = errMsg.join(', ');
-                    showToast(`Lỗi: ${errMsg}`, 'error');
-                }
-            } catch (err) {
-                showToast('Lỗi thực thi', 'error');
-            }
-        });
-
-        async function loadAiModels() {
-            try {
-                const res = await fetch(`${API_URL}/admin/models`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.ok) {
-                    allModelsData = await res.json();
-                    filterModels();
-                }
-            } catch (err) {
-                showToast('Lỗi tải danh sách models', 'error');
-            }
-        }
-
-        function filterModels() {
-            const filterValue = document.getElementById('modelFilter').value;
-            const providerValue = document.getElementById('providerFilter').value;
-            const searchValue = document.getElementById('modelSearch').value.toLowerCase();
-            
-            filteredModelsData = allModelsData.filter(m => {
-                const textStr = (m.displayName + ' ' + m.modelId + ' ' + m.providerName).toLowerCase();
-                const matchesSearch = textStr.includes(searchValue);
-                const isEnabled = m.isEnabled !== false;
-                const matchesStatus = filterValue === 'all' ? true : (filterValue === 'enabled' ? isEnabled : !isEnabled);
-                const matchesProvider = providerValue === 'all' ? true : m.providerName === providerValue;
-                return matchesSearch && matchesStatus && matchesProvider;
-            });
-            currentModelPage = 1;
-            renderModelPagination();
-        }
-
-        function renderModelPagination() {
-            const totalModels = filteredModelsData.length;
-            const totalPages = Math.ceil(totalModels / modelsPerPage) || 1;
-            
-            document.getElementById('totalModelsDisplay').innerText = totalModels;
-            document.getElementById('totalModelPagesDisplay').innerText = totalPages;
-            document.getElementById('currentModelPageDisplay').innerText = currentModelPage;
-            
-            document.getElementById('btnPrevModelPage').disabled = currentModelPage === 1;
-            document.getElementById('btnNextModelPage').disabled = currentModelPage === totalPages;
-            
-            const startIdx = (currentModelPage - 1) * modelsPerPage;
-            const endIdx = startIdx + modelsPerPage;
-            const currentModels = filteredModelsData.slice(startIdx, endIdx);
-            
-            renderModels(currentModels);
-        }
-
-        function prevModelPage() { if (currentModelPage > 1) { currentModelPage--; renderModelPagination(); } }
-        function nextModelPage() { const t = Math.ceil(filteredModelsData.length / modelsPerPage) || 1; if (currentModelPage < t) { currentModelPage++; renderModelPagination(); } }
-        function changeModelsPerPage() { modelsPerPage = parseInt(document.getElementById('modelsPerPage').value, 10); currentModelPage = 1; renderModelPagination(); }
-
-        function renderModels(models) {
-            const tbody = document.getElementById('modelsTableBody');
-            tbody.innerHTML = '';
-            models.forEach(model => {
-                const tr = document.createElement('tr');
-                tr.draggable = true;
-                tr.dataset.id = model._id;
-                tr.className = "block sm:table-row border border-gray-200 sm:border-none mb-4 sm:mb-0 bg-white sm:bg-transparent shadow-sm sm:shadow-none rounded-xl sm:rounded-none hover:bg-gray-50 cursor-move transition-colors";
-                const isEnabled = model.isEnabled !== false;
-                
-                let statusBadge = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-gray-200 bg-gray-100 text-gray-500"><i class="fas fa-question-circle mr-1 mt-0.5"></i> Chưa kiểm tra</span>`;
-                if (model._apiStatus) {
-                    const s = model._apiStatus;
-                    if (s.status === 'LOADING') {
-                        statusBadge = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-semibold rounded border border-blue-200 bg-blue-50 text-blue-600"><i class="fas fa-spinner fa-spin mr-1 mt-0.5"></i> Đang test</span>`;
-                    } else if (s.status === 'SUCCESS') {
-                        statusBadge = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-green-300 bg-green-100 text-green-800">Thành công (${s.ping})</span>`;
-                    } else {
-                        statusBadge = `<span class="px-2 py-1 inline-flex text-[11px] leading-5 font-bold rounded border border-red-300 bg-red-100 text-red-800" title="${s.error}">Lỗi 🔴</span>`;
-                    }
-                }
-
-                tr.innerHTML = `
-                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                        <div class="flex items-center text-sm font-bold sm:font-medium text-gray-900"><i class="fas fa-grip-vertical text-gray-400 mr-3 hover:text-gray-600" title="Kéo thả để đổi độ ưu tiên"></i> ${model.displayName} ${!isEnabled ? '<span class="text-xs text-red-500 ml-2 font-bold bg-red-50 px-2 py-0.5 rounded">(Đã Tắt)</span>' : ''}</div>
-                    </td>
-                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-500 border-t border-gray-100 sm:border-none flex justify-between sm:table-cell">
-                        <span class="sm:hidden font-semibold text-gray-600">Provider:</span>
-                        <span class="font-bold text-gray-700">${model.providerName}</span>
-                    </td>
-                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-500 border-t border-gray-100 sm:border-none flex justify-between sm:table-cell">
-                        <span class="sm:hidden font-semibold text-gray-600">Model ID:</span>
-                        <span class="text-[11px] font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200 inline-block">${model.modelId}</span>
-                    </td>
-                    <td class="block sm:table-cell px-4 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-sm flex justify-between items-center sm:table-cell border-t border-gray-100 sm:border-none" id="status-${model._id}" data-model="${model.modelId}">
-                        <span class="sm:hidden font-semibold text-gray-600">Trạng thái:</span>
-                        ${statusBadge}
-                    </td>
-                    <td class="block sm:table-cell px-4 py-3 sm:px-6 sm:py-4 text-right text-sm font-medium border-t border-gray-100 sm:border-none">
-                        <div class="flex justify-between gap-1.5 sm:gap-3 w-full">
-                            <button onclick="toggleAiModel('${model._id}', ${isEnabled})" class="flex-1 sm:flex-none flex items-center justify-center ${isEnabled ? 'text-orange-600 hover:text-orange-900 bg-orange-50 border border-orange-200' : 'text-green-600 hover:text-green-900 bg-green-50 border border-green-200'} px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate" title="${isEnabled ? 'Tắt Model' : 'Bật Model'}">
-                                <i class="fas ${isEnabled ? 'fa-pause' : 'fa-play'} sm:mr-0 mr-1.5"></i>
-                                <span class="sm:hidden">${isEnabled ? 'TẠM DỪNG' : 'BẬT LÊN'}</span>
-                            </button>
-                            
-                            <button onclick='showModelModal(${JSON.stringify(model).replace(/'/g, "\\'")})' class="flex-1 sm:flex-none flex items-center justify-center text-blue-600 hover:text-blue-900 bg-blue-50 border border-blue-200 px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate">
-                                <i class="fas fa-pen sm:mr-0 mr-1.5"></i>
-                                <span class="sm:hidden">SỬA</span>
-                            </button>
-                            
-                            <button onclick="deleteAiModel('${model._id}')" class="flex-1 sm:flex-none flex items-center justify-center text-red-600 hover:text-red-900 bg-red-50 border border-red-200 px-1 py-2 sm:px-3 sm:py-1 rounded text-xs sm:text-sm font-bold sm:font-normal shadow-sm truncate">
-                                <i class="fas fa-trash sm:mr-0 mr-1.5"></i>
-                                <span class="sm:hidden">XÓA</span>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            initDragAndDrop(tbody);
-        }
-
-        async function toggleAiModel(id, currentStatus) {
-            try {
-                await fetch(`${API_URL}/admin/models/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ isEnabled: !currentStatus })
-                });
-                showToast(!currentStatus ? 'Đã BẬT Model!' : 'Đã TẮT Model!', 'success');
-                addTerminalLog(`Hệ thống đã ${!currentStatus ? 'KÍCH HOẠT' : 'VÔ HIỆU HÓA'} model (ID Database: ${id})`, 'WARN');
-                loadAiModels(); // Refresh
-            } catch(e) {
-                showToast('Lỗi khi đổi trạng thái', 'error');
-            }
-        }
-
-        async function deleteAiModel(id) {
-            if (!confirm('Bạn có chắc muốn xóa model này?')) return;
-            try {
-                await fetch(`${API_URL}/admin/models/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                showToast('Xóa model thành công!', 'success');
-                addTerminalLog(`Đã xóa vĩnh viễn model khỏi cơ sở dữ liệu (ID: ${id})`, 'WARN');
-                loadAiModels();
-            } catch (err) {
-                showToast('Lỗi khi xóa', 'error');
-            }
-        }
-
-        // CALL API: KIỂM TRA TRẠNG THÁI AI MODELS TRỰC TIẾP TRÊN BẢNG
-        async function checkAiModels() {
-            const btn = document.getElementById('btnCheckAi');
-            const btnText = document.getElementById('btnCheckAiText');
-            const container = document.getElementById('aiStatusContainer');
-            
-            btn.disabled = true;
-            btnText.innerText = 'Đang quét...';
-            container.innerHTML = '<p class="text-blue-400 animate-pulse">> Đang gửi gói tin ping đến các máy chủ AI, vui lòng chờ...</p>';
-
-            // Lưu trạng thái LOADING vào data và render lại UI
-            allModelsData.forEach(model => {
-                model._apiStatus = { status: 'LOADING' };
-            });
-            renderModelPagination();
-
-            try {
-                const res = await fetch(`${API_URL}/admin/ai-status`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.ok) {
-                    const statuses = await res.json();
-                    container.innerHTML = '';
-
-                    // Gom nhóm dữ liệu theo Provider (Quan hệ 1-N)
-                    const groupedData = statuses.reduce((acc, current) => {
-                        const provider = current.provider || 'Unknown Provider';
-                        if (!acc[provider]) acc[provider] = [];
-                        if (current.modelId || current.displayName) {
-                            acc[provider].push(current);
-                        }
-                        return acc;
-                    }, {});
-
-                    addTerminalLog(`=== BÁO CÁO TRẠNG THÁI AI PROVIDERS ===`, 'INFO');
-
-                    for (const [provider, models] of Object.entries(groupedData)) {
-                        addTerminalLog(`📦 Provider: <b class="text-white">${provider}</b>`, 'INFO');
-                        
-                        if (models.length === 0) {
-                             addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ Models: N/A (Chưa cấu hình model nào)`, 'WARN');
-                        } else {
-                            models.forEach((m, index) => {
-                                const validName = m.displayName || m.modelId || "Model ẩn danh";
-                                const isOnline = m.status === 'SUCCESS';
-                                const validStatus = isOnline ? 'Thành công' : 'Lỗi';
-                                
-                                if (isOnline) {
-                                    addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ ${index + 1}. Model: <span class="text-blue-300">[${validName}]</span> -> Trạng thái: ${validStatus} (${m.ping})`, 'SUCCESS');
-                                } else {
-                                    addTerminalLog(`&nbsp;&nbsp;&nbsp;↳ ${index + 1}. Model: <span class="text-blue-300">[${validName}]</span> -> Trạng thái: ${validStatus} - ${m.error}`, 'ERROR');
-                                }
-                            });
-                        }
-                    }
-
-                    // Gán trạng thái Ping thành công/lỗi vào data tổng
-                    allModelsData.forEach(model => {
-                        const statusObj = statuses.find(s => s.modelId === model.modelId);
-                        if (statusObj) model._apiStatus = statusObj;
-                        else model._apiStatus = { status: 'ERROR', error: 'Chưa có thông tin phản hồi' };
-                    });
-
-                    // Cập nhật UI lần cuối sau khi có dữ liệu
-                    renderModelPagination();
-                }
-            } catch (err) {
-                showToast('Lỗi khi kiểm tra trạng thái AI', 'error');
-                addTerminalLog(`Gặp sự cố kết nối mạng nghiêm trọng, không thể lấy dữ liệu từ máy chủ.`, 'ERROR');
-            } finally {
-                btn.disabled = false;
-                btnText.innerText = 'Cập nhật trạng thái';
-            }
-        }
-
-        // --- KÉO THẢ (DRAG AND DROP) NATIVE HTML5 ---
-        function initDragAndDrop(tbody) {
-            let draggedRow = null;
-
-            tbody.addEventListener('dragstart', (e) => {
-                if (e.target.tagName === 'TR') {
-                    draggedRow = e.target;
-                    e.dataTransfer.effectAllowed = 'move';
-                    setTimeout(() => e.target.classList.add('opacity-50', 'bg-blue-50'), 0);
-                }
-            });
-
-            tbody.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                const targetRow = e.target.closest('tr');
-                if (targetRow && targetRow !== draggedRow && targetRow.tagName === 'TR') {
-                    const rect = targetRow.getBoundingClientRect();
-                    const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-                    tbody.insertBefore(draggedRow, next ? targetRow.nextSibling : targetRow);
-                }
-            });
-
-            tbody.addEventListener('dragend', (e) => {
-                if (draggedRow) {
-                    draggedRow.classList.remove('opacity-50', 'bg-blue-50');
-                    draggedRow = null;
-                    saveModelOrder();
-                }
-            });
-        }
-
-        async function saveModelOrder() {
-            const rows = document.querySelectorAll('#modelsTableBody tr');
-            const modelIds = Array.from(rows).map(row => row.dataset.id);
-            try {
-                await fetch(`${API_URL}/admin/models/reorder`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ modelIds })
-                });
-                showToast('Đã lưu thứ tự ưu tiên!', 'success');
-            } catch(e) {}
-        }
-
-        // --- TEST CHAT AI ---
-        async function sendTestChat(e) {
-            e.preventDefault();
-            const input = document.getElementById('chatInput');
-            const message = input.value;
-            if (!message) return;
-            input.value = '';
-
-            const chatBox = document.getElementById('chatBox');
-            chatBox.innerHTML += `<div class="text-right mb-4"><span class="bg-blue-600 text-white px-4 py-2 rounded-xl inline-block shadow-sm">${message}</span></div>`;
-            chatBox.innerHTML += `<div id="typing" class="text-left mb-4"><span class="bg-gray-200 text-gray-500 px-4 py-2 rounded-xl inline-block animate-pulse">AI đang phân tích...</span></div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            try {
-                const res = await fetch(`${API_URL}/admin/ai-chat`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                document.getElementById('typing').remove();
-
-                const textResponse = await res.text();
-                let parsed = null;
-                try { parsed = JSON.parse(textResponse); } catch(e) {}
-
-                if (parsed && parsed.reply) {
-                    chatBox.innerHTML += `<div class="text-left mb-4"><span class="bg-white border border-gray-200 px-4 py-2 rounded-xl inline-block text-gray-800 shadow-sm">${parsed.reply.replace(/\n/g, '<br>')}</span><pre class="text-[11px] bg-gray-900 text-green-400 p-3 mt-2 rounded-lg overflow-x-auto mt-2">Dữ liệu bóc tách (JSON):\n${textResponse}</pre></div>`;
-                } else {
-                    chatBox.innerHTML += `<div class="text-left mb-4"><pre class="text-[11px] bg-gray-900 text-yellow-400 p-3 rounded-lg overflow-x-auto shadow-sm">${textResponse}</pre></div>`;
-                }
-                chatBox.scrollTop = chatBox.scrollHeight;
-            } catch (err) {
-                if(document.getElementById('typing')) document.getElementById('typing').remove();
-                showToast('Lỗi gửi tin nhắn', 'error');
-            }
-        }
-
-        function clearChat() {
-            document.getElementById('chatBox').innerHTML = '<div class="text-center text-gray-400 italic mt-10">Lịch sử chat đã được xóa.</div>';
-        }
-
-        // HIỂN THỊ THÔNG BÁO (TOAST)
-        function showToast(msg, type) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMsg').innerText = msg;
-            
-            const icon = document.getElementById('toastIcon');
-            if (type === 'success') {
-                icon.className = 'fas fa-check-circle text-green-400 w-5';
-            } else {
-                icon.className = 'fas fa-exclamation-circle text-red-400 w-5';
-            }
-
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-    </script>
+    <script src="admin.js"></script>
 </body>
 </html>

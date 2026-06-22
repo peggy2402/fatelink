@@ -6,6 +6,7 @@ import { LlamaProvider } from './providers/llama.provider';
 import { MockAiProvider } from './providers/mock-ai.provider';
 import { OpenAiProvider } from './providers/openai.provider';
 import { ClaudeProvider } from './providers/claude.provider';
+import { GroqProvider } from './providers/groq.provider';
 
 @Module({
   providers: [
@@ -15,6 +16,7 @@ import { ClaudeProvider } from './providers/claude.provider';
     MockAiProvider,
     OpenAiProvider,
     ClaudeProvider,
+    GroqProvider,
     {
       provide: AI_PROVIDER,
       useFactory: (
@@ -24,7 +26,8 @@ import { ClaudeProvider } from './providers/claude.provider';
         mock: MockAiProvider,
         openai: OpenAiProvider,
         claude: ClaudeProvider,
-      ) => [gemini, huggingFace, llama, mock, openai, claude],
+        groq: GroqProvider,
+      ) => [gemini, huggingFace, llama, mock, openai, claude, groq],
       inject: [
         GeminiProvider,
         HuggingFaceProvider,
@@ -32,6 +35,7 @@ import { ClaudeProvider } from './providers/claude.provider';
         MockAiProvider,
         OpenAiProvider,
         ClaudeProvider,
+        GroqProvider,
       ],
     },
   ],

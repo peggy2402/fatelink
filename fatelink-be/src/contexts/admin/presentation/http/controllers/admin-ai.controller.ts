@@ -77,6 +77,12 @@ export class AdminAiController {
     return this.createAiModelUseCase.execute(dto);
   }
 
+  @Put('models/reorder')
+  @ApiReorderAiModels()
+  reorderAiModels(@Body() dto: ReorderAiModelsDto) {
+    return this.reorderAiModelsUseCase.execute({ modelIds: dto.modelIds });
+  }
+
   @Put('models/:id')
   @ApiUpdateAiModel()
   updateAiModel(@Param('id') id: string, @Body() dto: UpdateAiModelDto) {
@@ -89,15 +95,14 @@ export class AdminAiController {
     return this.deleteAiModelUseCase.execute({ id });
   }
 
-  @Put('models/reorder')
-  @ApiReorderAiModels()
-  reorderAiModels(@Body() dto: ReorderAiModelsDto) {
-    return this.reorderAiModelsUseCase.execute(dto);
-  }
-
   @Post('ai-chat')
   @ApiAdminTestAiChat()
   testAiChat(@Body() dto: TestAiChatDto) {
-    return this.testAiChatUseCase.execute({ message: dto.message });
+    return this.testAiChatUseCase.execute({
+      message: dto.message,
+      modelId: dto.modelId,
+      providerName: dto.providerName,
+      history: dto.history,
+    });
   }
 }
