@@ -3,7 +3,9 @@ import type { FacebookAuthService } from '@shared/contracts/facebook-auth.servic
 import type { GoogleAuthService } from '@shared/contracts/google-auth.service';
 import type { MagicLinkAuthService } from '@shared/contracts/magic-link-auth.service';
 import type { PhoneAuthService } from '@shared/contracts/phone-auth.service';
+import type { TikTokAuthService } from '@shared/contracts/tiktok-auth.service';
 import type { TokenService } from '@shared/contracts/token.service';
+import type { ZaloAuthService } from '@shared/contracts/zalo-auth.service';
 import { MongooseAuthSessionRepository } from '@contexts/auth/infrastructure/repositories/mongoose-auth-session.repository';
 import { MongooseAuthIdentityRepository } from '@contexts/auth/infrastructure/repositories/mongoose-auth-identity.repository';
 import { AuthSessionIssuer } from '@contexts/auth/application/services/auth-session-issuer.service';
@@ -12,6 +14,8 @@ import { LoginWithFacebookUseCase } from '@contexts/auth/application/usecases/lo
 import { LoginWithGoogleUseCase } from '@contexts/auth/application/usecases/login-with-google.usecase';
 import { LoginWithMagicLinkUseCase } from '@contexts/auth/application/usecases/login-with-magic-link.usecase';
 import { LoginWithPhoneOtpUseCase } from '@contexts/auth/application/usecases/login-with-phone-otp.usecase';
+import { LoginWithTikTokUseCase } from '@contexts/auth/application/usecases/login-with-tiktok.usecase';
+import { LoginWithZaloUseCase } from '@contexts/auth/application/usecases/login-with-zalo.usecase';
 import { ListAuthSessionsUseCase } from '@contexts/auth/application/usecases/list-auth-sessions.usecase';
 import { LogoutUseCase } from '@contexts/auth/application/usecases/logout.usecase';
 import { RefreshTokenUseCase } from '@contexts/auth/application/usecases/refresh-token.usecase';
@@ -28,8 +32,10 @@ import {
   GOOGLE_AUTH_SERVICE,
   MAGIC_LINK_AUTH_SERVICE,
   PHONE_AUTH_SERVICE,
+  TIKTOK_AUTH_SERVICE,
   TOKEN_SERVICE,
   USER_REPOSITORY,
+  ZALO_AUTH_SERVICE,
 } from '@shared/kernel/injection-tokens';
 import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
 import type { Provider } from '@nestjs/common';
@@ -136,6 +142,48 @@ export const authUseCaseProviders: Provider[] = [
     ],
   },
   {
+    provide: AUTH_APPLICATION_TOKENS.loginWithZalo,
+    useFactory: (
+      zaloAuthService: ZaloAuthService,
+      userRepository: UserRepository,
+      authIdentityRepository: MongooseAuthIdentityRepository,
+      authSessionIssuer: AuthSessionIssuer,
+    ) =>
+      new LoginWithZaloUseCase(
+        zaloAuthService,
+        userRepository,
+        authIdentityRepository,
+        authSessionIssuer,
+      ),
+    inject: [
+      ZALO_AUTH_SERVICE,
+      USER_REPOSITORY,
+      MongooseAuthIdentityRepository,
+      AuthSessionIssuer,
+    ],
+  },
+  {
+    provide: AUTH_APPLICATION_TOKENS.loginWithTikTok,
+    useFactory: (
+      tikTokAuthService: TikTokAuthService,
+      userRepository: UserRepository,
+      authIdentityRepository: MongooseAuthIdentityRepository,
+      authSessionIssuer: AuthSessionIssuer,
+    ) =>
+      new LoginWithTikTokUseCase(
+        tikTokAuthService,
+        userRepository,
+        authIdentityRepository,
+        authSessionIssuer,
+      ),
+    inject: [
+      TIKTOK_AUTH_SERVICE,
+      USER_REPOSITORY,
+      MongooseAuthIdentityRepository,
+      AuthSessionIssuer,
+    ],
+  },
+  {
     provide: AUTH_APPLICATION_TOKENS.listAuthSessions,
     useFactory: (authSessionRepository: MongooseAuthSessionRepository) =>
       new ListAuthSessionsUseCase(authSessionRepository),
@@ -157,19 +205,16 @@ export const authUseCaseProviders: Provider[] = [
     provide: AUTH_APPLICATION_TOKENS.refreshToken,
     useFactory: (
       authSessionRepository: MongooseAuthSessionRepository,
-      tokenService: TokenService,
       userRepository: UserRepository,
       authSessionIssuer: AuthSessionIssuer,
     ) =>
       new RefreshTokenUseCase(
         authSessionRepository,
-        tokenService,
         userRepository,
         authSessionIssuer,
       ),
     inject: [
       MongooseAuthSessionRepository,
-      TOKEN_SERVICE,
       USER_REPOSITORY,
       AuthSessionIssuer,
     ],
@@ -205,6 +250,8 @@ export const authUseCases = [
   AUTH_APPLICATION_TOKENS.requestMagicLink,
   AUTH_APPLICATION_TOKENS.loginWithMagicLink,
   AUTH_APPLICATION_TOKENS.loginWithFacebook,
+  AUTH_APPLICATION_TOKENS.loginWithZalo,
+  AUTH_APPLICATION_TOKENS.loginWithTikTok,
   AUTH_APPLICATION_TOKENS.listAuthSessions,
   AUTH_APPLICATION_TOKENS.revokeAuthSession,
   AUTH_APPLICATION_TOKENS.logout,

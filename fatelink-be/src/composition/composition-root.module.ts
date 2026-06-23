@@ -27,6 +27,7 @@ import { join } from 'path';
     ]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
+      exclude: ['/tiktok/auth', '/.well-known/assetlinks.json'],
     }),
     PrimaryAdaptersModule,
   ],

@@ -20,7 +20,7 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
     userId: string;
     deviceType: string;
     deviceId: string;
-    refreshTokenId: string;
+    refreshTokenHash: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<AuthSessionRecord> {
@@ -60,6 +60,15 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
     return document ? this.toRecord(document) : null;
   }
 
+  async findActiveByRefreshTokenHash(
+    refreshTokenHash: string,
+  ): Promise<AuthSessionRecord | null> {
+    const document = await this.authSessionModel
+      .findOne({ refreshTokenHash, status: AUTH_SESSION_STATUS.ACTIVE })
+      .exec();
+    return document ? this.toRecord(document) : null;
+  }
+
   async findBySessionId(sessionId: string): Promise<AuthSessionRecord | null> {
     const document = await this.authSessionModel.findOne({ sessionId }).exec();
     return document ? this.toRecord(document) : null;
@@ -75,8 +84,8 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
 
   async rotate(input: {
     currentSessionId: string;
-    currentRefreshTokenId: string;
-    nextRefreshTokenId: string;
+    currentRefreshTokenHash: string;
+    nextRefreshTokenHash: string;
     deviceType: string;
     deviceId: string;
     ipAddress?: string;
@@ -88,11 +97,11 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
         {
           sessionId: input.currentSessionId,
           status: AUTH_SESSION_STATUS.ACTIVE,
-          refreshTokenId: input.currentRefreshTokenId,
+          refreshTokenHash: input.currentRefreshTokenHash,
         },
         {
           $set: {
-            refreshTokenId: input.nextRefreshTokenId,
+            refreshTokenHash: input.nextRefreshTokenHash,
             deviceType: input.deviceType,
             deviceId: input.deviceId,
             ipAddress: input.ipAddress,
@@ -145,7 +154,7 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
       userId: plainRecord.userId,
       deviceType: plainRecord.deviceType,
       deviceId: plainRecord.deviceId,
-      refreshTokenId: plainRecord.refreshTokenId,
+      refreshTokenHash: plainRecord.refreshTokenHash,
       status: plainRecord.status,
       ipAddress: plainRecord.ipAddress,
       userAgent: plainRecord.userAgent,

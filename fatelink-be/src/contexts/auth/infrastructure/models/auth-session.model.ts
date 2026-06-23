@@ -22,7 +22,7 @@ export class AuthSession {
   deviceId!: string;
 
   @Prop({ required: true, unique: true })
-  refreshTokenId!: string;
+  refreshTokenHash!: string;
 
   @Prop({
     type: String,

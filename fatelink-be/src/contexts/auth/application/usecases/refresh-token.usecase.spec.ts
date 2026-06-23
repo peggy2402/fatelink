@@ -1,24 +1,20 @@
+import { createHash } from 'crypto';
 import type { UnauthorizedApplicationError } from '@shared/errors/application-error';
 import { ERROR_CODES } from '@shared/errors/error-codes';
 import { RefreshTokenUseCase } from './refresh-token.usecase';
 
 describe('RefreshTokenUseCase', () => {
   it('rotates the current session through the session issuer', async () => {
+    const refreshToken = 'refresh-token';
     const authSessionRepository = {
-      findActiveBySessionId: jest.fn().mockResolvedValue({
+      findActiveByRefreshTokenHash: jest.fn().mockResolvedValue({
         sessionId: 'session-1',
         userId: 'user-1',
         deviceId: 'device-1',
-        refreshTokenId: 'refresh-1',
-      }),
-    };
-    const tokenService = {
-      verifyRefreshToken: jest.fn().mockResolvedValue({
-        sub: 'user-1',
-        sessionId: 'session-1',
-        jti: 'refresh-1',
         deviceType: 'mobile',
-        deviceId: 'device-1',
+        refreshTokenHash: createHash('sha256')
+          .update(refreshToken)
+          .digest('hex'),
       }),
     };
     const userRepository = {
@@ -31,13 +27,12 @@ describe('RefreshTokenUseCase', () => {
     };
     const useCase = new RefreshTokenUseCase(
       authSessionRepository as never,
-      tokenService as never,
       userRepository as never,
       authSessionIssuer as never,
     );
 
     await useCase.execute({
-      refreshToken: 'refresh-token',
+      refreshToken,
       context: { deviceId: 'device-1', ipAddress: '127.0.0.1' },
     });
 
@@ -46,7 +41,7 @@ describe('RefreshTokenUseCase', () => {
       deviceType: 'mobile',
       deviceId: 'device-1',
       currentSessionId: 'session-1',
-      currentRefreshTokenId: 'refresh-1',
+      currentRefreshToken: refreshToken,
       context: { deviceId: 'device-1', ipAddress: '127.0.0.1' },
     });
   });
@@ -54,15 +49,7 @@ describe('RefreshTokenUseCase', () => {
   it('rejects an invalid refresh token state', async () => {
     const useCase = new RefreshTokenUseCase(
       {
-        findActiveBySessionId: jest.fn().mockResolvedValue(null),
-      } as never,
-      {
-        verifyRefreshToken: jest.fn().mockResolvedValue({
-          sub: 'user-1',
-          sessionId: 'session-1',
-          jti: 'refresh-1',
-          deviceId: 'device-1',
-        }),
+        findActiveByRefreshTokenHash: jest.fn().mockResolvedValue(null),
       } as never,
       {
         findById: jest.fn().mockResolvedValue({ id: 'user-1' }),

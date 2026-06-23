@@ -15,7 +15,6 @@ describe('AuthSessionIssuer', () => {
     };
     const tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
-      signRefreshToken: jest.fn().mockReturnValue('refresh-token'),
     };
     const service = new AuthSessionIssuer(
       authSessionRepository as never,
@@ -46,7 +45,10 @@ describe('AuthSessionIssuer', () => {
         sessionId: 'session-1',
       }),
     );
-    expect(result.refreshToken).toBe('refresh-token');
+    expect(result.refreshToken).toEqual(expect.any(String));
+    expect(result.refreshToken).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
   });
 
   it('reuses the same session during refresh rotation', async () => {
@@ -61,7 +63,6 @@ describe('AuthSessionIssuer', () => {
     };
     const tokenService = {
       signAccessToken: jest.fn().mockReturnValue('access-token'),
-      signRefreshToken: jest.fn().mockReturnValue('refresh-token'),
     };
     const service = new AuthSessionIssuer(
       authSessionRepository as never,
@@ -74,14 +75,15 @@ describe('AuthSessionIssuer', () => {
       deviceType: 'mobile',
       deviceId: 'device-1',
       currentSessionId: 'session-1',
-      currentRefreshTokenId: 'refresh-1',
+      currentRefreshToken: 'refresh-token-1',
       context: { ipAddress: '127.0.0.1' },
     });
 
     expect(authSessionRepository.rotate).toHaveBeenCalledWith(
       expect.objectContaining({
         currentSessionId: 'session-1',
-        currentRefreshTokenId: 'refresh-1',
+        currentRefreshTokenHash: expect.any(String),
+        nextRefreshTokenHash: expect.any(String),
         deviceType: 'mobile',
         deviceId: 'device-1',
         ipAddress: '127.0.0.1',

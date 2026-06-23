@@ -7,8 +7,10 @@ import {
   MAGIC_LINK_AUTH_SERVICE,
   PHONE_AUTH_SERVICE,
   PHONE_OTP_DELIVERY_SERVICE,
+  TIKTOK_AUTH_SERVICE,
   USER_REPOSITORY,
   TOKEN_SERVICE,
+  ZALO_AUTH_SERVICE,
 } from '@shared/kernel/injection-tokens';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -23,6 +25,7 @@ import { GoogleAuthServiceImpl } from './services/google-auth.service.impl';
 import { GoogleEmailDeliveryServiceImpl } from './services/google-email-delivery.service.impl';
 import { JwtTokenServiceImpl } from './services/jwt-token.service.impl';
 import { MagicLinkAuthServiceImpl } from './services/magic-link-auth.service.impl';
+import { TikTokAuthServiceImpl } from './services/tiktok-auth.service.impl';
 import { TwilioPhoneOtpDeliveryServiceImpl } from './services/twilio-phone-otp-delivery.service.impl';
 import {
   AuthChallenge,
@@ -35,6 +38,7 @@ import { MongooseAuthIdentityRepository } from './repositories/mongoose-auth-ide
 import { MongooseAuthSessionRepository } from './repositories/mongoose-auth-session.repository';
 import { PhoneAuthServiceImpl } from './services/phone-auth.service.impl';
 import { SecretHashService } from './services/secret-hash.service';
+import { ZaloAuthServiceImpl } from './services/zalo-auth.service.impl';
 import { UsersPersistenceModule } from '@contexts/users/infrastructure/users-persistence.module';
 
 @Module({
@@ -63,6 +67,18 @@ import { UsersPersistenceModule } from '@contexts/users/infrastructure/users-per
       provide: FACEBOOK_AUTH_SERVICE,
       useFactory: (configService: ConfigService) =>
         new FacebookAuthServiceImpl(configService),
+      inject: [ConfigService],
+    },
+    {
+      provide: ZALO_AUTH_SERVICE,
+      useFactory: (configService: ConfigService) =>
+        new ZaloAuthServiceImpl(configService),
+      inject: [ConfigService],
+    },
+    {
+      provide: TIKTOK_AUTH_SERVICE,
+      useFactory: (configService: ConfigService) =>
+        new TikTokAuthServiceImpl(configService),
       inject: [ConfigService],
     },
     {
@@ -163,6 +179,8 @@ import { UsersPersistenceModule } from '@contexts/users/infrastructure/users-per
     MongooseAuthSessionRepository,
     GOOGLE_AUTH_SERVICE,
     FACEBOOK_AUTH_SERVICE,
+    ZALO_AUTH_SERVICE,
+    TIKTOK_AUTH_SERVICE,
     EMAIL_AUTH_SERVICE,
     EMAIL_DELIVERY_SERVICE,
     PHONE_AUTH_SERVICE,

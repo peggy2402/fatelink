@@ -7,6 +7,8 @@ export const MATCH_CANDIDATE_REPOSITORY = 'MatchCandidateRepository';
 
 export const GOOGLE_AUTH_SERVICE = 'GoogleAuthService';
 export const FACEBOOK_AUTH_SERVICE = 'FacebookAuthService';
+export const ZALO_AUTH_SERVICE = 'ZaloAuthService';
+export const TIKTOK_AUTH_SERVICE = 'TikTokAuthService';
 export const EMAIL_AUTH_SERVICE = 'EmailAuthService';
 export const EMAIL_DELIVERY_SERVICE = 'EmailDeliveryService';
 export const PHONE_AUTH_SERVICE = 'PhoneAuthService';

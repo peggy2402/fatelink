@@ -3,6 +3,7 @@ import { DeviceType } from '@contexts/auth/application/contracts/device-type';
 import {
   IsEmail,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -181,6 +182,80 @@ export class LoginWithFacebookDto {
   @IsString()
   @IsNotEmpty()
   accessToken!: string;
+
+  @ApiProperty({
+    enum: DeviceType,
+    example: DeviceType.MOBILE,
+    default: DeviceType.MOBILE,
+  })
+  @IsEnum(DeviceType)
+  deviceType: DeviceType = DeviceType.MOBILE;
+
+  @ApiProperty({ example: 'iphone-15-pro-max-user-123' })
+  @IsString()
+  @IsNotEmpty()
+  deviceId!: string;
+}
+
+export class LoginWithZaloDto {
+  @ApiProperty({
+    example: 'zl-access-token',
+    description: 'Zalo access token',
+  })
+  @IsString()
+  @IsNotEmpty()
+  accessToken!: string;
+
+  @ApiProperty({
+    enum: DeviceType,
+    example: DeviceType.MOBILE,
+    default: DeviceType.MOBILE,
+  })
+  @IsEnum(DeviceType)
+  deviceType: DeviceType = DeviceType.MOBILE;
+
+  @ApiProperty({ example: 'iphone-15-pro-max-user-123' })
+  @IsString()
+  @IsNotEmpty()
+  deviceId!: string;
+}
+
+export class LoginWithTikTokDto {
+  @ApiProperty({
+    example: 'access_token',
+    description: 'Kiểu payload TikTok được gửi lên backend.',
+    required: false,
+  })
+  @IsOptional()
+  @IsIn(['access_token', 'authorization_code'])
+  authType?: 'access_token' | 'authorization_code';
+
+  @ApiProperty({
+    example: 'tt-access-token',
+    description: 'TikTok access token',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  accessToken?: string;
+
+  @ApiProperty({
+    example: 'tiktok-auth-code',
+    description: 'TikTok authorization code trả về từ OpenSDK.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @ApiProperty({
+    example: 'pkce-code-verifier',
+    description: 'PKCE code verifier dùng để đổi TikTok code lấy token.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  codeVerifier?: string;
 
   @ApiProperty({
     enum: DeviceType,

@@ -12,7 +12,7 @@ export interface AuthSessionRecord {
   userId: string;
   deviceType: string;
   deviceId: string;
-  refreshTokenId: string;
+  refreshTokenHash: string;
   status: AuthSessionStatus;
   ipAddress?: string;
   userAgent?: string;
@@ -30,17 +30,20 @@ export interface AuthSessionRepository {
     userId: string;
     deviceType: string;
     deviceId: string;
-    refreshTokenId: string;
+    refreshTokenHash: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<AuthSessionRecord>;
   findActiveBySessionId(sessionId: string): Promise<AuthSessionRecord | null>;
+  findActiveByRefreshTokenHash(
+    refreshTokenHash: string,
+  ): Promise<AuthSessionRecord | null>;
   findBySessionId(sessionId: string): Promise<AuthSessionRecord | null>;
   findByUserId(userId: string): Promise<AuthSessionRecord[]>;
   rotate(input: {
     currentSessionId: string;
-    currentRefreshTokenId: string;
-    nextRefreshTokenId: string;
+    currentRefreshTokenHash: string;
+    nextRefreshTokenHash: string;
     deviceType: string;
     deviceId: string;
     ipAddress?: string;

@@ -15,6 +15,8 @@ import type { LoginWithFacebookUseCase } from '@contexts/auth/application/usecas
 import type { LoginWithGoogleUseCase } from '@contexts/auth/application/usecases/login-with-google.usecase';
 import type { LoginWithMagicLinkUseCase } from '@contexts/auth/application/usecases/login-with-magic-link.usecase';
 import type { LoginWithPhoneOtpUseCase } from '@contexts/auth/application/usecases/login-with-phone-otp.usecase';
+import type { LoginWithTikTokUseCase } from '@contexts/auth/application/usecases/login-with-tiktok.usecase';
+import type { LoginWithZaloUseCase } from '@contexts/auth/application/usecases/login-with-zalo.usecase';
 import type { ListAuthSessionsUseCase } from '@contexts/auth/application/usecases/list-auth-sessions.usecase';
 import type { LogoutUseCase } from '@contexts/auth/application/usecases/logout.usecase';
 import type { RefreshTokenUseCase } from '@contexts/auth/application/usecases/refresh-token.usecase';
@@ -30,6 +32,8 @@ import {
   ApiLoginWithGoogle,
   ApiLoginWithMagicLink,
   ApiLoginWithPhoneOtp,
+  ApiLoginWithTikTok,
+  ApiLoginWithZalo,
   ApiListAuthSessions,
   ApiLogout,
   ApiRefreshToken,
@@ -46,6 +50,8 @@ import {
   LoginWithGoogleDto,
   LoginWithMagicLinkDto,
   LoginWithPhoneOtpDto,
+  LoginWithTikTokDto,
+  LoginWithZaloDto,
   RefreshTokenDto,
   RegisterWithEmailDto,
   RequestMagicLinkDto,
@@ -72,6 +78,10 @@ export class AuthController {
     private readonly loginWithMagicLinkUseCase: LoginWithMagicLinkUseCase,
     @Inject(AUTH_APPLICATION_TOKENS.loginWithFacebook)
     private readonly loginWithFacebookUseCase: LoginWithFacebookUseCase,
+    @Inject(AUTH_APPLICATION_TOKENS.loginWithZalo)
+    private readonly loginWithZaloUseCase: LoginWithZaloUseCase,
+    @Inject(AUTH_APPLICATION_TOKENS.loginWithTikTok)
+    private readonly loginWithTikTokUseCase: LoginWithTikTokUseCase,
     @Inject(AUTH_APPLICATION_TOKENS.listAuthSessions)
     private readonly listAuthSessionsUseCase: ListAuthSessionsUseCase,
     @Inject(AUTH_APPLICATION_TOKENS.revokeAuthSession)
@@ -197,6 +207,38 @@ export class AuthController {
         context: this.getSessionContext(req, dto.deviceId),
       }),
       'Đăng nhập Facebook thành công!',
+    );
+  }
+
+  @Post('zalo/login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiLoginWithZalo()
+  async loginWithZalo(
+    @Body() dto: LoginWithZaloDto,
+    @Request() req: HttpRequest,
+  ) {
+    return this.toAuthResponse(
+      await this.loginWithZaloUseCase.execute({
+        ...dto,
+        context: this.getSessionContext(req, dto.deviceId),
+      }),
+      'Đăng nhập Zalo thành công!',
+    );
+  }
+
+  @Post('tiktok/login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiLoginWithTikTok()
+  async loginWithTikTok(
+    @Body() dto: LoginWithTikTokDto,
+    @Request() req: HttpRequest,
+  ) {
+    return this.toAuthResponse(
+      await this.loginWithTikTokUseCase.execute({
+        ...dto,
+        context: this.getSessionContext(req, dto.deviceId),
+      }),
+      'Đăng nhập TikTok thành công!',
     );
   }
 

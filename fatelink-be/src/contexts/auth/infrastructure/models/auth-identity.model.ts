@@ -8,8 +8,11 @@ export class AuthIdentity {
   @Prop({ required: true })
   userId!: string;
 
-  @Prop({ required: true, enum: ['email', 'facebook', 'phone', 'google'] })
-  provider!: 'email' | 'facebook' | 'phone' | 'google';
+  @Prop({
+    required: true,
+    enum: ['email', 'facebook', 'phone', 'google', 'zalo', 'tiktok'],
+  })
+  provider!: 'email' | 'facebook' | 'phone' | 'google' | 'zalo' | 'tiktok';
 
   @Prop({ required: true })
   providerUserId!: string;

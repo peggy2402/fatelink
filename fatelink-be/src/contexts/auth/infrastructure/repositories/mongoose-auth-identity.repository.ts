@@ -88,6 +88,46 @@ export class MongooseAuthIdentityRepository implements AuthIdentityRepository {
     return this.toRecord(record);
   }
 
+  async linkZaloIdentity(input: {
+    userId: string;
+    zaloId: string;
+    email?: string;
+  }): Promise<AuthIdentityRecord> {
+    const record = await this.authIdentityModel
+      .findOneAndUpdate(
+        { provider: 'zalo', providerUserId: input.zaloId },
+        {
+          $set: {
+            userId: input.userId,
+            providerEmail: input.email,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .exec();
+    return this.toRecord(record);
+  }
+
+  async linkTikTokIdentity(input: {
+    userId: string;
+    tikTokId: string;
+    email?: string;
+  }): Promise<AuthIdentityRecord> {
+    const record = await this.authIdentityModel
+      .findOneAndUpdate(
+        { provider: 'tiktok', providerUserId: input.tikTokId },
+        {
+          $set: {
+            userId: input.userId,
+            providerEmail: input.email,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .exec();
+    return this.toRecord(record);
+  }
+
   async linkPhoneIdentity(input: {
     userId: string;
     phoneNumber: string;

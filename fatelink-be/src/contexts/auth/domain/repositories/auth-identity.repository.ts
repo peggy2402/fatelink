@@ -1,4 +1,10 @@
-export type AuthProvider = 'email' | 'facebook' | 'phone' | 'google';
+export type AuthProvider =
+  | 'email'
+  | 'facebook'
+  | 'phone'
+  | 'google'
+  | 'zalo'
+  | 'tiktok';
 
 export interface AuthIdentityRecord {
   userId: string;
@@ -26,6 +32,16 @@ export interface AuthIdentityRepository {
   linkGoogleIdentity(input: {
     userId: string;
     googleId: string;
+    email?: string;
+  }): Promise<AuthIdentityRecord>;
+  linkZaloIdentity(input: {
+    userId: string;
+    zaloId: string;
+    email?: string;
+  }): Promise<AuthIdentityRecord>;
+  linkTikTokIdentity(input: {
+    userId: string;
+    tikTokId: string;
     email?: string;
   }): Promise<AuthIdentityRecord>;
   linkPhoneIdentity(input: {

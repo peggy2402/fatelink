@@ -4,7 +4,7 @@ import type { TokenService } from '@shared/contracts/token.service';
 import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
 import { InternalApplicationError } from '@shared/errors/application-error';
 import { ERROR_CODES } from '@shared/errors/error-codes';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 export class AuthSessionIssuer {
   constructor(
@@ -18,15 +18,18 @@ export class AuthSessionIssuer {
     deviceType: string;
     deviceId: string;
     currentSessionId?: string;
-    currentRefreshTokenId?: string;
+    currentRefreshToken?: string;
     context?: AuthSessionContext;
   }) {
-    const refreshTokenId = randomUUID();
+    const refreshToken = randomUUID();
+    const refreshTokenHash = this.hashRefreshToken(refreshToken);
     const session = input.currentSessionId
       ? await this.authSessionRepository.rotate({
           currentSessionId: input.currentSessionId,
-          currentRefreshTokenId: input.currentRefreshTokenId || '',
-          nextRefreshTokenId: refreshTokenId,
+          currentRefreshTokenHash: this.hashRefreshToken(
+            input.currentRefreshToken || '',
+          ),
+          nextRefreshTokenHash: refreshTokenHash,
           deviceType: input.deviceType,
           deviceId: input.deviceId,
           ipAddress: input.context?.ipAddress,
@@ -37,7 +40,7 @@ export class AuthSessionIssuer {
           userId: input.userId,
           deviceType: input.deviceType,
           deviceId: input.deviceId,
-          refreshTokenId,
+          refreshTokenHash,
           ipAddress: input.context?.ipAddress,
           userAgent: input.context?.userAgent,
         });
@@ -59,14 +62,11 @@ export class AuthSessionIssuer {
         deviceId: input.deviceId,
         sessionId: session.sessionId,
       }),
-      refreshToken: this.tokenService.signRefreshToken({
-        sub: input.userId,
-        email: user.email,
-        deviceType: input.deviceType,
-        deviceId: input.deviceId,
-        sessionId: session.sessionId,
-        jti: refreshTokenId,
-      }),
+      refreshToken,
     };
+  }
+
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

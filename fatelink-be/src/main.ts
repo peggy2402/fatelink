@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
@@ -21,7 +21,18 @@ async function bootstrap() {
       forbidNonWhitelisted: false,
     }),
   );
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [
+      {
+        path: '.well-known/assetlinks.json',
+        method: RequestMethod.GET,
+      },
+      {
+        path: 'tiktok/auth',
+        method: RequestMethod.GET,
+      },
+    ],
+  });
   const config = new DocumentBuilder()
     .setTitle('Fatelink API')
     .setDescription('API documentation for Fatelink')

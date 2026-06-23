@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.fatelinkfe",
+      "sha256_cert_fingerprints": [
+        "4E:9E:C3:3B:8D:A4:D3:F5:DD:DD:EF:EF:FA:91:4B:A3:8B:AD:26:FA:05:23:75:A0:9E:EC:CA:ED:CF:D9:9D:94"
+      ]
+    }
+  }
+]

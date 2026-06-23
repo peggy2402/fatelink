@@ -188,3 +188,23 @@ export function ApiLoginWithFacebook() {
     }),
   );
 }
+
+export function ApiLoginWithZalo() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Đăng nhập bằng Zalo access token' }),
+    ApiOkResponse({
+      description: 'Đăng nhập thành công, trả về user và cặp token.',
+      type: AuthTokensResponseDto,
+    }),
+  );
+}
+
+export function ApiLoginWithTikTok() {
+  return applyDecorators(
+    ApiOperation({ summary: 'Đăng nhập bằng TikTok access token' }),
+    ApiOkResponse({
+      description: 'Đăng nhập thành công, trả về user và cặp token.',
+      type: AuthTokensResponseDto,
+    }),
+  );
+}

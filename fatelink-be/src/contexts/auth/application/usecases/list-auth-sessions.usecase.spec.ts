@@ -9,7 +9,7 @@ describe('ListAuthSessionsUseCase', () => {
           sessionId: 'current-session',
           userId: 'user-1',
           deviceType: 'mobile',
-          refreshTokenId: 'refresh-1',
+          refreshTokenHash: 'hash-1',
           status: AUTH_SESSION_STATUS.ACTIVE,
           createdAt: new Date(),
           lastRefreshedAt: new Date(),
@@ -19,7 +19,7 @@ describe('ListAuthSessionsUseCase', () => {
           sessionId: 'old-session',
           userId: 'user-1',
           deviceType: 'web',
-          refreshTokenId: 'refresh-2',
+          refreshTokenHash: 'hash-2',
           status: AUTH_SESSION_STATUS.ROTATED,
           createdAt: new Date(),
           lastRefreshedAt: new Date(),
@@ -46,6 +46,6 @@ describe('ListAuthSessionsUseCase', () => {
         current: false,
       }),
     ]);
-    expect(result[0]).not.toHaveProperty('refreshTokenId');
+    expect(result[0]).not.toHaveProperty('refreshTokenHash');
   });
 });

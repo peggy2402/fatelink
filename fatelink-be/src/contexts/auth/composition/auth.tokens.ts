@@ -7,6 +7,8 @@ export const AUTH_APPLICATION_TOKENS = {
   requestMagicLink: 'application.auth.request-magic-link',
   loginWithMagicLink: 'application.auth.login-with-magic-link',
   loginWithFacebook: 'application.auth.login-with-facebook',
+  loginWithZalo: 'application.auth.login-with-zalo',
+  loginWithTikTok: 'application.auth.login-with-tiktok',
   listAuthSessions: 'application.auth.list-auth-sessions',
   revokeAuthSession: 'application.auth.revoke-auth-session',
   logout: 'application.auth.logout',
