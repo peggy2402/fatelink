@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type {
   AuthSessionRecord,
@@ -9,11 +9,19 @@ import { Model } from 'mongoose';
 import { AuthSession, AuthSessionDocument } from '../models/auth-session.model';
 
 @Injectable()
-export class MongooseAuthSessionRepository implements AuthSessionRepository {
+export class MongooseAuthSessionRepository
+  implements AuthSessionRepository, OnModuleInit
+{
+  private readonly logger = new Logger(MongooseAuthSessionRepository.name);
+
   constructor(
     @InjectModel(AuthSession.name)
     private readonly authSessionModel: Model<AuthSessionDocument>,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.dropLegacyRefreshTokenIdIndex();
+  }
 
   async create(input: {
     sessionId: string;
@@ -165,5 +173,26 @@ export class MongooseAuthSessionRepository implements AuthSessionRepository {
       revokedReason: plainRecord.revokedReason,
       replacedBySessionId: plainRecord.replacedBySessionId,
     };
+  }
+
+  private async dropLegacyRefreshTokenIdIndex(): Promise<void> {
+    try {
+      const indexes = await this.authSessionModel.collection.indexes();
+      const legacyIndex = indexes.find((index) => index.name === 'refreshTokenId_1');
+
+      if (!legacyIndex) {
+        return;
+      }
+
+      await this.authSessionModel.collection.dropIndex('refreshTokenId_1');
+      this.logger.warn(
+        'Dropped legacy Mongo index refreshTokenId_1 from authsessions.',
+      );
+    } catch (error) {
+      this.logger.error(
+        'Failed to drop legacy Mongo index refreshTokenId_1.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 }

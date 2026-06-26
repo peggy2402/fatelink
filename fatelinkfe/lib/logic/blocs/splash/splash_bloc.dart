@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fatelinkfe/services/api_service.dart';
 import 'splash_event.dart';
 import 'splash_state.dart';
 
@@ -31,7 +32,8 @@ class SplashBloc extends Bloc<SplashEvent, SplashState> {
       }
 
       // 2. Nếu không phải lần đầu, kiểm tra xem token có tồn tại không
-      final token = await _secureStorage.read(key: 'accessToken');
+      var token = await _secureStorage.read(key: 'accessToken');
+      token ??= await ApiService.tryRefreshToken();
       if (token != null && token.isNotEmpty) {
         emit(SplashNavigateToHome());
       } else {

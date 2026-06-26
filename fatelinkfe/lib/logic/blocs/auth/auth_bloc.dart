@@ -1,18 +1,28 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../core/utils/constants.dart';
+import '../../../core/utils/device_id_helper.dart';
+import '../../../services/api_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../../core/utils/constants.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final _secureStorage = const FlutterSecureStorage();
 
   AuthBloc() : super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
-    on<AuthLoginRequested>(_onAuthLoginRequested);
+    on<AuthLoginRequested>(_onSocialLoginRequested);
+    on<AuthEmailLoginRequested>(_onEmailLoginRequested);
+    on<AuthEmailRegisterRequested>(_onEmailRegisterRequested);
+    on<AuthPhoneRequestOtpRequested>(_onPhoneRequestOtpRequested);
+    on<AuthPhoneLoginRequested>(_onPhoneLoginRequested);
+    on<AuthMagicLinkRequestRequested>(_onMagicLinkRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
   }
 
@@ -22,60 +32,188 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final token = await _secureStorage.read(key: 'accessToken');
+      var token = await _secureStorage.read(key: 'accessToken');
+      final pendingTermsConsent =
+          (await _secureStorage.read(key: 'pendingTermsConsent')) == 'true';
+      token ??= await ApiService.tryRefreshToken();
       if (token != null && token.isNotEmpty) {
-        // TODO: (Tuỳ chọn) Gọi API để verify xem token này còn sống không
-        emit(AuthAuthenticated(token));
+        emit(
+          AuthAuthenticated(
+            token,
+            pendingTermsConsent: pendingTermsConsent,
+          ),
+        );
       } else {
         emit(AuthUnauthenticated());
       }
-    } catch (e) {
+    } catch (_) {
       emit(AuthUnauthenticated());
     }
   }
 
-  Future<void> _onAuthLoginRequested(
+  Future<void> _onSocialLoginRequested(
     AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
     try {
-      // Gọi API lên Backend NestJS để đổi Google Token lấy JWT Access Token
-      final response = await http.post(
-        Uri.parse('${AppConstants.baseUrl}/${AppConstants.loginWithGoogle}'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'token': event.googleIdToken}),
-      ).timeout(const Duration(seconds: 15)); // Thêm timeout để tránh treo app
-      print(
-        'Check url login: ${AppConstants.baseUrl}/${AppConstants.loginWithGoogle}',
+      final authResult = await _authenticateWithSession(
+        endpoint: _getLoginEndpoint(event.provider),
+        body: _buildSocialLoginRequestBody(event),
       );
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      emit(
+        AuthAuthenticated(
+          authResult.accessToken,
+          pendingTermsConsent: authResult.pendingTermsConsent,
+        ),
+      );
+    } catch (e) {
+      emit(AuthError(e.toString()));
+      emit(AuthUnauthenticated());
+    }
+  }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+  Future<void> _onEmailLoginRequested(
+    AuthEmailLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final authResult = await _authenticateWithSession(
+        endpoint: 'auth/email/login',
+        body: {
+          'email': event.email.trim(),
+          'password': event.password,
+        },
+      );
+      emit(
+        AuthAuthenticated(
+          authResult.accessToken,
+          pendingTermsConsent: authResult.pendingTermsConsent,
+        ),
+      );
+    } catch (e) {
+      emit(AuthError(e.toString()));
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onEmailRegisterRequested(
+    AuthEmailRegisterRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final authResult = await _authenticateWithSession(
+        endpoint: 'auth/email/register',
+        body: {
+          'email': event.email.trim(),
+          'password': event.password,
+          'name': event.name.trim(),
+        },
+        fallbackPendingTermsConsent: true,
+      );
+      emit(
+        AuthAuthenticated(
+          authResult.accessToken,
+          pendingTermsConsent: authResult.pendingTermsConsent,
+        ),
+      );
+    } catch (e) {
+      emit(AuthError(e.toString()));
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onPhoneRequestOtpRequested(
+    AuthPhoneRequestOtpRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${AppConstants.baseUrl}/auth/phone/request-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phoneNumber': event.phoneNumber.trim(),
+              if (event.name != null && event.name!.trim().isNotEmpty)
+                'name': event.name!.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        final String accessToken = data['accessToken'];
-
-        // Lưu thông tin người dùng để hiển thị bên MainScreen và ProfileScreen
-        final userData = data['data'] ?? data['user'];
-        
-        // [DEBUG] In ra Console để xem cấu trúc JSON trả về từ Backend
-        debugPrint('========== DEBUG API LOGIN ==========');
-        debugPrint('Raw Data: $data');
-        debugPrint('UserData Map: $userData');
-        debugPrint('Field Name hiện tại: ${userData?['name']}');
-        debugPrint('=====================================');
-
-        if (userData != null) {
-          await _secureStorage.write(key: 'avatarUrl', value: userData['avatar']?.toString() ?? '');
-          await _secureStorage.write(key: 'userName', value: userData['name']?.toString() ?? '');
-          await _secureStorage.write(key: 'userId', value: userData['_id']?.toString() ?? '');
-        }
-
-        await _secureStorage.write(key: 'accessToken', value: accessToken);
-        emit(AuthAuthenticated(accessToken));
+        emit(AuthActionSuccess(data['message']?.toString() ?? 'Đã gửi OTP.'));
+        emit(AuthUnauthenticated());
       } else {
-        throw Exception('Đăng nhập thất bại: Mã lỗi ${response.statusCode} - ${response.body}');
+        throw Exception(
+          'Gửi OTP thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      emit(AuthError(e.toString()));
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onPhoneLoginRequested(
+    AuthPhoneLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final authResult = await _authenticateWithSession(
+        endpoint: 'auth/phone/login',
+        body: {
+          'phoneNumber': event.phoneNumber.trim(),
+          'otpCode': event.otpCode.trim(),
+        },
+      );
+      emit(
+        AuthAuthenticated(
+          authResult.accessToken,
+          pendingTermsConsent: authResult.pendingTermsConsent,
+        ),
+      );
+    } catch (e) {
+      emit(AuthError(e.toString()));
+      emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onMagicLinkRequested(
+    AuthMagicLinkRequestRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${AppConstants.baseUrl}/auth/magic-link/request'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': event.email.trim(),
+              if (event.name != null && event.name!.trim().isNotEmpty)
+                'name': event.name!.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        emit(
+          AuthActionSuccess(
+            data['message']?.toString() ??
+                'Đã gửi magic link. Vui lòng kiểm tra email.',
+          ),
+        );
+        emit(AuthUnauthenticated());
+      } else {
+        throw Exception(
+          'Gửi magic link thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       emit(AuthError(e.toString()));
@@ -93,7 +231,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final urlEnpoints = '${AppConstants.baseUrl}/${AppConstants.logout}';
       debugPrint('Gọi API logout tại: $urlEnpoints với token: $token');
       if (token != null) {
-        // Gọi API báo Backend tăng tokenVersion vô hiệu hoá JWT
         await http.post(
           Uri.parse(urlEnpoints),
           headers: {'Authorization': 'Bearer $token'},
@@ -102,8 +239,187 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       debugPrint('Lỗi khi đăng xuất: $e');
     } finally {
-      await _secureStorage.deleteAll(); // Xoá sạch mọi thông tin token, avatar...
+      await _secureStorage.delete(key: 'accessToken');
+      await _secureStorage.delete(key: 'refreshToken');
+      await _secureStorage.delete(key: 'avatarUrl');
+      await _secureStorage.delete(key: 'userName');
+      await _secureStorage.delete(key: 'userId');
       emit(AuthUnauthenticated());
     }
   }
+
+  String _getLoginEndpoint(AuthSocialProvider provider) {
+    switch (provider) {
+      case AuthSocialProvider.google:
+        return AppConstants.loginWithGoogle;
+      case AuthSocialProvider.zalo:
+        return AppConstants.loginWithZalo;
+      case AuthSocialProvider.tiktok:
+        return AppConstants.loginWithTikTok;
+    }
+  }
+
+  Map<String, dynamic> _buildSocialLoginRequestBody(AuthLoginRequested event) {
+    switch (event.provider) {
+      case AuthSocialProvider.google:
+        return {
+          'token': event.accessToken,
+        };
+      case AuthSocialProvider.zalo:
+        return {
+          'accessToken': event.accessToken,
+        };
+      case AuthSocialProvider.tiktok:
+        if (event.authorizationCode != null && event.codeVerifier != null) {
+          return {
+            'authType': 'authorization_code',
+            'code': event.authorizationCode,
+            'codeVerifier': event.codeVerifier,
+          };
+        }
+        return {
+          'authType': 'access_token',
+          'accessToken': event.accessToken,
+        };
+    }
+  }
+
+  Future<_AuthResult> _authenticateWithSession({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    bool fallbackPendingTermsConsent = false,
+  }) async {
+    final deviceId = await DeviceIdHelper.getOrCreateDeviceId();
+    final response = await http
+        .post(
+          Uri.parse('${AppConstants.baseUrl}/$endpoint'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            ...body,
+            'deviceType': _getDeviceType(),
+            'deviceId': deviceId,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Xác thực thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
+      );
+    }
+
+    return _persistAuthPayload(
+      response.body,
+      fallbackPendingTermsConsent:
+          fallbackPendingTermsConsent || response.statusCode == 201,
+    );
+  }
+
+  Future<_AuthResult> _persistAuthPayload(
+    String rawBody, {
+    bool fallbackPendingTermsConsent = false,
+  }) async {
+    final data = jsonDecode(rawBody);
+    final String accessToken = data['accessToken'];
+    final String? refreshToken = data['refreshToken']?.toString();
+    final userData = data['data'];
+    final bool pendingTermsConsent = _resolvePendingTermsConsent(
+      data,
+      fallbackPendingTermsConsent,
+    );
+
+    if (userData != null) {
+      await _secureStorage.write(
+        key: 'avatarUrl',
+        value: userData['avatar']?.toString() ?? '',
+      );
+      await _secureStorage.write(
+        key: 'userName',
+        value: userData['name']?.toString() ?? '',
+      );
+      await _secureStorage.write(
+        key: 'userId',
+        value: userData['_id']?.toString() ?? '',
+      );
+    }
+
+    await _secureStorage.write(key: 'accessToken', value: accessToken);
+    await _secureStorage.write(
+      key: 'pendingTermsConsent',
+      value: pendingTermsConsent.toString(),
+    );
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _secureStorage.write(key: 'refreshToken', value: refreshToken);
+    }
+    return _AuthResult(
+      accessToken: accessToken,
+      pendingTermsConsent: pendingTermsConsent,
+    );
+  }
+
+  bool _resolvePendingTermsConsent(
+    dynamic data,
+    bool fallbackPendingTermsConsent,
+  ) {
+    if (data is Map<String, dynamic>) {
+      final candidates = [
+        data['pendingTermsConsent'],
+        data['requiresTermsConsent'],
+        data['mustAcceptTerms'],
+        data['isNewUser'],
+        data['newUser'],
+        data['isFirstLogin'],
+        data['firstLogin'],
+        data['data'] is Map<String, dynamic>
+            ? (data['data'] as Map<String, dynamic>)['pendingTermsConsent']
+            : null,
+        data['data'] is Map<String, dynamic>
+            ? (data['data'] as Map<String, dynamic>)['isNewUser']
+            : null,
+        data['data'] is Map<String, dynamic>
+            ? (data['data'] as Map<String, dynamic>)['firstLogin']
+            : null,
+      ];
+
+      for (final candidate in candidates) {
+        final resolved = _asBool(candidate);
+        if (resolved != null) {
+          return resolved;
+        }
+      }
+    }
+
+    return fallbackPendingTermsConsent;
+  }
+
+  bool? _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+    }
+    return null;
+  }
+
+  String _getDeviceType() {
+    if (kIsWeb) {
+      return 'web';
+    }
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return 'desktop';
+    }
+    return 'mobile';
+  }
+}
+
+class _AuthResult {
+  final String accessToken;
+  final bool pendingTermsConsent;
+
+  const _AuthResult({
+    required this.accessToken,
+    required this.pendingTermsConsent,
+  });
 }
