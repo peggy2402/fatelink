@@ -1,12 +1,18 @@
 class AppConstants {
   // Thay đổi URL tại ĐÂY để áp dụng cho toàn bộ dự án
-  static const String serverUrl = 'https://fatelink-be.fly.dev';
+  static const String serverUrl =
+      'https://finally-lenses-several-explains.trycloudflare.com';
 
   // Nối sẵn /api để dùng cho các request HTTP thông thường
   static const String baseUrl = '$serverUrl/api';
-  static const String apiVersion = 'v1'; // Nếu có versioning, có thể thêm vào URL như: '$baseUrl/$apiVersion'
+  static const String apiVersion =
+      'v1'; // Nếu có versioning, có thể thêm vào URL như: '$baseUrl/$apiVersion'
   // API Endpoints
   static const String loginWithGoogle = 'auth/google/login';
+  static const String loginWithZalo = 'auth/zalo/login';
+  static const String loginWithTikTok = 'auth/tiktok/login';
+  static const String refreshToken = 'auth/refresh';
+  static const String zaloAppId = '3205454775701109337';
   static const String logout = 'auth/logout';
   static const String userRecommendations = 'users/recommendations';
 

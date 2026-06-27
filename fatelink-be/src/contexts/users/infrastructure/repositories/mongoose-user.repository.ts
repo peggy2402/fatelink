@@ -1,5 +1,5 @@
 import { User as DomainUser } from '@contexts/users/domain/entities/user';
-import { UserProfile } from '@contexts/users/domain/entities/user-profile';
+import { UserAccountProfile } from '@contexts/users/domain/entities/user-account-profile';
 import type { UserRepository as UserRepositoryPort } from '@contexts/users/domain/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,28 +12,22 @@ export class MongooseUserRepository implements UserRepositoryPort {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async findOrCreate(profile: UserProfile): Promise<DomainUser> {
-    const user = await this.userModel
-      .findOneAndUpdate(
-        { email: profile.email },
-        {
-          $set: {
-            name: profile.name,
-            avatar: profile.avatar,
-          },
-          $setOnInsert: {
-            email: profile.email,
-            googleId: profile.googleId,
-          },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      )
-      .exec();
+  async createProfileAccount(profile: UserAccountProfile): Promise<DomainUser> {
+    const user = await this.userModel.create({
+      email: profile.email,
+      name: profile.name,
+      avatar: profile.avatar,
+    });
     return this.toDomainUser(user);
   }
 
   async findById(userId: string): Promise<DomainUser | null> {
     const user = await this.userModel.findById(userId).exec();
+    return user ? this.toDomainUser(user) : null;
+  }
+
+  async findByEmail(email: string): Promise<DomainUser | null> {
+    const user = await this.userModel.findOne({ email }).exec();
     return user ? this.toDomainUser(user) : null;
   }
 
@@ -81,15 +75,6 @@ export class MongooseUserRepository implements UserRepositoryPort {
       .then((item) => (item ? this.toDomainUser(item) : null));
   }
 
-  async incrementTokenVersion(userId: string): Promise<DomainUser | null> {
-    return this.userModel
-      .findByIdAndUpdate(userId, {
-        $inc: { tokenVersion: 1 },
-      })
-      .exec()
-      .then((item) => (item ? this.toDomainUser(item) : null));
-  }
-
   async findAll(): Promise<DomainUser[]> {
     const users = await this.userModel.find().sort({ createdAt: -1 }).exec();
     return users.map((item) => this.toDomainUser(item));
@@ -103,18 +88,18 @@ export class MongooseUserRepository implements UserRepositoryPort {
   }
 
   private toDomainUser(document: HydratedDocument<User>): DomainUser {
+    const plainUser = document.toObject();
+
     return DomainUser.rehydrate({
       id: document._id.toString(),
-      email: document.email,
-      name: document.name,
-      avatar: document.avatar,
-      googleId: document.googleId,
-      latestEmotion: document.latestEmotion,
-      emotions: { ...document.emotions },
-      personality: [...document.personality],
-      bio: document.bio,
-      fcmToken: document.fcmToken,
-      tokenVersion: document.tokenVersion,
+      email: plainUser.email,
+      name: plainUser.name,
+      avatar: plainUser.avatar,
+      latestEmotion: plainUser.latestEmotion,
+      emotions: { ...plainUser.emotions },
+      personality: [...plainUser.personality],
+      bio: plainUser.bio,
+      fcmToken: plainUser.fcmToken,
     });
   }
 }

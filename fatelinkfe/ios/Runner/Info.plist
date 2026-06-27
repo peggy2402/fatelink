@@ -71,12 +71,22 @@
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>zalo</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- Dán REVERSED_CLIENT_ID từ file GoogleService-Info.plist của bạn vào đây -->
 				<string>com.googleusercontent.apps.918573554808-9lic50m4gfeh8fs664229vnmmqkro5hg</string>
+				<string>zalo-3205454775701109337</string>
 			</array>
 		</dict>
+	</array>
+	<key>ZaloAppID</key>
+	<string>3205454775701109337</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>zalosdk</string>
+		<string>zaloshareext</string>
 	</array>
 
 </dict>

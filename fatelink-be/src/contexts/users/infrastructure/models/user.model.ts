@@ -15,17 +15,14 @@ export class EmotionVector {
 
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ required: true, unique: true })
-  email!: string;
+  @Prop({ unique: true, sparse: true })
+  email?: string;
 
   @Prop()
   name!: string;
 
   @Prop()
   avatar!: string;
-
-  @Prop({ unique: true, sparse: true })
-  googleId!: string;
 
   @Prop({ default: 'Bí ẩn' })
   latestEmotion!: string;
@@ -41,9 +38,6 @@ export class User {
 
   @Prop({ default: '' })
   fcmToken!: string;
-
-  @Prop({ default: 0 })
-  tokenVersion!: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -1,6 +1,8 @@
 export interface AuthenticatedUser {
   sub: string;
   email?: string;
-  tokenVersion?: number;
+  deviceType?: string;
+  deviceId?: string;
+  sessionId?: string;
   role?: string;
 }

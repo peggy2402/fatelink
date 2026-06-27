@@ -20,7 +20,6 @@ describe('User.applyTraitsUpdate', () => {
       personality: [10, 0, 5],
       bio: '',
       fcmToken: '',
-      tokenVersion: 0,
     });
 
     const result = user.applyTraitsUpdate({
@@ -58,7 +57,6 @@ describe('User.applyTraitsUpdate', () => {
       personality: [] as number[],
       bio: '',
       fcmToken: '',
-      tokenVersion: 0,
     });
 
     const result = user.applyTraitsUpdate({

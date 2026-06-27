@@ -116,94 +116,115 @@ class _HomeScreenState extends State<HomeScreen>
                       // --- Header ---
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isCompact = constraints.maxWidth < 380;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Stack(
+                                Row(
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
-                                          colors: [Color(0xFF00E5FF), Color(0xFFFF69B4)], // Cyan to Pink neon
+                                    Stack(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: [Color(0xFF00E5FF), Color(0xFFFF69B4)],
+                                            ),
+                                          ),
+                                          child: const CircleAvatar(
+                                            radius: 22,
+                                            backgroundImage: AssetImage('assets/images/default_avatar.png'),
+                                          ),
                                         ),
-                                      ),
-                                      child: const CircleAvatar(
-                                        radius: 22,
-                                        backgroundImage: AssetImage('assets/images/default_avatar.png'),
-                                      ),
+                                        Positioned(
+                                          right: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: Colors.greenAccent.shade400,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 2),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.greenAccent.shade400,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
-                                        ),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'John Doe',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF2F4F4F),
+                                            ),
+                                          ),
+                                          Text(
+                                            '@johndoe',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF00B8D4),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(width: 12),
-                                const Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'John Doe',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF2F4F4F),
-                                      ),
+                                SizedBox(height: isCompact ? 12 : 0),
+                                Align(
+                                  alignment: isCompact
+                                      ? Alignment.centerLeft
+                                      : Alignment.centerRight,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildHeaderIcon(Icons.search_rounded),
+                                        const SizedBox(width: 4),
+                                        _buildHeaderIcon(Icons.qr_code_scanner_rounded),
+                                        const SizedBox(width: 4),
+                                        Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            _buildHeaderIcon(Icons.notifications_none_rounded),
+                                            Positioned(
+                                              right: 12,
+                                              top: 10,
+                                              child: Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFFF3B30),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 4),
+                                        _buildHeaderIcon(Icons.settings_outlined),
+                                      ],
                                     ),
-                                    Text(
-                                      '@johndoe',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF00B8D4),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ],
-                            ),
-                            Row(
-                              children: [
-                                _buildHeaderIcon(Icons.search_rounded),
-                                const SizedBox(width: 4),
-                                _buildHeaderIcon(Icons.qr_code_scanner_rounded),
-                                const SizedBox(width: 4),
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    _buildHeaderIcon(Icons.notifications_none_rounded),
-                                    Positioned(
-                                      right: 12,
-                                      top: 10,
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFFF3B30),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 4),
-                                _buildHeaderIcon(Icons.settings_outlined),
-                              ],
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
 

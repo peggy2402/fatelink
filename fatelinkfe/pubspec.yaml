@@ -51,6 +51,8 @@ dependencies:
   flutter_bloc: ^8.1.2
   equatable: ^2.0.5
   package_info_plus: ^8.1.0
+  flutter_zalo: ^1.0.1
+  google_fonts: ^6.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
