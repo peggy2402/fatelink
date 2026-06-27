@@ -2,31 +2,27 @@ import { type EmotionVector } from '@shared/kernel/emotion-vector';
 
 export class User {
   id?: string;
-  email!: string;
+  email?: string;
   name!: string;
   displayName?: string;
   avatar!: string;
-  googleId!: string;
   latestEmotion!: string;
   emotions!: EmotionVector;
   personality!: number[];
   bio!: string;
   fcmToken!: string;
-  tokenVersion!: number;
 
   static rehydrate(props: {
     id?: string;
-    email: string;
+    email?: string;
     name: string;
     displayName?: string;
     avatar: string;
-    googleId: string;
     latestEmotion: string;
     emotions: EmotionVector;
     personality: number[];
     bio: string;
     fcmToken: string;
-    tokenVersion: number;
   }): User {
     const user = new User();
     Object.assign(user, props);

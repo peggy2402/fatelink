@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'services/fcm_service.dart';
 import 'presentation/screens/splash/splash_screen.dart';
-import 'presentation/screens/match/match_chat_screen.dart';
 import 'logic/blocs/auth/auth_bloc.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/matches_repository.dart';
@@ -24,7 +24,11 @@ void main() async {
   
   try {
     await EasyLocalization.ensureInitialized();
-    await Firebase.initializeApp();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    } else {
+      Firebase.app();
+    }
     
     try {
       await FcmService.initialize();
@@ -106,7 +110,11 @@ class MyApp extends StatelessWidget {
         child: MaterialApp(
           title: 'FateLink',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(primarySwatch: Colors.blue),
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            textTheme: GoogleFonts.notoSansTextTheme(),
+            primaryTextTheme: GoogleFonts.notoSansTextTheme(),
+          ),
           localizationsDelegates: context.localizationDelegates,
           supportedLocales: context.supportedLocales,
           locale: context.locale,

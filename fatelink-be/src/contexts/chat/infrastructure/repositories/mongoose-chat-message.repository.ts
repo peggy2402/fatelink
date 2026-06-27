@@ -1,20 +1,22 @@
 import type { ChatMessageRepository as ChatMessageRepositoryPort } from '@contexts/chat/domain/repositories/chat-message.repository';
+import { Message as DomainMessage } from '@contexts/chat/domain/entities/message';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Message } from '../models/message.model';
+import type { HydratedDocument, Model } from 'mongoose';
+import { Message, type MessageDocument } from '../models/message.model';
 
 @Injectable()
 export class MongooseChatMessageRepository implements ChatMessageRepositoryPort {
   constructor(
-    @InjectModel(Message.name) private readonly messageModel: Model<Message>,
+    @InjectModel(Message.name)
+    private readonly messageModel: Model<MessageDocument>,
   ) {}
 
   async createAiMessage(
     userId: string,
     text: string,
     isSentByMe: boolean,
-  ): Promise<Message> {
+  ): Promise<DomainMessage> {
     const message = new this.messageModel({
       userId,
       text,
@@ -22,14 +24,14 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
       conversationType: 'ai',
       isDirect: false,
     });
-    return message.save();
+    return this.toDomainMessage(await message.save());
   }
 
   async createDirectMessage(
     senderId: string,
     partnerId: string,
     text: string,
-  ): Promise<Message> {
+  ): Promise<DomainMessage> {
     const conversationId = this.getDirectConversationId(senderId, partnerId);
     const senderMessage = new this.messageModel({
       userId: senderId,
@@ -55,11 +57,14 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
     });
 
     await recipientMessage.save();
-    return senderMessage.save();
+    return this.toDomainMessage(await senderMessage.save());
   }
 
-  async getAiHistoryForUser(userId: string, limit: number): Promise<Message[]> {
-    return this.messageModel
+  async getAiHistoryForUser(
+    userId: string,
+    limit: number,
+  ): Promise<DomainMessage[]> {
+    const messages = await this.messageModel
       .find({
         userId,
         $or: [
@@ -70,14 +75,15 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();
+    return messages.map((message) => this.toDomainMessage(message));
   }
 
   async getDirectHistoryForConversation(
     viewerUserId: string,
     conversationId: string,
     limit: number,
-  ): Promise<Message[]> {
-    return this.messageModel
+  ): Promise<DomainMessage[]> {
+    const messages = await this.messageModel
       .find({
         userId: viewerUserId,
         conversationType: 'direct',
@@ -86,9 +92,28 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();
+    return messages.map((message) => this.toDomainMessage(message));
   }
 
   private getDirectConversationId(firstUserId: string, secondUserId: string) {
     return [firstUserId, secondUserId].sort().join(':');
+  }
+
+  private toDomainMessage(document: HydratedDocument<Message>): DomainMessage {
+    const plainMessage = document.toObject();
+
+    const message = new DomainMessage();
+    message.id = document._id.toString();
+    message.userId = plainMessage.userId;
+    message.partnerId = plainMessage.partnerId;
+    message.text = plainMessage.text;
+    message.isSentByMe = plainMessage.isSentByMe;
+    message.conversationType = plainMessage.conversationType;
+    message.conversationId = plainMessage.conversationId;
+    message.senderId = plainMessage.senderId;
+    message.recipientId = plainMessage.recipientId;
+    message.createdAt = plainMessage.createdAt;
+    message.updatedAt = plainMessage.updatedAt;
+    return message;
   }
 }

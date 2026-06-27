@@ -6,6 +6,14 @@ export const MATCH_REPOSITORY = 'MatchRepository';
 export const MATCH_CANDIDATE_REPOSITORY = 'MatchCandidateRepository';
 
 export const GOOGLE_AUTH_SERVICE = 'GoogleAuthService';
+export const FACEBOOK_AUTH_SERVICE = 'FacebookAuthService';
+export const ZALO_AUTH_SERVICE = 'ZaloAuthService';
+export const TIKTOK_AUTH_SERVICE = 'TikTokAuthService';
+export const EMAIL_AUTH_SERVICE = 'EmailAuthService';
+export const EMAIL_DELIVERY_SERVICE = 'EmailDeliveryService';
+export const PHONE_AUTH_SERVICE = 'PhoneAuthService';
+export const PHONE_OTP_DELIVERY_SERVICE = 'PhoneOtpDeliveryService';
+export const MAGIC_LINK_AUTH_SERVICE = 'MagicLinkAuthService';
 export const TOKEN_SERVICE = 'TokenService';
 export const ADMIN_CREDENTIAL_SERVICE = 'AdminCredentialService';
 export const SUPPORT_NOTIFIER_SERVICE = 'SupportNotifierService';

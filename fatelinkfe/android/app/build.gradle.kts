@@ -11,6 +11,10 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -29,11 +33,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        buildConfigField("String", "TIKTOK_CLIENT_KEY", "\"sbawoemufqcbf8ga8d\"")
+        buildConfigField("String", "TIKTOK_REDIRECT_URL", "\"https://finally-lenses-several-explains.trycloudflare.com/tiktok/auth\"")
     }
+
+    val projectDebugKeystore = file("team_debug.keystore")
 
     signingConfigs {
         getByName("debug") {
-            storeFile = file("team_debug.keystore")
+            storeFile = projectDebugKeystore
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
@@ -51,4 +59,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("com.tiktok.open.sdk:tiktok-open-sdk-core:2.2.0")
+    implementation("com.tiktok.open.sdk:tiktok-open-sdk-auth:2.2.0")
 }

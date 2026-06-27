@@ -14,11 +14,20 @@ class AuthLoading
 
 class AuthAuthenticated extends AuthState {
   final String token;
-  const AuthAuthenticated(this.token);
+  final bool pendingTermsConsent;
+  const AuthAuthenticated(this.token, {this.pendingTermsConsent = false});
 
   @override
-  List<Object?> get props => [token];
+  List<Object?> get props => [token, pendingTermsConsent];
 } // Đã đăng nhập
+
+class AuthActionSuccess extends AuthState {
+  final String message;
+  const AuthActionSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
 
 class AuthUnauthenticated
     extends AuthState {} // Chưa đăng nhập hoặc token hết hạn

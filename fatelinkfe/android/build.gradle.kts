@@ -6,6 +6,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven(url = "https://gitlab.com/api/v4/projects/50747855/packages/maven")
+        maven(url = "https://artifact.bytedance.com/repository/AwemeOpenSDK")
     }
 }
 
