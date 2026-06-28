@@ -34,7 +34,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         buildConfigField("String", "TIKTOK_CLIENT_KEY", "\"sbawoemufqcbf8ga8d\"")
-        buildConfigField("String", "TIKTOK_REDIRECT_URL", "\"https://finally-lenses-several-explains.trycloudflare.com/tiktok/auth\"")
+        buildConfigField("String", "TIKTOK_REDIRECT_URL", "\"https://fatelink-be.fly.dev/tiktok/auth\"")
     }
 
     val projectDebugKeystore = file("team_debug.keystore")
