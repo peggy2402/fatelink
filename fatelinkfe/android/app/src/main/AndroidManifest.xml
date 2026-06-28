@@ -31,7 +31,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="finally-lenses-several-explains.trycloudflare.com"
+                    android:host="fatelink-be.fly.dev"
                     android:pathPrefix="/tiktok/auth" />
             </intent-filter>
             <intent-filter>
