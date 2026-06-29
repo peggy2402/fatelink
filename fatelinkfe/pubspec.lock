@@ -313,10 +313,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_zalo
-      sha256: afaf0df9a53c9c9c001b9d371d3ed4af556a60310e49f4b4b256e3de1ab92b39
+      sha256: b23adfa6e2f959495d10fc319a7339819f4c51860233efa2b9ac9ad4d36e6cac
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.2"
   fluttertoast:
     dependency: "direct main"
     description:
