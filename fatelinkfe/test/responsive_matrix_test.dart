@@ -258,6 +258,8 @@ void main() {
           await tester.pump();
 
           FlutterError.onError = prevOnError;
+          await tester.pumpWidget(const SizedBox());
+          await tester.pump();
 
           final passed = overflowError == null;
           recordResult(
@@ -299,6 +301,8 @@ void main() {
           await tester.pump();
 
           FlutterError.onError = prevOnError;
+          await tester.pumpWidget(const SizedBox());
+          await tester.pump();
 
           final passed = overflowError == null;
           recordResult(

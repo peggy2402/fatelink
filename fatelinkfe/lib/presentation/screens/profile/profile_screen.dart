@@ -13,6 +13,7 @@ import '../../widgets/back.dart';
 import '../../../logic/blocs/main/main_bloc.dart';
 import '../../../logic/blocs/main/main_event.dart';
 import '../../../core/utils/toast_utils.dart';
+import '../../../core/responsive/responsive.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -190,38 +191,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 16),
-                          _buildSoulIdCard(
-                            name: name,
-                            avatar: avatar,
-                            soulId: soulId,
-                            mood: mood,
-                            moodIcon: moodIcon,
-                            frequency: frequency,
-                            bio: bio,
-                          ),
-                          const SizedBox(height: 20),
-                          _buildLockedPhotoAlert(),
-                          const SizedBox(height: 20),
-                          _buildActionButtons(
-                            name: name,
-                            bio: bio,
-                            status: mood,
-                            avatar: avatar,
-                            handle: _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}',
-                            soulId: soulId,
-                          ),
-                          const SizedBox(height: 28),
-                          _buildHobbiesSection(tags),
-                          const SizedBox(height: 28),
-                          _buildVibeCorner(data['vibePhotos'] as List<dynamic>?),
-                          const SizedBox(height: 28),
-                          _buildPersonalityChart(emotions),
-                          const SizedBox(height: 80),
-                        ],
+                      child: ResponsiveCenter(
+                        maxWidth: 600,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            _buildSoulIdCard(
+                              name: name,
+                              avatar: avatar,
+                              soulId: soulId,
+                              mood: mood,
+                              moodIcon: moodIcon,
+                              frequency: frequency,
+                              bio: bio,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildLockedPhotoAlert(),
+                            const SizedBox(height: 20),
+                            _buildActionButtons(
+                              name: name,
+                              bio: bio,
+                              status: mood,
+                              avatar: avatar,
+                              handle: _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}',
+                              soulId: soulId,
+                            ),
+                            const SizedBox(height: 28),
+                            _buildHobbiesSection(tags),
+                            const SizedBox(height: 28),
+                            _buildVibeCorner(data['vibePhotos'] as List<dynamic>?),
+                            const SizedBox(height: 28),
+                            _buildPersonalityChart(emotions),
+                            const SizedBox(height: 80),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -262,31 +266,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       actions: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: GestureDetector(
-            onTap: () => widget.onMenuTap?.call(),
-            child: Container(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Center(
+            child: IconButton(
+              onPressed: () => widget.onMenuTap?.call(),
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.settings_outlined,
-                color: Color(0xFF1E293B),
-                size: 20,
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.settings_outlined,
+                  color: Color(0xFF1E293B),
+                  size: 20,
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
       ],
     );
   }
@@ -659,6 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0F172A),
+              minimumSize: const Size(0, 48),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -680,7 +689,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(width: 10),
         Container(
-          width: 50,
+          width: 48,
           height: 48,
           decoration: BoxDecoration(
             color: Colors.white,
@@ -688,6 +697,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             icon: const Icon(
               Icons.share_rounded,
               color: Color(0xFF475569),
@@ -723,6 +734,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetContext) {
+        final screenHeight = MediaQuery.sizeOf(bottomSheetContext).height;
         final bottomInset = MediaQuery.paddingOf(bottomSheetContext).bottom;
         return Container(
           decoration: const BoxDecoration(
@@ -731,11 +743,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset > 0 ? bottomInset + 16 : 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: screenHeight * 0.88),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset > 0 ? bottomInset + 16 : 32),
+                child: ResponsiveCenter(
+                  maxWidth: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
               // Thanh kéo
               Center(
                 child: Container(
@@ -921,7 +937,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   },
 );
   }
@@ -1218,14 +1236,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF475569),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 '$percent%',
                 style: TextStyle(

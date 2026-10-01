@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -62,6 +63,8 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
   double _dragStartTop = 0.0;
   Offset _dragStartGlobal = Offset.zero;
   Offset _currentDelta = Offset.zero; // Lưu delta để tính hiệu ứng biến dạng (Squash & Stretch)
+  Timer? _speechTimer;
+  Timer? _hideSpeechTimer;
 
   @override
   void initState() {
@@ -92,10 +95,10 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
     });
 
     // Thi thoảng hiển thị bong bóng chat
-    Future.delayed(const Duration(seconds: 5), () {
+    _speechTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         setState(() => _showSpeechBubble = true);
-        Future.delayed(const Duration(seconds: 7), () {
+        _hideSpeechTimer = Timer(const Duration(seconds: 7), () {
           if (mounted) setState(() => _showSpeechBubble = false);
         });
       }
@@ -165,6 +168,8 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
 
   @override
   void dispose() {
+    _speechTimer?.cancel();
+    _hideSpeechTimer?.cancel();
     _controller.dispose();
     _xController.dispose();
     _yController.dispose();

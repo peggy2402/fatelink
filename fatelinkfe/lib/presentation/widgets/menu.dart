@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,6 +41,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
     // Nền của Drawer phải trong suốt để hiệu ứng blur hoạt động
     return ClipRRect(
       // Bo góc bên trái vì Drawer trượt ra từ bên phải
@@ -47,10 +49,10 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.8, // Giới hạn chiều rộng
+          width: math.min(screenWidth * 0.82, 340.0), // Giới hạn chiều rộng trên tablet
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
-            border: Border(left: BorderSide(color: Colors.white.withOpacity(0.2))),
+            color: Colors.white.withValues(alpha: 0.85),
+            border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
           ),
           child: SafeArea(
             child: Column(
@@ -134,7 +136,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF4F46E5).withOpacity(0.3),
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 )
@@ -163,6 +165,8 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
           ),
           IconButton(
             icon: const Icon(Icons.close_rounded, color: Color(0xFF475569)),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: const EdgeInsets.all(12),
             onPressed: () => widget.onClose?.call(),
             tooltip: 'Close Menu',
           ),
@@ -175,36 +179,44 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
     final color = isDanger ? const Color(0xFFE11D48) : const Color(0xFF4F46E5);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDanger
-                        ? [const Color(0xFFFB7185), const Color(0xFFF43F5E)]
-                        : [const Color(0xFF818CF8), const Color(0xFF6366F1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDanger
+                          ? [const Color(0xFFFB7185), const Color(0xFFF43F5E)]
+                          : [const Color(0xFF818CF8), const Color(0xFF6366F1)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 4))],
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: color.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4))],
+                  child: Icon(icon, color: Colors.white, size: 20),
                 ),
-                child: Icon(icon, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDanger ? color : const Color(0xFF334155))),
-              ),
-              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 22),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDanger ? color : const Color(0xFF334155)),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 22),
+              ],
+            ),
           ),
         ),
       ),

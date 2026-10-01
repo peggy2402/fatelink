@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/back.dart';
 import '../../../core/utils/toast_utils.dart';
+import '../../../core/responsive/responsive.dart';
 import '../home/widgets/radar_scanner_modal.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -306,66 +307,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Avatar Center
-            Center(
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.25),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.network(
-                        avatarUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-                          radius: 46,
-                          backgroundColor: Color(0xFFE0E7FF),
-                          child: Icon(Icons.person, color: Color(0xFF6366F1), size: 44),
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      ToastUtil.showInfo(context, 'Tính năng chọn ảnh từ thư viện đang chuẩn bị ra mắt ✨');
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(7),
+        child: ResponsiveCenter(
+          maxWidth: 600,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Avatar Center
+              Center(
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 6,
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 15),
+                      child: ClipOval(
+                        child: Image.network(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const CircleAvatar(
+                            radius: 46,
+                            backgroundColor: Color(0xFFE0E7FF),
+                            child: Icon(Icons.person, color: Color(0xFF6366F1), size: 44),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      bottom: -4,
+                      right: -4,
+                      child: IconButton(
+                        onPressed: () {
+                          ToastUtil.showInfo(context, 'Tính năng chọn ảnh từ thư viện đang chuẩn bị ra mắt ✨');
+                        },
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        icon: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 15),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 28),
 
             // 2. Tên hiển thị (Display Name) - Quy định 30 ngày/lần
@@ -544,17 +553,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         );
                       },
                       icon: const Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 18),
-                      label: const Text(
-                        'Quét lại tần số tâm trạng (Radar 3 chạm)',
-                        style: TextStyle(
-                          color: Color(0xFF6366F1),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                      label: const Flexible(
+                        child: Text(
+                          'Quét lại tần số tâm trạng (Radar 3 chạm)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF6366F1),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFC7D2FE), width: 1.2),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        minimumSize: const Size(0, 48),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
@@ -680,7 +694,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildInputField({

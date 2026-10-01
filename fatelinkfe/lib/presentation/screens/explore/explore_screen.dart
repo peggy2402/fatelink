@@ -390,6 +390,7 @@ class _FloatingNodeState extends State<_FloatingNode>
     with SingleTickerProviderStateMixin {
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -403,7 +404,7 @@ class _FloatingNodeState extends State<_FloatingNode>
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
 
-    Timer(widget.animationDelay, () {
+    _delayTimer = Timer(widget.animationDelay, () {
       if (mounted) {
         _floatController.repeat(reverse: true);
       }
@@ -412,6 +413,7 @@ class _FloatingNodeState extends State<_FloatingNode>
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _floatController.dispose();
     super.dispose();
   }
