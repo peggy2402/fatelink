@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart';
 import '../../../core/utils/toast_utils.dart';
+import '../../../core/responsive/responsive.dart';
 
 class UserDetailScreen extends StatefulWidget {
   final MatchUser user;
@@ -120,14 +121,16 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
           // Main Scrollable Content
           SafeArea(
-            child: Column(
-              children: [
-                // Top Custom App Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+            child: ResponsiveCenter(
+              maxWidth: 600,
+              child: Column(
+                children: [
+                  // Top Custom App Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 20),
                         onPressed: () => Navigator.of(context).pop(),
@@ -506,14 +509,17 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               ],
             ),
           ),
+        ),
 
-          // Bottom Action Floating Bar (Nút Thả tim + Nút Chat)
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.paddingOf(context).bottom > 0
-                ? MediaQuery.paddingOf(context).bottom + 10
-                : 20,
+        // Bottom Action Floating Bar (Nút Thả tim + Nút Chat)
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.paddingOf(context).bottom > 0
+              ? MediaQuery.paddingOf(context).bottom + 10
+              : 20,
+          child: ResponsiveCenter(
+            maxWidth: 500,
             child: Row(
               children: [
                 // Nút Thả tim / Follow
@@ -587,11 +593,15 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                         children: [
                           Icon(Icons.chat_bubble_rounded, size: 20),
                           SizedBox(width: 8),
-                          Text(
-                            'Bắt đầu trò chuyện',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                          Flexible(
+                            child: Text(
+                              'Bắt đầu trò chuyện',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -602,10 +612,11 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   // Widget hiển thị mục Góc tâm hồn (Vibes) với kiểm tra khóa diện mạo
   Widget _buildVibesSection(List<String> photos) {

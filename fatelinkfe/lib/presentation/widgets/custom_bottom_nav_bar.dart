@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../core/responsive/responsive.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -57,12 +58,14 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
     return SlideTransition(
       position: _slideAnimation,
-      child: SizedBox(
-        height: 100.0 + bottomPadding,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
-          children: [
+      child: ResponsiveCenter(
+        maxWidth: 580,
+        child: SizedBox(
+          height: 100.0 + bottomPadding,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
             // Thanh bar kính mờ (Glassmorphism) với đường cong khoét nút tim
             ClipPath(
               clipper: _BottomNavClipper(),
@@ -156,8 +159,9 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem({
     required int index,

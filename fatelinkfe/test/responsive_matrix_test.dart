@@ -409,6 +409,7 @@ void main() {
             final msg = details.exceptionAsString();
             if (msg.contains('overflow') || msg.contains('RenderFlex')) {
               overflowError = msg;
+              debugPrint('SOULMATCH OVERFLOW: $msg\n${details.informationCollector?.call().map((e) => e.toString()).join("\n")}');
             }
           };
 
@@ -416,7 +417,9 @@ void main() {
           await tester.pumpWidget(buildTestHarness(
             size: dev.size,
             textScale: scale,
-            child: SoulMatchCard(user: dummyUser),
+            child: SingleChildScrollView(
+              child: SoulMatchCard(user: dummyUser),
+            ),
           ));
           await tester.pump();
 

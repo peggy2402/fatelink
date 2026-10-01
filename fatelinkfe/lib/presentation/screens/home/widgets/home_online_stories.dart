@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/core/utils/toast_utils.dart';
+import 'package:fatelinkfe/core/responsive/responsive.dart';
 
 class HomeOnlineStories extends StatelessWidget {
   final String? currentUserAvatar;
@@ -26,86 +28,97 @@ class HomeOnlineStories extends StatelessWidget {
     this.onUserTap,
   });
 
-
-
   @override
   Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+    final storiesHeight = math.max(108.0, 72.0 + (38.0 * textScale));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Section Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Row(
-            children: [
-              const Text(
-                'Tần số đang phát',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                      ),
+        ResponsiveCenter(
+          maxWidth: 600,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Row(
+              children: [
+                const Flexible(
+                  child: Text(
+                    'Tần số đang phát',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.2,
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Online',
-                      style: TextStyle(
-                        color: Color(0xFF059669),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Online',
+                        style: TextStyle(
+                          color: Color(0xFF059669),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
 
         // Stories Row
-        SizedBox(
-          height: 108,
-          child: Builder(
-            builder: (context) {
-              final hasRealUsers = onlineUsers != null && onlineUsers!.isNotEmpty;
-              final count = hasRealUsers ? onlineUsers!.length + 1 : 2;
+        ResponsiveCenter(
+          maxWidth: 600,
+          child: SizedBox(
+            height: storiesHeight,
+            child: Builder(
+              builder: (context) {
+                final hasRealUsers = onlineUsers != null && onlineUsers!.isNotEmpty;
+                final count = hasRealUsers ? onlineUsers!.length + 1 : 2;
 
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: count,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return _buildAddStoryButton(context);
-                  }
-                  if (hasRealUsers) {
-                    final user = onlineUsers![index - 1];
-                    return _buildMatchUserStoryItem(context, user);
-                  }
-                  return _buildInviteFriendStoryItem(context);
-                },
-              );
-            },
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: count,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildAddStoryButton(context);
+                    }
+                    if (hasRealUsers) {
+                      final user = onlineUsers![index - 1];
+                      return _buildMatchUserStoryItem(context, user);
+                    }
+                    return _buildInviteFriendStoryItem(context);
+                  },
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -193,25 +206,33 @@ class HomeOnlineStories extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(
-              hasActiveFrequency ? 'Bạn' : 'Tâm trạng',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: hasActiveFrequency ? const Color(0xFF0F172A) : const Color(0xFF475569),
-                fontWeight: hasActiveFrequency ? FontWeight.bold : FontWeight.w600,
+            SizedBox(
+              width: 72,
+              child: Text(
+                hasActiveFrequency ? 'Bạn' : 'Tâm trạng',
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: hasActiveFrequency ? const Color(0xFF0F172A) : const Color(0xFF475569),
+                  fontWeight: hasActiveFrequency ? FontWeight.bold : FontWeight.w600,
+                ),
               ),
             ),
             if (hasActiveFrequency)
-              Text(
-                currentUserFrequency ?? 'Đang phát',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF6366F1),
-                  fontWeight: FontWeight.w700,
+              SizedBox(
+                width: 72,
+                child: Text(
+                  currentUserFrequency ?? 'Đang phát',
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF6366F1),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
           ],
@@ -224,6 +245,7 @@ class HomeOnlineStories extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onAddStory ?? onRetakeRadar,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -248,23 +270,31 @@ class HomeOnlineStories extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Mời bạn bè',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF64748B),
+            const SizedBox(
+              width: 72,
+              child: Text(
+                'Mời bạn bè',
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ),
-            const Text(
-              'Cùng phát sóng',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                color: Color(0xFF94A3B8),
+            const SizedBox(
+              width: 72,
+              child: Text(
+                'Cùng phát sóng',
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
             ),
           ],

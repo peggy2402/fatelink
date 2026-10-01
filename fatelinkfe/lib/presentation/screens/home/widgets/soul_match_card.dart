@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../data/models/match_user.dart';
+import '../../../../core/responsive/responsive.dart';
 
 class SoulMatchCard extends StatefulWidget {
   final MatchUser user;
@@ -55,9 +56,11 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
     final avatarUrl = widget.user.avatar ??
         'https://api.dicebear.com/7.x/adventurer/png?seed=${Uri.encodeComponent(widget.user.name)}&backgroundColor=e0e7ff';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-      child: GestureDetector(
+    return ResponsiveCenter(
+      maxWidth: 580,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+        child: GestureDetector(
         onTap: widget.onTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
@@ -144,41 +147,36 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                               ],
                             ),
                             const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on_outlined, color: Color(0xFF64748B), size: 13),
-                                const SizedBox(width: 3),
-                                Text(
-                                  distance,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                    fontWeight: FontWeight.w500,
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(right: 3),
+                                      child: Icon(Icons.location_on_outlined, color: Color(0xFF64748B), size: 13),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  width: 4,
-                                  height: 4,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFCBD5E1),
-                                    shape: BoxShape.circle,
+                                  TextSpan(
+                                    text: '$distance • ',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Flexible(
-                                  child: Text(
-                                    'Đang phát tần số',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  const TextSpan(
+                                    text: 'Đang phát tần số',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Color(0xFF10B981),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -234,24 +232,30 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                       children: [
                         const Icon(Icons.graphic_eq_rounded, color: Color(0xFF8B5CF6), size: 18),
                         const SizedBox(width: 8),
-                        Text(
-                          'Tần số: ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blueGrey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                         Expanded(
-                          child: Text(
-                            '${widget.user.moodIcon != null ? "${widget.user.moodIcon} " : ""}${widget.user.emotion}',
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Tần số: ',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.blueGrey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '${widget.user.moodIcon != null ? "${widget.user.moodIcon} " : ""}${widget.user.emotion}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6366F1),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6366F1),
-                              fontWeight: FontWeight.w700,
-                            ),
                           ),
                         ),
                       ],
@@ -298,6 +302,8 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                         borderRadius: BorderRadius.circular(14),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
+                          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                          alignment: Alignment.center,
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: _isLiked
@@ -325,7 +331,9 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                           onTap: widget.onChat,
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            constraints: const BoxConstraints(minHeight: 48),
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
@@ -343,15 +351,20 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 16),
                                 SizedBox(width: 8),
-                                Text(
-                                  'Gửi tin nhắn',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
+                                Flexible(
+                                  child: Text(
+                                    'Gửi tin nhắn',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -367,6 +380,7 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

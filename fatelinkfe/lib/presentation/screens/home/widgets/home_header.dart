@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fatelinkfe/core/responsive/responsive.dart';
 
 class HomeHeader extends StatelessWidget {
   final String? avatarUrl;
@@ -27,10 +28,12 @@ class HomeHeader extends StatelessWidget {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isCompact = screenWidth < 370;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 14.0 : 20.0, vertical: 8.0),
-      child: Row(
-        children: [
+    return ResponsiveCenter(
+      maxWidth: 680,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: isCompact ? 14.0 : 20.0, vertical: 8.0),
+        child: Row(
+          children: [
           // --- Avatar với viền phát sáng (Glowing Ring) ---
           Stack(
             clipBehavior: Clip.none,
@@ -116,8 +119,9 @@ class HomeHeader extends StatelessWidget {
           _buildActionButtons(isCompact: isCompact),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildActionButtons({bool isCompact = false}) {
     return Container(
@@ -152,8 +156,13 @@ class HomeHeader extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: EdgeInsets.all(isCompact ? 5.0 : 7.0),
+        child: Container(
+          constraints: BoxConstraints(
+            minWidth: isCompact ? 36 : 42,
+            minHeight: 48,
+          ),
+          alignment: Alignment.center,
+          padding: EdgeInsets.all(isCompact ? 4.0 : 6.0),
           child: Icon(icon, color: const Color(0xFF334155), size: isCompact ? 18 : 20),
         ),
       ),
@@ -166,12 +175,17 @@ class HomeHeader extends StatelessWidget {
       child: InkWell(
         onTap: onNotificationTap,
         borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: EdgeInsets.all(isCompact ? 5.0 : 7.0),
+        child: Container(
+          constraints: BoxConstraints(
+            minWidth: isCompact ? 36 : 42,
+            minHeight: 48,
+          ),
+          alignment: Alignment.center,
+          padding: EdgeInsets.all(isCompact ? 4.0 : 6.0),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(Icons.notifications_none_rounded, color: Color(0xFF334155), size: 20),
+              Icon(Icons.notifications_none_rounded, color: const Color(0xFF334155), size: isCompact ? 18 : 20),
               Positioned(
                 right: -1,
                 top: -1,
