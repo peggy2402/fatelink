@@ -15,6 +15,9 @@ import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/settings_distance_bottom_sheet.dart';
 import 'package:fatelinkfe/presentation/widgets/menu.dart';
 import 'package:fatelinkfe/presentation/screens/onboarding/onboarding_screen.dart';
+import 'package:fatelinkfe/presentation/screens/login/login_screen.dart';
+import 'package:fatelinkfe/logic/blocs/auth/auth_bloc.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/data/repositories/home_repository.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
@@ -122,6 +125,13 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues({});
+    PackageInfo.setMockInitialValues(
+      appName: 'FateLink',
+      packageName: 'com.fatelink.app',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
   });
 
   tearDownAll(() {
@@ -648,6 +658,53 @@ void main() {
             errorMessage: overflowError,
           );
         });
+      }
+    }
+  });
+
+  group('Group B - LoginScreen Matrix', () {
+    for (final dev in testDevices) {
+      for (final scale in testScales) {
+        for (final keyboard in [false, true]) {
+          testWidgets('${dev.name} @ ${scale}x (Keyboard: ${keyboard ? "Open" : "Closed"})', (tester) async {
+            String? overflowError;
+            final prevOnError = FlutterError.onError;
+            FlutterError.onError = (details) {
+              final msg = details.exceptionAsString();
+              if (msg.contains('overflow') || msg.contains('RenderFlex')) {
+                overflowError = msg;
+              }
+            };
+
+            await tester.binding.setSurfaceSize(dev.size);
+            final viewInsets = keyboard ? const EdgeInsets.only(bottom: 300) : EdgeInsets.zero;
+
+            await tester.pumpWidget(
+              BlocProvider<AuthBloc>(
+                create: (_) => AuthBloc(),
+                child: buildTestHarness(
+                  size: dev.size,
+                  textScale: scale,
+                  viewInsets: viewInsets,
+                  child: const LoginScreen(),
+                ),
+              ),
+            );
+            await tester.pump();
+
+            FlutterError.onError = prevOnError;
+
+            final passed = overflowError == null;
+            recordResult(
+              component: 'LoginScreen',
+              device: dev.name,
+              scale: scale,
+              keyboardOpen: keyboard,
+              passed: passed,
+              errorMessage: overflowError,
+            );
+          });
+        }
       }
     }
   });

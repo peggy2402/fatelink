@@ -6,25 +6,26 @@ class LoginSupportButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => LoginSupportModal.show(context),
-          borderRadius: BorderRadius.circular(20),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => LoginSupportModal.show(context),
+        borderRadius: BorderRadius.circular(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFFF43F5E).withValues(alpha: 0.3),
-                width: 1,
+                color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+                width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF43F5E).withValues(alpha: 0.08),
+                  color: const Color(0xFFF43F5E).withValues(alpha: 0.12),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -35,14 +36,14 @@ class LoginSupportButton extends StatelessWidget {
               children: [
                 Icon(
                   Icons.headset_mic_rounded,
-                  size: 16,
+                  size: 14,
                   color: Color(0xFFF43F5E),
                 ),
-                SizedBox(width: 6),
+                SizedBox(width: 4),
                 Text(
                   'Hỗ trợ 24/7',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFFF43F5E),
                   ),
@@ -57,7 +58,9 @@ class LoginSupportButton extends StatelessWidget {
 }
 
 class LoginLogoMark extends StatefulWidget {
-  const LoginLogoMark({super.key});
+  final double size;
+
+  const LoginLogoMark({super.key, this.size = 104.0});
 
   @override
   State<LoginLogoMark> createState() => _LoginLogoMarkState();
@@ -88,6 +91,9 @@ class _LoginLogoMarkState extends State<LoginLogoMark>
 
   @override
   Widget build(BuildContext context) {
+    final size = widget.size;
+    final outerSize = size * 1.12;
+
     return Center(
       child: Stack(
         clipBehavior: Clip.none,
@@ -100,10 +106,10 @@ class _LoginLogoMarkState extends State<LoginLogoMark>
               return Transform.scale(
                 scale: _pulseScale.value,
                 child: Container(
-                  width: 116,
-                  height: 116,
+                  width: outerSize,
+                  height: outerSize,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(38),
+                    borderRadius: BorderRadius.circular(size * 0.36),
                     gradient: LinearGradient(
                       colors: [
                         const Color(0xFFF43F5E).withValues(alpha: 0.25),
@@ -118,17 +124,17 @@ class _LoginLogoMarkState extends State<LoginLogoMark>
 
           // Main 3D Card Squircle
           Container(
-            width: 104,
-            height: 104,
-            padding: const EdgeInsets.all(10),
+            width: size,
+            height: size,
+            padding: EdgeInsets.all(size * 0.09),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(34),
+              borderRadius: BorderRadius.circular(size * 0.32),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
+                  blurRadius: size * 0.27,
+                  offset: Offset(0, size * 0.09),
                 ),
               ],
             ),
@@ -146,7 +152,9 @@ class _LoginLogoMarkState extends State<LoginLogoMark>
 }
 
 class LoginBrandTitle extends StatelessWidget {
-  const LoginBrandTitle({super.key});
+  final double fontSize;
+
+  const LoginBrandTitle({super.key, this.fontSize = 42.0});
 
   @override
   Widget build(BuildContext context) {
@@ -160,13 +168,13 @@ class LoginBrandTitle extends StatelessWidget {
           ],
         ).createShader(bounds);
       },
-      child: const Text(
+      child: Text(
         'Meyu',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
-          fontSize: 44,
-          height: 1.1,
+          fontSize: fontSize,
+          height: 1.08,
           fontWeight: FontWeight.w900,
           letterSpacing: -0.5,
         ),
@@ -176,17 +184,20 @@ class LoginBrandTitle extends StatelessWidget {
 }
 
 class LoginSlogan extends StatelessWidget {
-  const LoginSlogan({super.key});
+  final double fontSize;
+
+  const LoginSlogan({super.key, this.fontSize = 13.5});
 
   @override
   Widget build(BuildContext context) {
-    return const Text(
+    return Text(
       'Đăng nhập để tiếp tục kết nối tần số trái tim',
       textAlign: TextAlign.center,
       style: TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 14,
+        color: const Color(0xFF64748B),
+        fontSize: fontSize,
         fontWeight: FontWeight.w500,
+        height: 1.25,
       ),
     );
   }

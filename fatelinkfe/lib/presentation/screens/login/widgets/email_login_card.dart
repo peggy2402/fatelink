@@ -29,19 +29,25 @@ class EmailLoginCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth <= 360;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 14 : 16,
+        vertical: isCompact ? 10 : 12,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFF0E5EC)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFFFB4D1).withValues(alpha: 0.20),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -52,22 +58,22 @@ class EmailLoginCard extends StatelessWidget {
             onTap: onToggleExpanded,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.mail_outline_rounded,
-                    color: Color(0xFFEF3D8B),
-                    size: 34,
+                    color: const Color(0xFFEF3D8B),
+                    size: isCompact ? 26 : 30,
                   ),
-                  const SizedBox(width: 16),
-                  const Expanded(
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Text(
                       'Đăng nhập bằng email',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: isCompact ? 14.5 : 15.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
+                        color: const Color(0xFF111827),
                       ),
                     ),
                   ),
@@ -76,7 +82,7 @@ class EmailLoginCard extends StatelessWidget {
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
                     color: const Color(0xFFEF3D8B),
-                    size: 32,
+                    size: isCompact ? 26 : 30,
                   ),
                 ],
               ),

@@ -46,12 +46,14 @@ class RegisterFormCard extends StatelessWidget {
             children: [
               Icon(Icons.stars_rounded, color: Color(0xFFF43F5E), size: 20),
               SizedBox(width: 8),
-              Text(
-                'Gia nhập cộng đồng Meyu',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  'Gia nhập cộng đồng Meyu',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],

@@ -13,9 +13,11 @@ import '../../../logic/blocs/auth/auth_state.dart';
 import 'widgets/login_auth_sheets.dart';
 import 'widgets/login_backdrop.dart';
 import 'widgets/login_form.dart';
+import 'widgets/login_form_header.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final ScrollController? scrollController;
+  const LoginScreen({super.key, this.scrollController});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,6 +27,8 @@ enum _LoginAction { google, zalo, tiktok, email, register }
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
+  late final ScrollController _scrollController;
+  bool _internalScrollController = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     serverClientId:
@@ -53,6 +57,12 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.scrollController != null) {
+      _scrollController = widget.scrollController!;
+    } else {
+      _scrollController = ScrollController();
+      _internalScrollController = true;
+    }
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -87,6 +97,9 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _bounceController.dispose();
+    if (_internalScrollController) {
+      _scrollController.dispose();
+    }
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -296,6 +309,7 @@ class _LoginScreenState extends State<LoginScreen>
                 builder: (context, state) {
                   final isAuthLoading = state is AuthLoading;
                   return LoginForm(
+                    scrollController: _scrollController,
                     isLoginMode: _isLoginMode,
                     onTabChanged: (val) => setState(() => _isLoginMode = val),
                     nameController: _nameController,
@@ -333,6 +347,16 @@ class _LoginScreenState extends State<LoginScreen>
                     onShowPhoneOtpSheet: _showPhoneOtpSheet,
                   );
                 },
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 6, right: 16),
+                child: const LoginSupportButton(),
               ),
             ),
           ),

@@ -12,6 +12,7 @@ import 'register_form_card.dart';
 class LoginForm extends StatelessWidget {
   const LoginForm({
     super.key,
+    this.scrollController,
     required this.isLoginMode,
     required this.onTabChanged,
     required this.nameController,
@@ -39,6 +40,7 @@ class LoginForm extends StatelessWidget {
     required this.onShowPhoneOtpSheet,
   });
 
+  final ScrollController? scrollController;
   final bool isLoginMode;
   final ValueChanged<bool> onTabChanged;
   final TextEditingController nameController;
@@ -69,71 +71,96 @@ class LoginForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final horizontalPadding = constraints.maxWidth < 360 ? 18.0 : 24.0;
+        final availableHeight = constraints.maxHeight;
+        final availableWidth = constraints.maxWidth;
+        final isSmallWidth = availableWidth < 360;
+        final horizontalPadding = isSmallWidth ? 16.0 : 22.0;
+
+        // 1. Kích thước logo co theo chiều cao khả dụng, clamp 64–104dp
+        final logoSize = (availableHeight * 0.098).clamp(64.0, 104.0);
+        final titleSize = (availableHeight * 0.044).clamp(32.0, 42.0);
+        final sloganSize = availableHeight < 720 ? 12.0 : 13.5;
+
+        // 2. Khoảng cách dọc co giãn tỷ lệ theo chiều cao (topSpacing chừa chỗ cho nút Hỗ trợ ghim cố định)
+        final topSpacing = (availableHeight * 0.08).clamp(52.0, 72.0);
+        final logoToTitleGap = (availableHeight * 0.010).clamp(4.0, 10.0);
+        final titleToSloganGap = (availableHeight * 0.005).clamp(2.0, 6.0);
+        final headerToSwitcherGap = (availableHeight * 0.016).clamp(8.0, 18.0);
+        final switcherToFormGap = (availableHeight * 0.016).clamp(8.0, 18.0);
+        final formBlockGap = (availableHeight * 0.013).clamp(6.0, 14.0);
+        final bottomPadding = (availableHeight * 0.016).clamp(8.0, 20.0);
 
         return SingleChildScrollView(
+          controller: scrollController,
+          physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            8,
+            topSpacing,
             horizontalPadding,
-            32,
+            bottomPadding,
           ),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: BoxConstraints(
+                maxWidth: 440,
+                minHeight: (availableHeight - topSpacing - bottomPadding).clamp(0.0, double.infinity),
+              ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Top Bar: Support Icon Button
-                  const LoginSupportButton(),
-                  const SizedBox(height: 6),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. Branding Header: 3D Pulse Heart + PRO Badge + Title + Slogan
+                      LoginLogoMark(size: logoSize),
+                      SizedBox(height: logoToTitleGap),
+                      LoginBrandTitle(fontSize: titleSize),
+                      SizedBox(height: titleToSloganGap),
+                      LoginSlogan(fontSize: sloganSize),
+                      SizedBox(height: headerToSwitcherGap),
 
-                  // 2. Branding Header: 3D Pulse Heart + PRO Badge + Title + Slogan
-                  const LoginLogoMark(),
-                  const SizedBox(height: 14),
-                  const LoginBrandTitle(),
-                  const SizedBox(height: 8),
-                  const LoginSlogan(),
-                  const SizedBox(height: 22),
+                      // 2. Tab Switcher: [Đăng nhập] vs [Tạo tài khoản mới]
+                      AuthTabSwitcher(
+                        isLogin: isLoginMode,
+                        onTabChanged: onTabChanged,
+                      ),
+                      SizedBox(height: switcherToFormGap),
 
-                  // 3. Tab Switcher: [Đăng nhập] vs [Tạo tài khoản mới]
-                  AuthTabSwitcher(
-                    isLogin: isLoginMode,
-                    onTabChanged: onTabChanged,
+                      // 3. Form Content based on Active Tab
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.0, 0.05),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: isLoginMode
+                            ? _buildLoginContent(formBlockGap)
+                            : _buildRegisterContent(formBlockGap),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 22),
-
-                  // 4. Form Content based on Active Tab
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.0, 0.05),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: isLoginMode
-                        ? _buildLoginContent()
-                        : _buildRegisterContent(),
-                  ),
-
-                  const SizedBox(height: 24),
 
                   // App Version note
                   if (appVersion.isNotEmpty)
-                    Text(
-                      appVersion,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w500,
+                    Padding(
+                      padding: EdgeInsets.only(top: formBlockGap),
+                      child: Text(
+                        appVersion,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                 ],
@@ -145,7 +172,7 @@ class LoginForm extends StatelessWidget {
     );
   }
 
-  Widget _buildLoginContent() {
+  Widget _buildLoginContent(double gap) {
     return Column(
       key: const ValueKey('login_content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -156,11 +183,11 @@ class LoginForm extends StatelessWidget {
           bounceAnimation: bounceAnimation,
           onPressed: onGoogleSignIn,
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: gap),
 
         // Divider
         const LoginDivider('hoặc đăng nhập nhanh qua'),
-        const SizedBox(height: 18),
+        SizedBox(height: gap),
 
         // Social options row (Facebook, TikTok, Zalo, Phone SMS OTP)
         LoginSocialOptionsRow(
@@ -171,11 +198,11 @@ class LoginForm extends StatelessWidget {
           onZaloSignIn: onZaloSignIn,
           onShowPhoneOtpSheet: onShowPhoneOtpSheet,
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: gap),
 
         // Divider
         const LoginDivider('hoặc sử dụng email'),
-        const SizedBox(height: 18),
+        SizedBox(height: gap),
 
         // Accordion Email Login Card
         EmailLoginCard(
@@ -189,7 +216,7 @@ class LoginForm extends StatelessWidget {
           onTogglePasswordVisibility: onTogglePasswordVisibility,
           onForgotPassword: onShowMagicLinkSheet,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: gap * 0.9),
 
         // Magic Link Passwordless Card
         MagicLinkCard(onTap: onShowMagicLinkSheet),
@@ -197,7 +224,7 @@ class LoginForm extends StatelessWidget {
     );
   }
 
-  Widget _buildRegisterContent() {
+  Widget _buildRegisterContent(double gap) {
     return Column(
       key: const ValueKey('register_content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,7 +240,7 @@ class LoginForm extends StatelessWidget {
           onTogglePasswordVisibility: onTogglePasswordVisibility,
           onRegister: onEmailRegister,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: gap),
       ],
     );
   }

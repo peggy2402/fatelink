@@ -7,28 +7,34 @@ class MagicLinkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth <= 360;
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 12 : 16,
+          vertical: isCompact ? 8 : 12,
+        ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF0E5EC)),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFFFFB4D1).withValues(alpha: 0.20),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: isCompact ? 38 : 44,
+              height: isCompact ? 38 : 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -38,37 +44,48 @@ class MagicLinkCard extends StatelessWidget {
                   ],
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.mark_email_unread_outlined,
-                size: 30,
-                color: Color(0xFFEF3D8B),
+                size: isCompact ? 20 : 26,
+                color: const Color(0xFFEF3D8B),
               ),
             ),
-            const SizedBox(width: 8),
-            const Expanded(
+            const SizedBox(width: 10),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Không muốn nhập mật khẩu?',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: isCompact ? 13 : 15,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2F173D),
+                      color: const Color(0xFF2F173D),
+                      height: 1.2,
                     ),
                   ),
-                  SizedBox(height: 6),
+                  const SizedBox(height: 2),
                   Text(
                     'Gửi link đăng nhập 1 lần qua email',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF768099)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: isCompact ? 11.5 : 13,
+                      color: const Color(0xFF768099),
+                      height: 1.2,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            const SizedBox(width: 6),
+            Icon(
               Icons.chevron_right_rounded,
-              size: 30,
-              color: Color(0xFFEF3D8B),
+              size: isCompact ? 24 : 28,
+              color: const Color(0xFFEF3D8B),
             ),
           ],
         ),

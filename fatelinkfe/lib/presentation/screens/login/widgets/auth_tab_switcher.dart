@@ -13,8 +13,8 @@ class AuthTabSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
-      padding: const EdgeInsets.all(4),
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(26),
@@ -39,6 +39,7 @@ class AuthTabSwitcher extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: isLogin
                       ? const LinearGradient(
@@ -62,6 +63,7 @@ class AuthTabSwitcher extends StatelessWidget {
                 child: Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.lock_open_rounded,
@@ -69,12 +71,16 @@ class AuthTabSwitcher extends StatelessWidget {
                         color: isLogin ? Colors.white : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        'Đăng nhập',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isLogin ? FontWeight.w800 : FontWeight.w600,
-                          color: isLogin ? Colors.white : const Color(0xFF64748B),
+                      Flexible(
+                        child: Text(
+                          'Đăng nhập',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isLogin ? FontWeight.w800 : FontWeight.w600,
+                            color: isLogin ? Colors.white : const Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],
@@ -91,6 +97,7 @@ class AuthTabSwitcher extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: !isLogin
                       ? const LinearGradient(
@@ -114,6 +121,7 @@ class AuthTabSwitcher extends StatelessWidget {
                 child: Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.person_add_alt_1_rounded,
@@ -121,12 +129,16 @@ class AuthTabSwitcher extends StatelessWidget {
                         color: !isLogin ? Colors.white : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        'Tạo tài khoản',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: !isLogin ? FontWeight.w800 : FontWeight.w600,
-                          color: !isLogin ? Colors.white : const Color(0xFF64748B),
+                      Flexible(
+                        child: Text(
+                          'Tạo tài khoản',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: !isLogin ? FontWeight.w800 : FontWeight.w600,
+                            color: !isLogin ? Colors.white : const Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],
