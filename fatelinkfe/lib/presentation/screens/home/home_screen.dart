@@ -1,360 +1,321 @@
-import 'package:fatelinkfe/core/utils/constants.dart';
-import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
-import 'package:fatelinkfe/presentation/widgets/shimmer_user_card.dart';
-import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_event.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
+import 'package:fatelinkfe/logic/blocs/main/main_bloc.dart';
+import 'package:fatelinkfe/logic/blocs/main/main_event.dart';
+import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
+import 'package:fatelinkfe/presentation/widgets/shimmer_user_card.dart';
+import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
+import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart';
+
+import 'widgets/home_header.dart';
+import 'widgets/home_hero_banner.dart';
+import 'widgets/home_online_stories.dart';
+import 'widgets/home_filter_chips.dart';
+import 'widgets/soul_match_card.dart';
+import 'widgets/radar_scanner_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool showOnboarding;
   final VoidCallback onStartChat;
+  final VoidCallback? onDismissOnboarding;
 
   const HomeScreen({
     super.key,
     required this.showOnboarding,
     required this.onStartChat,
+    this.onDismissOnboarding,
   });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    {
-  final PageController _pageController = PageController();
-  int _currentHeroPage = 0;
+class _HomeScreenState extends State<HomeScreen> {
+  String? _userName;
+  String? _userHandle;
+  String? _avatarUrl;
+  String? _currentUserMood;
+  String? _currentUserMoodIcon;
+  String? _currentUserFrequency;
+  bool _showRetakeRadar = false;
+  int _selectedFilterIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    
+    _loadUserInfo();
     if (!widget.showOnboarding) {
       context.read<HomeBloc>().add(LoadRecommendationsEvent(context));
     }
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  Future<void> _loadUserInfo() async {
+    const secureStorage = FlutterSecureStorage();
+    final name = await secureStorage.read(key: 'userName');
+    final avatar = await secureStorage.read(key: 'avatarUrl');
+
+    final prefs = await SharedPreferences.getInstance();
+    final mood = prefs.getString('user_frequency_mood');
+    final icon = prefs.getString('user_frequency_icon');
+    final hertz = prefs.getString('user_frequency_hertz');
+
+    if (mounted) {
+      setState(() {
+        _userName = (name != null && name.trim().isNotEmpty) ? name.trim() : null;
+        if (_userName != null) {
+          _userHandle = '@${_userName!.toLowerCase().replaceAll(' ', '')}';
+        }
+        _avatarUrl = (avatar != null && avatar.trim().isNotEmpty) ? avatar.trim() : null;
+        _currentUserMood = mood;
+        _currentUserMoodIcon = icon;
+        _currentUserFrequency = hertz;
+      });
+    }
+  }
+
+  List<MatchUser> _filterUsers(List<MatchUser> users) {
+    if (_selectedFilterIndex == 0) return users; // Tất cả
+    final filterName = HomeFilterChips.filters[_selectedFilterIndex]['label'] as String;
+    if (filterName == 'Gần bạn') return users; // Tất cả ứng viên xung quanh
+    return users.where((u) {
+      return u.emotion.toLowerCase().contains(filterName.toLowerCase());
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final double bottomSafePadding = 160.0 + MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFDFD), // Theme sáng sang trọng
+      backgroundColor: const Color(0xFFF8FAFC), // Light Slate & Clean Canvas
       body: Stack(
         children: [
-          // --- Nền Light Mesh Gradient & Neon Accents ---
+          // --- Nền Mesh Gradient (Magenta, Indigo, Cyan Ambient) ---
           Positioned(
-            top: -100,
-            left: -50,
+            top: -120,
+            left: -80,
+            child: Container(
+              width: 320,
+              height: 320,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0x35EC4899), // Neon Magenta mờ
+              ),
+            ),
+          ),
+          Positioned(
+            top: 220,
+            right: -100,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0x286366F1), // Soft Indigo mờ
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 60,
+            left: -80,
             child: Container(
               width: 300,
               height: 300,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0x40FFD1DC), // Light pink mờ
-              ),
-            ),
-          ),
-          Positioned(
-            top: 200,
-            right: -100,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0x3300E5FF), // Neon Cyan mờ
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0x40E6E6FA), // Pale purple mờ
+                color: Color(0x2500E5FF), // Cyan Neon mờ
               ),
             ),
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
               child: const SizedBox(),
             ),
           ),
 
-          // --- Main Content ---
+          // --- Nội dung chính ---
           SafeArea(
             bottom: false,
             child: RefreshIndicator(
-              color: const Color(0xFFBD114A),
+              color: const Color(0xFFEC4899),
               backgroundColor: Colors.white,
               onRefresh: () async {
                 context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
-                await Future.delayed(const Duration(milliseconds: 800));
+                await _loadUserInfo();
+                await Future.delayed(const Duration(milliseconds: 600));
               },
               child: ScrollConfiguration(
-                // Ẩn thanh cuộn (scrollbar) để giao diện thoáng, tinh tế hơn
                 behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // --- Header ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isCompact = constraints.maxWidth < 380;
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Stack(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(2),
-                                          decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: LinearGradient(
-                                              colors: [Color(0xFF00E5FF), Color(0xFFFF69B4)],
-                                            ),
-                                          ),
-                                          child: const CircleAvatar(
-                                            radius: 22,
-                                            backgroundImage: AssetImage('assets/images/default_avatar.png'),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          right: 0,
-                                          bottom: 0,
-                                          child: Container(
-                                            width: 12,
-                                            height: 12,
-                                            decoration: BoxDecoration(
-                                              color: Colors.greenAccent.shade400,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white, width: 2),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'John Doe',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF2F4F4F),
-                                            ),
-                                          ),
-                                          Text(
-                                            '@johndoe',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF00B8D4),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: isCompact ? 12 : 0),
-                                Align(
-                                  alignment: isCompact
-                                      ? Alignment.centerLeft
-                                      : Alignment.centerRight,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildHeaderIcon(Icons.search_rounded),
-                                        const SizedBox(width: 4),
-                                        _buildHeaderIcon(Icons.qr_code_scanner_rounded),
-                                        const SizedBox(width: 4),
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            _buildHeaderIcon(Icons.notifications_none_rounded),
-                                            Positioned(
-                                              right: 12,
-                                              top: 10,
-                                              child: Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFFF3B30),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        _buildHeaderIcon(Icons.settings_outlined),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
+                      // 1. Header (User Avatar, PRO Badge & Action Icons)
+                      HomeHeader(
+                        avatarUrl: _avatarUrl,
+                        userName: _userName,
+                        userHandle: _userHandle,
+                        onSearchTap: () => Navigator.of(context).pushNamed('/matches'),
+                        onQrTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Tính năng quét mã QR đang được thử nghiệm'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        onNotificationTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Chưa có thông báo mới'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        onSettingsTap: () {
+                          context.read<MainBloc>().add(const ChangeTabEvent(3));
+                        },
                       ),
 
-                      // --- Hero Carousel ---
-                      SizedBox(
-                        height: 160,
-                        child: PageView(
-                          controller: _pageController,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentHeroPage = index;
-                            });
-                          },
-                          children: [
-                            _buildHeroCard('Trải nghiệm AI', 'Khám phá thế giới qua con mắt của Faye', Icons.auto_awesome, [const Color(0xFF9C27B0), const Color(0xFFFF69B4)]),
-                            _buildHeroCard('Kết nối tâm giao', 'Tìm kiếm tần số tương đồng với bạn', Icons.favorite_rounded, [const Color(0xFFFF3B30), const Color(0xFFFF9500)]),
-                            _buildHeroCard('Trò chuyện ẩn danh', 'Thoải mái chia sẻ không giới hạn', Icons.visibility_off, [const Color(0xFF00E5FF), const Color(0xFF007AFF)]),
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildDot(_currentHeroPage == 0),
-                          const SizedBox(width: 6),
-                          _buildDot(_currentHeroPage == 1),
-                          const SizedBox(width: 6),
-                          _buildDot(_currentHeroPage == 2),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
 
-                      // --- Đang trực tuyến ---
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Text(
-                          'Đang trực tuyến',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2F4F4F)),
-                        ),
+                      // 2. Hero Banner "Trợ lý AI Faye"
+                      HomeHeroBanner(
+                        onStartChat: widget.onStartChat,
+                        onExplore: () {
+                          RadarScannerModal.show(
+                            context,
+                            onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
+                          );
+                        },
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 80,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: 10,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [Color(0xFF00E5FF), Color(0xFF007AFF)],
-                                      ),
-                                    ),
-                                    child: const CircleAvatar(
-                                      radius: 30,
-                                      backgroundImage: AssetImage('assets/images/default_avatar.png'),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 2,
-                                    bottom: 2,
-                                    child: Container(
-                                      width: 14,
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        color: Colors.greenAccent.shade400,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2.5),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 24),
 
-                      // --- Danh sách tương hợp ---
+                      const SizedBox(height: 20),
+
+                      // 3. Online Avatars / Stories tâm trạng
+                      HomeOnlineStories(
+                        currentUserAvatar: _avatarUrl,
+                        currentUserMood: _currentUserMood,
+                        currentUserMoodIcon: _currentUserMoodIcon,
+                        currentUserFrequency: _currentUserFrequency,
+                        onRetakeRadar: () {
+                          setState(() => _showRetakeRadar = true);
+                        },
+                        onAddStory: () {
+                          setState(() => _showRetakeRadar = true);
+                        },
+                        onUserTap: (user) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Tần số của ${user['name']}: ${user['status']} ${user['mood']}'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // 4. Tiêu đề mục "Kết nối tâm hồn" & Nút "Xem tất cả"
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Kết nối tâm hồn',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2F4F4F)),
+                            const Row(
+                              children: [
+                                Text(
+                                  'Kết nối tâm hồn',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0F172A),
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                Icon(Icons.favorite_rounded, color: Color(0xFFEC4899), size: 16),
+                              ],
                             ),
                             TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(foregroundColor: const Color(0xFF00B8D4)),
+                              onPressed: () => Navigator.of(context).pushNamed('/matches'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF6366F1),
+                                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
                               child: const Text('Xem tất cả'),
                             ),
                           ],
                         ),
                       ),
 
+                      const SizedBox(height: 8),
+
+                      // 5. Filter Chips (Tất cả, Cô đơn, Phấn khích, Deep talk, Gần bạn)
+                      HomeFilterChips(
+                        selectedIndex: _selectedFilterIndex,
+                        onSelected: (index) {
+                          setState(() => _selectedFilterIndex = index);
+                        },
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // 6. Danh sách Card người dùng tương thích (Soul Match Feed)
                       BlocBuilder<HomeBloc, HomeState>(
                         builder: (context, state) {
                           if (state.status == HomeStatus.initial || state.status == HomeStatus.loading) {
                             return ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              padding: const EdgeInsets.only(bottom: 100),
+                              padding: EdgeInsets.only(bottom: bottomSafePadding),
                               itemCount: 3,
                               itemBuilder: (context, index) => const ShimmerUserCard(),
                             );
                           }
-                          
-                          if (state.matchedUsers.isEmpty) {
+
+                          final filteredUsers = _filterUsers(state.matchedUsers);
+
+                          if (filteredUsers.isEmpty) {
                             return Container(
-                              height: 150,
+                              height: 160,
+                              margin: EdgeInsets.only(bottom: bottomSafePadding),
                               alignment: Alignment.center,
-                              child: Text(
-                                'TalkWithFaye'.tr(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.blueGrey.shade400,
-                                  fontSize: 16,
-                                  height: 1.5,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.bubble_chart_outlined, color: Colors.blueGrey.shade300, size: 40),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _selectedFilterIndex == 0
+                                        ? 'TalkWithFaye'.tr()
+                                        : 'Không tìm thấy người cùng tần số này',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.blueGrey.shade400,
+                                      fontSize: 14,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  if (_selectedFilterIndex != 0) ...[
+                                    const SizedBox(height: 6),
+                                    TextButton(
+                                      onPressed: () => setState(() => _selectedFilterIndex = 0),
+                                      child: const Text('Xem tất cả tần số', style: TextStyle(color: Color(0xFF6366F1))),
+                                    ),
+                                  ],
+                                ],
                               ),
                             );
                           }
@@ -362,9 +323,27 @@ class _HomeScreenState extends State<HomeScreen>
                           return ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.only(bottom: 120), // Đệm lớn cho khoảng trống Bottom Nav Bar
-                            itemCount: state.matchedUsers.length,
-                            itemBuilder: (context, index) => _buildUserCard(state.matchedUsers[index]),
+                            padding: EdgeInsets.only(bottom: bottomSafePadding),
+                            itemCount: filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              return SoulMatchCard(
+                                user: user,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => UserDetailScreen(user: user),
+                                  ),
+                                ),
+                                onChat: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => MatchChatScreen(
+                                      partnerId: user.id,
+                                      partnerName: user.name,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -375,188 +354,22 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
 
-          if (widget.showOnboarding)
-            OnboardingModal(onStartChat: widget.onStartChat),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderIcon(IconData icon) {
-    return IconButton(
-      icon: Icon(icon, color: const Color(0xFF2F4F4F), size: 26),
-      onPressed: () {},
-    );
-  }
-
-  Widget _buildHeroCard(String title, String subtitle, IconData icon, List<Color> gradientColors) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14, height: 1.4),
-                ),
-              ],
+          // Modal Onboarding (nếu người dùng lần đầu vào hoặc muốn quét lại tần số)
+          if (widget.showOnboarding || _showRetakeRadar)
+            OnboardingModal(
+              onStartChat: () {
+                setState(() => _showRetakeRadar = false);
+                _loadUserInfo();
+                widget.onStartChat();
+              },
+              onDismiss: () {
+                setState(() => _showRetakeRadar = false);
+                _loadUserInfo();
+                context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
+                widget.onDismissOnboarding?.call();
+              },
             ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white, size: 36),
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDot(bool isActive) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: isActive ? 24 : 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFBD114A) : Colors.grey.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-
-  Widget _buildUserCard(MatchUser user) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => UserDetailScreen(user: user)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.6), // Glassmorphism sáng
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Color(0xFFE0F7FA), // Light Cyan
-                    child: Icon(
-                      Icons.waves_rounded,
-                      color: Color(0xFF00B8D4),
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user.name,
-                          style: const TextStyle(
-                            color: Color(0xFF2F4F4F),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.graphic_eq,
-                              color: Color(0xFF9C27B0), // Neon Purple
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Tần số: ${user.emotion}',
-                              style: TextStyle(
-                                color: Colors.blueGrey.shade600,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00E5FF), Color(0xFF007AFF)], // Cyan to Blue neon gradient
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF00E5FF).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      '${user.compatibilityScore}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -31,7 +31,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     },
     {
       'icon': Icons.rocket_launch_rounded,
-      'color': AppColors.primary, // Màu Rose/Pink đặc trưng của FateLink
+      'color': AppColors.primary, // Màu Rose/Pink đặc trưng của Meyu
       'title': 'Bước tiếp theo:\nKhởi hành',
       'description':
           'Hãy chuẩn bị một tâm hồn đẹp và một profile ấn tượng. Những kết nối và cuộc trò chuyện thú vị đang chờ đón bạn phía trước!',

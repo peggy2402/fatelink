@@ -7,6 +7,8 @@ import { USER_REPOSITORY } from '@shared/kernel/injection-tokens';
 import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
 import type { Provider } from '@nestjs/common';
 
+import { UpdateUserFrequencyUseCase } from '@contexts/users/application/usecases/update-user-frequency.usecase';
+
 export const usersUseCaseProviders: Provider[] = [
   {
     provide: USERS_APPLICATION_TOKENS.findEmotionMatches,
@@ -32,6 +34,12 @@ export const usersUseCaseProviders: Provider[] = [
       new UpdateUserTraitsUseCase(userRepository),
     inject: [USER_REPOSITORY],
   },
+  {
+    provide: USERS_APPLICATION_TOKENS.updateUserFrequency,
+    useFactory: (userRepository: UserRepository) =>
+      new UpdateUserFrequencyUseCase(userRepository),
+    inject: [USER_REPOSITORY],
+  },
 ];
 
 export const usersUseCases = [
@@ -39,4 +47,5 @@ export const usersUseCases = [
   USERS_APPLICATION_TOKENS.getUserProfile,
   USERS_APPLICATION_TOKENS.updateFcmToken,
   USERS_APPLICATION_TOKENS.updateUserTraits,
+  USERS_APPLICATION_TOKENS.updateUserFrequency,
 ];

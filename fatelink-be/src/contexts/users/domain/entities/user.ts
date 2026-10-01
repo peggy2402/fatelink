@@ -9,8 +9,11 @@ export class User {
   latestEmotion!: string;
   emotions!: EmotionVector;
   personality!: number[];
-  bio!: string;
   fcmToken!: string;
+  tags?: string[];
+  frequencyHertz?: string;
+  moodIcon?: string;
+  desiredVibe?: string;
 
   static rehydrate(props: {
     id?: string;
@@ -23,6 +26,10 @@ export class User {
     personality: number[];
     bio: string;
     fcmToken: string;
+    tags?: string[];
+    frequencyHertz?: string;
+    moodIcon?: string;
+    desiredVibe?: string;
   }): User {
     const user = new User();
     Object.assign(user, props);

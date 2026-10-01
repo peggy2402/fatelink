@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../presentation/screens/match/match_chat_screen.dart';
+import '../../presentation/screens/match/matches_screen.dart';
 import '../../presentation/screens/onboarding/onboarding_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/main_screen.dart';
@@ -11,13 +12,17 @@ class AppRouter {
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case '/matches':
+        return MaterialPageRoute(
+          builder: (context) => const MatchesScreen(),
+        );
       case '/match-chat':
         final args = settings.arguments;
         String partnerId = args is String ? args : 'unknown_id';
         return MaterialPageRoute(
           builder: (context) => MatchChatScreen(
             partnerId: partnerId,
-            partnerName: 'FateLink'.tr(),
+            partnerName: 'Meyu'.tr(),
           ),
         );
       case '/onboarding':

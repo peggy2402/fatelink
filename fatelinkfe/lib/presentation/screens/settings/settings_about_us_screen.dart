@@ -41,13 +41,13 @@ class SettingsAboutUsScreen extends StatelessWidget {
                   BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
-              child: const Center(
-                child: Icon(Icons.favorite_rounded, size: 50, color: Color(0xFF4F46E5)), // Thay bằng Image.asset nếu có logo thật
+              child: Center(
+                child: Image.asset('assets/icon/app_logo.png', width: 64, height: 64),
               ),
             ),
             const SizedBox(height: 24),
             const Text(
-              'FateLink',
+              'Meyu',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),
             const SizedBox(height: 8),
@@ -65,7 +65,7 @@ class SettingsAboutUsScreen extends StatelessWidget {
 
             const SizedBox(height: 40),
             const Text(
-              '© 2024 FateLink. All rights reserved.',
+              '© 2024 Meyu. All rights reserved.',
               style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 40),

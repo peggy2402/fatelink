@@ -48,6 +48,10 @@ export class MongooseMatchCandidateRepository implements MatchCandidateRepositor
       personality: Array.isArray(document.personality)
         ? [...document.personality]
         : undefined,
+      tags: Array.isArray(document.tags) ? [...document.tags] : [],
+      avatar: document.avatar,
+      moodIcon: document.moodIcon,
+      desiredVibe: document.desiredVibe,
     };
   }
 }

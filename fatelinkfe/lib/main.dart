@@ -108,7 +108,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<SplashBloc>(create: (context) => SplashBloc()),
         ],
         child: MaterialApp(
-          title: 'FateLink',
+          title: 'Meyu',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             primarySwatch: Colors.blue,

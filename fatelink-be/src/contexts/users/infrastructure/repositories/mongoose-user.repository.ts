@@ -75,6 +75,34 @@ export class MongooseUserRepository implements UserRepositoryPort {
       .then((item) => (item ? this.toDomainUser(item) : null));
   }
 
+  async updateFrequency(
+    userId: string,
+    data: {
+      latestEmotion: string;
+      moodIcon: string;
+      frequencyHertz: string;
+      desiredVibe: string;
+      tags: string[];
+      emotions: Record<string, number>;
+    },
+  ): Promise<DomainUser | null> {
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          latestEmotion: data.latestEmotion,
+          moodIcon: data.moodIcon,
+          frequencyHertz: data.frequencyHertz,
+          desiredVibe: data.desiredVibe,
+          tags: data.tags,
+          emotions: data.emotions,
+        },
+        { new: true },
+      )
+      .exec();
+    return updated ? this.toDomainUser(updated) : null;
+  }
+
   async findAll(): Promise<DomainUser[]> {
     const users = await this.userModel.find().sort({ createdAt: -1 }).exec();
     return users.map((item) => this.toDomainUser(item));
@@ -100,6 +128,10 @@ export class MongooseUserRepository implements UserRepositoryPort {
       personality: [...plainUser.personality],
       bio: plainUser.bio,
       fcmToken: plainUser.fcmToken,
+      tags: plainUser.tags ? [...plainUser.tags] : [],
+      frequencyHertz: plainUser.frequencyHertz,
+      moodIcon: plainUser.moodIcon,
+      desiredVibe: plainUser.desiredVibe,
     });
   }
 }

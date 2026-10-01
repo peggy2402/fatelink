@@ -3,12 +3,20 @@ class MatchUser {
   final String name;
   final String emotion;
   final int compatibilityScore;
+  final double? distanceKm;
+  final List<String>? tags;
+  final String? avatar;
+  final String? moodIcon;
 
   MatchUser({
     required this.id,
     required this.name,
     required this.emotion,
     required this.compatibilityScore,
+    this.distanceKm,
+    this.tags,
+    this.avatar,
+    this.moodIcon,
   });
 
   factory MatchUser.fromJson(Map<String, dynamic> json) {
@@ -18,6 +26,14 @@ class MatchUser {
       emotion: json['dominantEmotion'] ?? json['detected_emotion'] ?? 'Bí ẩn',
       compatibilityScore:
           json['matchingScore'] ?? json['compatibilityScore'] ?? 80,
+      distanceKm: json['distanceKm'] != null
+          ? (json['distanceKm'] as num).toDouble()
+          : null,
+      tags: (json['tags'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      avatar: json['avatar'] as String?,
+      moodIcon: json['moodIcon'] as String?,
     );
   }
 }

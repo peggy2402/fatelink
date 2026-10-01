@@ -200,7 +200,7 @@ class _SplashScreenState extends State<SplashScreen>
                     end: Alignment.centerRight,
                   ).createShader(bounds),
                   child: const Text(
-                    'FATELINK',
+                    'MEYU',
                     style: TextStyle(
                       color: Colors.white, // Bắt buộc phải là white để ShaderMask vẽ đè lên
                       fontSize: 38,

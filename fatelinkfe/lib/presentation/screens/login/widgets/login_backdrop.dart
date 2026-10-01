@@ -17,7 +17,7 @@ class LoginBackdrop extends StatelessWidget {
             height: 360,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0x30FFB2CF),
+              color: Color(0x30F43F5E), // Rose Neon
             ),
           ),
         ),
@@ -29,7 +29,7 @@ class LoginBackdrop extends StatelessWidget {
             height: 320,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0x22FFC7DB),
+              color: Color(0x25A855F7), // Purple Neon
             ),
           ),
         ),

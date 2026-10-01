@@ -14,6 +14,17 @@ export interface UserRepository {
   findMatches(userId: string): Promise<User[]>;
   findAllExcept(userId: string): Promise<User[]>;
   updateFcmToken(userId: string, fcmToken: string): Promise<User | null>;
+  updateFrequency(
+    userId: string,
+    data: {
+      latestEmotion: string;
+      moodIcon: string;
+      frequencyHertz: string;
+      desiredVibe: string;
+      tags: string[];
+      emotions: Record<string, number>;
+    },
+  ): Promise<User | null>;
   findAll(): Promise<User[]>;
   banUser(userId: string, isBanned: boolean): Promise<User | null>;
 }

@@ -14,7 +14,7 @@ export class AppController {
     description: 'Trả về câu chào để xác nhận Server đang hoạt động.',
   })
   getHello(): string {
-    return 'Fatelink API is running';
+    return 'Meyu API is running';
   }
 
   @Get('.well-known/assetlinks.json')
@@ -74,8 +74,8 @@ export class AppController {
       <h1>Dang quay lai ung dung</h1>
       <p>Neu ung dung chua tu mo, bam nut ben duoi.</p>
       <div class="actions">
-        <a class="btn" href="${intentTarget}">Mo FateLink tren Android</a>
-        <a class="btn" href="${target.toString()}">Mo FateLink bang deep link</a>
+        <a class="btn" href="${intentTarget}">Mo Meyu tren Android</a>
+        <a class="btn" href="${target.toString()}">Mo Meyu bang deep link</a>
       </div>
       <p class="muted">Neu van khong mo, hay cai lai APK debug moi va restart backend dang serve tunnel.</p>
     </div>

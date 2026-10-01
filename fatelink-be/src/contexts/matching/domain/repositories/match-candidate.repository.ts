@@ -7,6 +7,10 @@ export interface MatchCandidate {
   bio: string;
   emotions?: EmotionVector;
   personality?: number[];
+  tags?: string[];
+  avatar?: string;
+  moodIcon?: string;
+  desiredVibe?: string;
 }
 
 export interface MatchCandidateRepository {

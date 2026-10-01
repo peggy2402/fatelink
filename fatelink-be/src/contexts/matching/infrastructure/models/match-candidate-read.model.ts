@@ -30,6 +30,18 @@ export class MatchCandidateReadModel {
 
   @Prop()
   bio!: string;
+
+  @Prop()
+  avatar?: string;
+
+  @Prop({ type: [String], default: () => [] })
+  tags?: string[];
+
+  @Prop()
+  moodIcon?: string;
+
+  @Prop()
+  desiredVibe?: string;
 }
 
 export const MatchCandidateReadSchema = SchemaFactory.createForClass(

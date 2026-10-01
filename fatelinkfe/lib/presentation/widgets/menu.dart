@@ -216,7 +216,7 @@ class _AppMenuDrawerState extends State<AppMenuDrawer> {
       padding: const EdgeInsets.only(bottom: 20.0, top: 10),
       child: Center(
         child: Text(
-          _appVersion.isEmpty ? 'FateLink' : 'FateLink $_appVersion',
+          _appVersion.isEmpty ? 'Meyu' : 'Meyu $_appVersion',
           style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
         ),
       ),

@@ -34,8 +34,8 @@ async function bootstrap() {
     ],
   });
   const config = new DocumentBuilder()
-    .setTitle('Fatelink API')
-    .setDescription('API documentation for Fatelink')
+    .setTitle('Meyu API')
+    .setDescription('API documentation for Meyu')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

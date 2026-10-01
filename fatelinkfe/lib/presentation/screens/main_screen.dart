@@ -11,6 +11,7 @@ import 'package:fatelinkfe/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/menu.dart';
+import 'package:fatelinkfe/presentation/screens/home/widgets/radar_scanner_modal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
@@ -114,6 +115,17 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  void _handleDismissOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_started_chat', true);
+    if (mounted) {
+      setState(() {
+        _showOnboarding = false;
+        _hasStartedChat = true;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _chatController.dispose();
@@ -144,6 +156,7 @@ class _MainScreenState extends State<MainScreen>
             HomeScreen(
               showOnboarding: _showOnboarding,
               onStartChat: _handleStartChat,
+              onDismissOnboarding: _handleDismissOnboarding,
             ),
             const ExploreScreen(),
             ChatScreen(
@@ -253,6 +266,14 @@ class _MainScreenState extends State<MainScreen>
                                 _isPopupOpen = false;
                                 if (index == 2) _hasUnreadMessages = false;
                               });
+                            },
+                            onHeartTap: () {
+                              RadarScannerModal.show(
+                                context,
+                                onConnectMatch: () {
+                                  Navigator.of(context).pushNamed('/matches');
+                                },
+                              );
                             },
                           ),
                   ),

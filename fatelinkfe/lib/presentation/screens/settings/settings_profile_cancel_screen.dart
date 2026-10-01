@@ -106,7 +106,7 @@ class _SettingsProfileCancelScreenState extends State<SettingsProfileCancelScree
             ),
             const SizedBox(height: 12),
             const Text(
-              'Có điều gì khiến bạn không hài lòng về FateLink? Hãy để lại góp ý để chúng tôi cải thiện tốt hơn nhé!',
+              'Có điều gì khiến bạn không hài lòng về Meyu? Hãy để lại góp ý để chúng tôi cải thiện tốt hơn nhé!',
               style: TextStyle(fontSize: 15, color: Color(0xFF64748B), height: 1.5),
               textAlign: TextAlign.center,
             ),

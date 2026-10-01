@@ -1,17 +1,19 @@
-import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
   final String? avatarUrl;
+  final VoidCallback? onHeartTap;
 
   const CustomBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     this.avatarUrl,
+    this.onHeartTap,
   });
 
   @override
@@ -34,11 +36,11 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutQuint,
-          ),
-        );
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutQuint,
+      ),
+    );
 
     _animationController.forward();
   }
@@ -51,51 +53,77 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
   @override
   Widget build(BuildContext context) {
-    // Lấy độ cao vùng an toàn dưới đáy (ví dụ: thanh Home indicator trên iPhone)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return SlideTransition(
       position: _slideAnimation,
       child: SizedBox(
-        height: 100.0 + bottomPadding, // Tính thêm padding đáy vào tổng chiều cao
+        height: 100.0 + bottomPadding,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
           children: [
-            // Thanh bar màu tối với đường cắt (notch)
+            // Thanh bar kính mờ (Glassmorphism) với đường cong khoét nút tim
             ClipPath(
               clipper: _BottomNavClipper(),
-              child: ClipRRect( // Thêm ClipRRect để hiệu ứng blur không bị tràn
+              child: ClipRRect(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                   child: Container(
-                    height: 70.0 + bottomPadding, // Thanh bar cao hơn một chút để bao trọn viền đáy
-                    padding: EdgeInsets.only(bottom: bottomPadding), // Đẩy dàn icon lên trên vùng an toàn
+                    height: 70.0 + bottomPadding,
+                    padding: EdgeInsets.only(bottom: bottomPadding),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.75), // Nền kính mờ sáng
-                      border: Border(top: BorderSide(color: Colors.white.withOpacity(0.4), width: 1.5)),
+                      color: Colors.white.withValues(alpha: 0.85),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildNavItem(0, 'Trang chủ', Icons.home_filled),
-                        _buildNavItem(1, 'Khám phá', Icons.explore_rounded),
-                        const SizedBox(width: 80), // Chừa không gian khoét lõm
-                        _buildNavItem(2, 'Trò chuyện', Icons.chat_bubble_rounded, hasBadge: true),
-                        _buildNavItem(3, 'Tài khoản', Icons.person_rounded),
+                        _buildNavItem(
+                          index: 0,
+                          label: 'Trang chủ',
+                          unselectedIcon: CupertinoIcons.house,
+                          selectedIcon: CupertinoIcons.house_fill,
+                        ),
+                        _buildNavItem(
+                          index: 1,
+                          label: 'Khám phá',
+                          unselectedIcon: CupertinoIcons.compass,
+                          selectedIcon: CupertinoIcons.compass_fill,
+                        ),
+                        const SizedBox(width: 80), // Chừa không gian khoét lõm nút tim
+                        _buildNavItem(
+                          index: 2,
+                          label: 'Trò chuyện',
+                          unselectedIcon: CupertinoIcons.bubble_left_bubble_right,
+                          selectedIcon: CupertinoIcons.bubble_left_bubble_right_fill,
+                          hasBadge: true,
+                        ),
+                        _buildNavItem(
+                          index: 3,
+                          label: 'Tài khoản',
+                          unselectedIcon: CupertinoIcons.person_crop_circle,
+                          selectedIcon: CupertinoIcons.person_crop_circle_fill,
+                          isProfile: true,
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            
-            // Nút "Ghép đôi" hình trái tim lớn đặt chính giữa
+
+            // Nút "Ghép đôi / Radar" hình trái tim lớn đặt chính giữa
             Positioned(
               top: 0,
               child: GestureDetector(
                 onTap: () {
-                  // Sự kiện Ghép đôi
+                  widget.onHeartTap?.call();
                 },
                 child: Container(
                   width: 64,
@@ -103,22 +131,22 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFFF3B30), Color(0xFFFF69B4)], // Rose to Pink
+                      colors: [Color(0xFFFF2A6D), Color(0xFFFF5E97)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF3B30).withOpacity(0.4),
-                        blurRadius: 12,
+                        color: const Color(0xFFFF2A6D).withValues(alpha: 0.45),
+                        blurRadius: 16,
                         spreadRadius: 2,
-                        offset: const Offset(0, 4),
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
                   child: const Center(
                     child: Icon(
-                      Icons.favorite_rounded,
+                      CupertinoIcons.heart_fill,
                       color: Colors.white,
                       size: 32,
                     ),
@@ -132,17 +160,22 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
     );
   }
 
-  Widget _buildNavItem(
-    int index,
-    String label,
-    IconData iconData, {
+  Widget _buildNavItem({
+    required int index,
+    required String label,
+    required IconData unselectedIcon,
+    required IconData selectedIcon,
     bool hasBadge = false,
+    bool isProfile = false,
   }) {
     final isSelected = widget.currentIndex == index;
-    final color = isSelected ? const Color(0xFF00B8D4) : Colors.blueGrey.shade400; // Màu Cyan đậm khi chọn, xám xanh khi không chọn
+    // Màu xanh nhận diện thương hiệu Meyu khi chọn, màu Slate xám tinh tế khi chưa chọn
+    final activeColor = const Color(0xFF0066FF);
+    final inactiveColor = const Color(0xFF94A3B8);
+    final color = isSelected ? activeColor : inactiveColor;
 
     return SizedBox(
-      width: 60,
+      width: 64,
       child: GestureDetector(
         onTap: () => widget.onTap(index),
         behavior: HitTestBehavior.opaque,
@@ -150,19 +183,55 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              transform: Matrix4.identity()..scale(isSelected ? 1.1 : 1.0),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutBack,
+              transform: Matrix4.diagonal3Values(
+                isSelected ? 1.15 : 1.0,
+                isSelected ? 1.15 : 1.0,
+                1.0,
+              ),
               transformAlignment: Alignment.center,
               child: Stack(
                 clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  Icon(iconData, color: color, size: 26),
+                  if (isProfile && widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty)
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? activeColor : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: Image.network(
+                          widget.avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            isSelected ? selectedIcon : unselectedIcon,
+                            color: color,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Icon(
+                      isSelected ? selectedIcon : unselectedIcon,
+                      color: color,
+                      size: 24,
+                    ),
+
+                  // Chấm đỏ thông báo tin nhắn chưa đọc
                   if (hasBadge)
                     Positioned(
-                      right: -4,
-                      top: -4,
+                      right: -3,
+                      top: -2,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3.5),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFF3B30),
                           shape: BoxShape.circle,
@@ -180,7 +249,28 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
               style: TextStyle(
                 color: color,
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                letterSpacing: -0.2,
+              ),
+            ),
+            // Thanh chỉ báo active siêu mảnh, thanh lịch
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(top: 3),
+              width: isSelected ? 4 : 0,
+              height: isSelected ? 4 : 0,
+              decoration: BoxDecoration(
+                color: activeColor,
+                shape: BoxShape.circle,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: activeColor.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
             ),
           ],
@@ -196,7 +286,7 @@ class _BottomNavClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     return const CircularNotchedRectangle().getOuterPath(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Rect.fromCircle(center: Offset(size.width / 2, 0), radius: 38), // Notch radius
+      Rect.fromCircle(center: Offset(size.width / 2, 0), radius: 38),
     );
   }
 

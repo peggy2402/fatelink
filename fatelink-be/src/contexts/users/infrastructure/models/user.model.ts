@@ -38,6 +38,18 @@ export class User {
 
   @Prop({ default: '' })
   fcmToken!: string;
+
+  @Prop({ type: [String], default: () => [] })
+  tags!: string[];
+
+  @Prop({ default: '528 Hz' })
+  frequencyHertz!: string;
+
+  @Prop({ default: '🌧️' })
+  moodIcon!: string;
+
+  @Prop({ default: '' })
+  desiredVibe!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

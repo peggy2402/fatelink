@@ -18,7 +18,7 @@ class HomeRepository {
 
     // Gọi đúng endpoint lấy danh sách người dùng được AI phân tích
     final url = '${AppConstants.baseUrl}/${AppConstants.matchmakingRecommendations}';
-    print('CHECK URL RECOMMENDATIONS: $url');
+    if (!context.mounted) return [];
     final response = await ApiService.get(url, context, token: token);
 
     if (response != null && response is List) {
@@ -26,5 +26,32 @@ class HomeRepository {
     }
 
     return [];
+  }
+
+  Future<bool> updateUserFrequency({
+    required BuildContext context,
+    required String mood,
+    required String vibe,
+    required String signal,
+    String? frequencyHertz,
+  }) async {
+    final token = await secureStorage.read(key: 'accessToken');
+    if (token == null) return false;
+
+    final url = '${AppConstants.baseUrl}/users/frequency';
+    final body = {
+      'mood': mood,
+      'vibe': vibe,
+      'signal': signal,
+      ...?frequencyHertz == null ? null : {'frequencyHertz': frequencyHertz},
+    };
+
+    try {
+      if (!context.mounted) return false;
+      final response = await ApiService.post(url, context, body: body, token: token);
+      return response != null;
+    } catch (_) {
+      return false;
+    }
   }
 }

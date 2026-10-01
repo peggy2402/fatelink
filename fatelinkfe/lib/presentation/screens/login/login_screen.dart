@@ -21,7 +21,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-enum _LoginAction { google, zalo, tiktok, email }
+enum _LoginAction { google, zalo, tiktok, email, register }
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
@@ -35,12 +35,16 @@ class _LoginScreenState extends State<LoginScreen>
   static const MethodChannel _tikTokChannel = MethodChannel(
     'fatelink/tiktok_auth',
   );
+
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   late final AnimationController _bounceController;
   late final Animation<double> _bounceAnimation;
 
+  bool _isLoginMode = true;
   bool _obscurePassword = true;
   bool _isEmailLoginExpanded = false;
   String _appVersion = '';
@@ -83,8 +87,10 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _bounceController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -212,6 +218,39 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  void _handleEmailRegister() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (name.isEmpty) {
+      ToastUtil.showWarning(context, 'Vui lòng nhập tên hoặc biệt danh của bạn.');
+      return;
+    }
+    if (email.isEmpty || !email.contains('@')) {
+      ToastUtil.showWarning(context, 'Vui lòng nhập email hợp lệ.');
+      return;
+    }
+    if (password.length < 6) {
+      ToastUtil.showWarning(context, 'Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (password != confirmPassword) {
+      ToastUtil.showWarning(context, 'Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setState(() => _activeLoginAction = _LoginAction.register);
+    context.read<AuthBloc>().add(
+      AuthEmailRegisterRequested(
+        name: name,
+        email: email,
+        password: password,
+      ),
+    );
+  }
+
   void _togglePasswordVisibility() {
     setState(() {
       _obscurePassword = !_obscurePassword;
@@ -222,10 +261,6 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() {
       _isEmailLoginExpanded = !_isEmailLoginExpanded;
     });
-  }
-
-  Future<void> _showEmailAuthSheet({required bool isRegister}) {
-    return showEmailAuthSheet(context, isRegister: isRegister);
   }
 
   Future<void> _showPhoneOtpSheet() {
@@ -261,8 +296,12 @@ class _LoginScreenState extends State<LoginScreen>
                 builder: (context, state) {
                   final isAuthLoading = state is AuthLoading;
                   return LoginForm(
+                    isLoginMode: _isLoginMode,
+                    onTabChanged: (val) => setState(() => _isLoginMode = val),
+                    nameController: _nameController,
                     emailController: _emailController,
                     passwordController: _passwordController,
+                    confirmPasswordController: _confirmPasswordController,
                     bounceAnimation: _bounceAnimation,
                     obscurePassword: _obscurePassword,
                     isEmailLoginExpanded: _isEmailLoginExpanded,
@@ -279,19 +318,19 @@ class _LoginScreenState extends State<LoginScreen>
                     isEmailLoading:
                         isAuthLoading &&
                         _activeLoginAction == _LoginAction.email,
+                    isRegisterLoading:
+                        isAuthLoading &&
+                        _activeLoginAction == _LoginAction.register,
                     appVersion: _appVersion,
                     onGoogleSignIn: _handleGoogleSignIn,
                     onTikTokSignIn: _handleTikTokSignIn,
                     onZaloSignIn: _handleZaloSignIn,
                     onEmailLogin: _handleEmailLogin,
+                    onEmailRegister: _handleEmailRegister,
                     onToggleEmailLoginExpanded: _toggleEmailLoginExpanded,
                     onTogglePasswordVisibility: _togglePasswordVisibility,
                     onShowMagicLinkSheet: _showMagicLinkSheet,
                     onShowPhoneOtpSheet: _showPhoneOtpSheet,
-                    onShowEmailLoginSheet: () =>
-                        _showEmailAuthSheet(isRegister: false),
-                    onShowEmailRegisterSheet: () =>
-                        _showEmailAuthSheet(isRegister: true),
                   );
                 },
               ),
