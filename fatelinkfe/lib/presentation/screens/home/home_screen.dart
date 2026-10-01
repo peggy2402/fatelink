@@ -101,8 +101,8 @@ class _HomeScreenState extends State<HomeScreen> {
           final realIcon = realUser['moodIcon'];
           final realHertz = realUser['frequencyHertz'];
 
-          if (realName != null) await secureStorage.write(key: 'userName', value: realName.toString());
-          if (realAvatar != null) await secureStorage.write(key: 'avatarUrl', value: realAvatar.toString());
+          if (realName != null) await SecureStorageHelper.write('userName', realName.toString());
+          if (realAvatar != null) await SecureStorageHelper.write('avatarUrl', realAvatar.toString());
           if (realMood != null) await prefs.setString('user_frequency_mood', realMood.toString());
           if (realIcon != null) await prefs.setString('user_frequency_icon', realIcon.toString());
           if (realHertz != null) await prefs.setString('user_frequency_hertz', realHertz.toString());

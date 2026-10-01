@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+export 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Centralized SecureStorage helper with automatic fallback and error recovery.
 /// Configured with `resetOnError: true` to prevent `BadPaddingException: BAD_DECRYPT`
