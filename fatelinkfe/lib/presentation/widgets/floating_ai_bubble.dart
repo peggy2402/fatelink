@@ -4,6 +4,9 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dart:math' as math;
+import 'package:fatelinkfe/core/responsive/responsive.dart';
+
 /// Custom PanGestureRecognizer giúp phản hồi thao tác kéo tức thì mà không bị "khựng" (stutter/slop delay).
 /// Mặc định của Flutter [PanGestureRecognizer] yêu cầu ngón tay di chuyển ít nhất 18px (kTouchSlop)
 /// mới bắt đầu nhận cử chỉ, dẫn tới việc ngón tay di chuyển một đoạn rồi bong bóng mới giật/nhảy
@@ -104,6 +107,17 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
     super.didChangeDependencies();
     if (!_isInitialized) {
       _loadPosition();
+    } else {
+      // Tự động re-clamp nếu xoay màn hình (orientation change) hoặc đổi kích thước cửa sổ
+      final size = context.screenSize;
+      final safeTop = context.safeTop;
+      final safeBottom = context.safeBottom;
+      final maxLeft = (size.width - 50.0 - 16.0).clamp(16.0, double.infinity);
+      final maxTop = (size.height - 180.0 - safeBottom).clamp(safeTop + 16.0, double.infinity);
+      _left = _left.clamp(16.0, maxLeft);
+      _top = _top.clamp(safeTop + 16.0, maxTop);
+      _xController.value = _left;
+      _yController.value = _top;
     }
   }
 
@@ -122,15 +136,18 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
 
     if (mounted) {
       setState(() {
-        final size = MediaQuery.of(context).size;
-        final topPadding = MediaQuery.of(context).padding.top;
+        final size = context.screenSize;
+        final safeTop = context.safeTop;
+        final safeBottom = context.safeBottom;
+        final maxLeft = (size.width - 50.0 - 16.0).clamp(16.0, double.infinity);
+        final maxTop = (size.height - 180.0 - safeBottom).clamp(safeTop + 16.0, double.infinity);
         if (savedLeft != null && savedTop != null) {
-          _left = savedLeft.clamp(16.0, (size.width - 50.0 - 16.0).clamp(16.0, double.infinity));
-          _top = savedTop.clamp(topPadding + 16.0, (size.height - 180.0).clamp(topPadding + 16.0, double.infinity));
+          _left = savedLeft.clamp(16.0, maxLeft);
+          _top = savedTop.clamp(safeTop + 16.0, maxTop);
         } else {
           // Vị trí mặc định: mép phải, trên thanh BottomNav
-          _left = (size.width - 50.0 - 16.0).clamp(16.0, double.infinity);
-          _top = (size.height - 180.0).clamp(topPadding + 16.0, double.infinity);
+          _left = maxLeft;
+          _top = maxTop;
         }
         // Đồng bộ vị trí ban đầu vào Controller
         _xController.value = _left;
@@ -330,12 +347,17 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                             HapticFeedback.heavyImpact();
                           } else {
                             // Snap (Hít) về mép màn hình trái hoặc phải
+                            final safeTop = context.safeTop;
+                            final safeBottom = context.safeBottom;
+                            final maxLeft = (screenSize.width - 50.0 - 16.0).clamp(16.0, double.infinity);
+                            final maxTop = (screenSize.height - 180.0 - safeBottom).clamp(safeTop + 16.0, double.infinity);
+
                             double targetLeft = _left < screenSize.width / 2
                                 ? 16.0
-                                : screenSize.width - 50.0 - 16.0;
+                                : maxLeft;
                             double targetTop = _top.clamp(
-                              60.0,
-                              screenSize.height - 180.0,
+                              safeTop + 16.0,
+                              maxTop,
                             );
 
                             final velocity = details.velocity.pixelsPerSecond;
@@ -411,27 +433,34 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                         Positioned(
                           left: isLeftAligned ? 56 : null,
                           right: isLeftAligned ? null : 56,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: math.min(screenSize.width * 0.55, 220.0),
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: const Text(
+                                'NGÀY HÔM NAY CỦA BẠN THẾ NÀO?',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
                                 ),
-                              ],
-                            ),
-                            child: const Text(
-                              'NGÀY HÔM NAY CỦA BẠN THẾ NÀO?',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),

@@ -20,6 +20,7 @@ extension ResponsiveContext on BuildContext {
 
   TextScaler get textScaler => MediaQuery.textScalerOf(this);
   double get textScaleFactor => textScaler.scale(1.0);
+  double get textScale => textScaleFactor;
 
   Orientation get orientation => MediaQuery.orientationOf(this);
   bool get isLandscape => orientation == Orientation.landscape;

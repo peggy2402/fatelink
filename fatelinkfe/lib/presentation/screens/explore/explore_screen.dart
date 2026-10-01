@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/core/responsive/responsive.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
 import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
@@ -49,60 +50,67 @@ class ExploreScreen extends StatelessWidget {
                   bottom: 110,
                   left: 24,
                   right: 24,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.08),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 20),
-                        SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Đang phát sóng & quét tìm tâm hồn đồng điệu...',
-                            style: TextStyle(
-                              color: Color(0xFF334155),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                  child: ResponsiveCenter(
+                    maxWidth: 460,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 20),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Đang phát sóng & quét tìm tâm hồn đồng điệu...',
+                              style: TextStyle(
+                                color: Color(0xFF334155),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
               }
 
-              final screenWidth = MediaQuery.of(context).size.width;
-              final screenHeight = MediaQuery.of(context).size.height;
-              final positions = [
-                Offset(screenWidth * 0.10, screenHeight * 0.23),
-                Offset(screenWidth * 0.62, screenHeight * 0.30),
-                Offset(screenWidth * 0.16, screenHeight * 0.58),
-                Offset(screenWidth * 0.64, screenHeight * 0.54),
-              ];
+              final screenWidth = context.screenWidth;
+              final screenHeight = context.screenHeight;
+              final centerX = screenWidth / 2;
+              final centerY = screenHeight * 0.48;
+              final maxRadius = math.min(screenWidth, screenHeight) * 0.36;
+
+              final angles = [-0.75, 0.65, 2.35, -2.25];
+              final distMultipliers = [0.82, 0.94, 0.76, 0.88];
 
               return Stack(
                 children: users.asMap().entries.map((entry) {
                   final index = entry.key;
                   final user = entry.value;
-                  final pos = positions[index % positions.length];
+                  final angle = angles[index % angles.length];
+                  final dist = distMultipliers[index % distMultipliers.length] * maxRadius;
+                  final posX = (centerX + dist * math.cos(angle) - 35).clamp(16.0, screenWidth - 86.0);
+                  final posY = (centerY + dist * math.sin(angle) - 35).clamp(80.0, screenHeight - 160.0);
+
                   return _FloatingNode(
                     key: ValueKey(user.id),
-                    initialTop: pos.dy,
-                    initialLeft: pos.dx,
+                    initialTop: posY,
+                    initialLeft: posX,
                     userName: user.name,
                     compatibility: user.compatibilityScore,
                     avatarUrl: user.avatar ?? '',
@@ -137,37 +145,45 @@ class _Header extends StatelessWidget {
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Colors.pinkAccent, Colors.orangeAccent],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: const Text(
-                      'Khám phá',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white, // This color is masked
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Colors.pinkAccent, Colors.orangeAccent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: const Text(
+                        'Khám phá',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white, // This color is masked
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Những tần số đang ở gần bạn',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      'Những tần số đang ở gần bạn',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Container(
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,

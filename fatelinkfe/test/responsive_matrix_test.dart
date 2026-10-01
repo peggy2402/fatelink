@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +15,25 @@ import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/settings_distance_bottom_sheet.dart';
 import 'package:fatelinkfe/presentation/widgets/menu.dart';
 import 'package:fatelinkfe/presentation/screens/onboarding/onboarding_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fatelinkfe/data/repositories/home_repository.dart';
+import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
+import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
+import 'package:fatelinkfe/presentation/screens/explore/explore_screen.dart';
+
+class MockHomeRepository extends HomeRepository {
+  @override
+  Future<List<MatchUser>> fetchRecommendations({required BuildContext context}) async => [];
+
+  @override
+  Future<bool> updateUserFrequency({
+    required BuildContext context,
+    required String mood,
+    required String vibe,
+    required String signal,
+    String? frequencyHertz,
+  }) async => true;
+}
 
 // Test matrix definitions
 class MatrixConfig {
@@ -148,6 +166,7 @@ void main() {
             final msg = details.exceptionAsString();
             if (msg.contains('overflow') || msg.contains('RenderFlex')) {
               overflowError = msg;
+              debugPrint('OVERFLOW DETAIL: $msg\n${details.informationCollector?.call().map((e) => e.toString()).join("\n")}');
             }
           };
 
@@ -185,6 +204,7 @@ void main() {
             final msg = details.exceptionAsString();
             if (msg.contains('overflow') || msg.contains('RenderFlex')) {
               overflowError = msg;
+              debugPrint('RADAR OVERFLOW DETAIL: $msg\n${details.informationCollector?.call().map((e) => e.toString()).join("\n")}');
             }
           };
 
@@ -242,6 +262,47 @@ void main() {
           final passed = overflowError == null;
           recordResult(
             component: 'FloatingAiBubble',
+            device: dev.name,
+            scale: scale,
+            keyboardOpen: false,
+            passed: passed,
+            errorMessage: overflowError,
+          );
+        });
+      }
+    }
+  });
+
+  group('Group A - ExploreScreen Matrix', () {
+    for (final dev in testDevices) {
+      for (final scale in testScales) {
+        testWidgets('${dev.name} @ ${scale}x', (tester) async {
+          String? overflowError;
+          final prevOnError = FlutterError.onError;
+          FlutterError.onError = (details) {
+            final msg = details.exceptionAsString();
+            if (msg.contains('overflow') || msg.contains('RenderFlex')) {
+              overflowError = msg;
+            }
+          };
+
+          await tester.binding.setSurfaceSize(dev.size);
+          await tester.pumpWidget(buildTestHarness(
+            size: dev.size,
+            textScale: scale,
+            child: BlocProvider<HomeBloc>(
+              create: (_) => HomeBloc(homeRepository: MockHomeRepository())
+                ..emit(HomeState(status: HomeStatus.loaded, matchedUsers: [dummyUser])),
+              child: const ExploreScreen(),
+            ),
+          ));
+          await tester.pump();
+
+          FlutterError.onError = prevOnError;
+
+          final passed = overflowError == null;
+          recordResult(
+            component: 'ExploreScreen',
             device: dev.name,
             scale: scale,
             keyboardOpen: false,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fatelinkfe/core/responsive/responsive.dart';
 
 class RadarScannerModal extends StatefulWidget {
   final VoidCallback? onConnectMatch;
@@ -41,228 +42,264 @@ class _RadarScannerModalState extends State<RadarScannerModal>
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          height: math.max(MediaQuery.of(context).size.height * 0.75, 520.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.92), // Dark Slate
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              // Drag handle
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+    final bottomInset = context.safeBottom;
+    final screenHeight = context.screenHeight;
+    final isLandscape = context.isLandscape;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 500.0,
+          maxHeight: math.min(screenHeight * 0.94, 680.0),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.92), // Dark Slate
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  width: 1.5,
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Title Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Radar Tâm Hồn 📡',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Quét tần số đồng điệu trong bán kính 5km',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // --- Radar Visualization Screen ---
-              Expanded(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Concentric Animated Ripple Waves
-                    AnimatedBuilder(
-                      animation: _radarController,
-                      builder: (context, child) {
-                        return CustomPaint(
-                          painter: _RadarWavePainter(
-                            progress: _radarController.value,
-                            color: const Color(0xFFEC4899),
-                          ),
-                          size: const Size(280, 280),
-                        );
-                      },
-                    ),
-
-                    // Discovered Soul Nodes
-                    _buildSoulNode(
-                      angle: -0.6,
-                      distance: 90,
-                      name: 'Jessica',
-                      score: 95,
-                      avatarSeed: 'Jessica',
-                    ),
-                    _buildSoulNode(
-                      angle: 1.2,
-                      distance: 110,
-                      name: 'David',
-                      score: 88,
-                      avatarSeed: 'David',
-                    ),
-                    _buildSoulNode(
-                      angle: 2.8,
-                      distance: 80,
-                      name: 'Chloe',
-                      score: 92,
-                      avatarSeed: 'Chloe',
-                    ),
-
-                    // Central User Pulse Node
-                    Container(
-                      width: 66,
-                      height: 66,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEC4899).withValues(alpha: 0.6),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Color(0xFF1E1B4B),
-                        child: Icon(Icons.favorite_rounded, color: Colors.white, size: 28),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Bottom Result Action
-              Padding(
-                padding: EdgeInsets.fromLTRB(24.0, 16.0, 24.0, bottomInset > 0 ? bottomInset + 12 : 24.0),
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 12),
+                    // Drag handle
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      width: 44,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.auto_awesome, color: Color(0xFFEC4899), size: 18),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Đã tìm thấy 3 tâm hồn có tần số tương hợp > 85%',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                        color: Colors.white.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          widget.onConnectMatch?.call();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          elevation: 0,
-                          backgroundColor: Colors.transparent,
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFEC4899).withValues(alpha: 0.4),
-                                blurRadius: 14,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+
+                    // Title Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
                                 Text(
-                                  'Xem tất cả định mệnh',
+                                  'Radar Tâm Hồn 📡',
                                   style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
                                     color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Quét tần số đồng điệu trong bán kính 5km',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF94A3B8),
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          IconButton(
+                            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                            icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // --- Radar Visualization Screen ---
+                    SizedBox(
+                      height: isLandscape ? 170 : 250,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: SizedBox(
+                          width: 280,
+                          height: 280,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Concentric Animated Ripple Waves
+                              AnimatedBuilder(
+                                animation: _radarController,
+                                builder: (context, child) {
+                                  return CustomPaint(
+                                    painter: _RadarWavePainter(
+                                      progress: _radarController.value,
+                                      color: const Color(0xFFEC4899),
+                                    ),
+                                    size: const Size(280, 280),
+                                  );
+                                },
+                              ),
+
+                              // Discovered Soul Nodes
+                              _buildSoulNode(
+                                angle: -0.6,
+                                distance: 90,
+                                name: 'Jessica',
+                                score: 95,
+                                avatarSeed: 'Jessica',
+                              ),
+                              _buildSoulNode(
+                                angle: 1.2,
+                                distance: 110,
+                                name: 'David',
+                                score: 88,
+                                avatarSeed: 'David',
+                              ),
+                              _buildSoulNode(
+                                angle: 2.8,
+                                distance: 80,
+                                name: 'Chloe',
+                                score: 92,
+                                avatarSeed: 'Chloe',
+                              ),
+
+                              // Central User Pulse Node
+                              Container(
+                                width: 66,
+                                height: 66,
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEC4899).withValues(alpha: 0.6),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: Color(0xFF1E1B4B),
+                                  child: Icon(Icons.favorite_rounded, color: Colors.white, size: 28),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      ),
+                    ),
+
+                    // Bottom Result Action
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(24.0, 12.0, 24.0, bottomInset > 0 ? bottomInset + 8 : 16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.auto_awesome, color: Color(0xFFEC4899), size: 18),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Đã tìm thấy 3 tâm hồn có tần số tương hợp > 85%',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                widget.onConnectMatch?.call();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 0,
+                                backgroundColor: Colors.transparent,
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
+                                        SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            'Xem tất cả định mệnh',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -332,12 +369,18 @@ class _RadarScannerModalState extends State<RadarScannerModal>
             ],
           ),
           const SizedBox(height: 3),
-          Text(
-            name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+          SizedBox(
+            width: 64,
+            child: Text(
+              name,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
