@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/data/models/chat_message.dart';
 import 'package:fatelinkfe/data/repositories/chat_repository.dart';
+import '../../../core/utils/secure_storage_helper.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepository chatRepository;
-  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage secureStorage = SecureStorageHelper.storage;
   Timer? _typingTimer;
 
   ChatBloc({required this.chatRepository}) : super(const ChatState()) {

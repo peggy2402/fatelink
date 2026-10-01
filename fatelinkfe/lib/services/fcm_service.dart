@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
+import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
+
 class FcmService {
   static final FirebaseMessaging _firebaseMessaging =
       FirebaseMessaging.instance;
-  static const _secureStorage = FlutterSecureStorage();
+  static const _secureStorage = SecureStorageHelper.storage;
 
   // Thêm callback onNavigateToChat để xử lý việc chuyển trang khi bấm vào thông báo
   static Future<void> initialize({

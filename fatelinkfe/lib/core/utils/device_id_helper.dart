@@ -1,19 +1,18 @@
 import 'dart:math';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'secure_storage_helper.dart';
 
 class DeviceIdHelper {
-  static const _storage = FlutterSecureStorage();
   static const _deviceIdKey = 'deviceId';
 
   static Future<String> getOrCreateDeviceId() async {
-    final existing = await _storage.read(key: _deviceIdKey);
+    final existing = await SecureStorageHelper.read(_deviceIdKey);
     if (existing != null && existing.isNotEmpty) {
       return existing;
     }
 
     final created = _generateDeviceId();
-    await _storage.write(key: _deviceIdKey, value: created);
+    await SecureStorageHelper.write(_deviceIdKey, created);
     return created;
   }
 

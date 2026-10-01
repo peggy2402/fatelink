@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
 import 'package:fatelinkfe/core/responsive/responsive.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
@@ -294,8 +294,7 @@ class _CenterNodeState extends State<_CenterNode>
   }
 
   Future<void> _loadAvatar() async {
-    const secureStorage = FlutterSecureStorage();
-    final avatar = await secureStorage.read(key: 'avatarUrl');
+    final avatar = await SecureStorageHelper.read('avatarUrl');
     if (mounted && avatar != null) {
       setState(() => _avatarUrl = avatar);
     }

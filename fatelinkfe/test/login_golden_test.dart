@@ -6,8 +6,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fatelinkfe/logic/blocs/auth/auth_bloc.dart';
-import 'package:fatelinkfe/logic/blocs/auth/auth_event.dart';
-import 'package:fatelinkfe/logic/blocs/auth/auth_state.dart';
 import 'package:fatelinkfe/presentation/screens/login/login_screen.dart';
 
 class MockAuthBloc extends AuthBloc {}
@@ -104,7 +102,7 @@ void main() {
         // Golden capture
         await expectLater(
           find.byType(MaterialApp),
-          matchesGoldenFile('goldens/login_${dev.name}_scale_${scale}.png'),
+          matchesGoldenFile('goldens/login_${dev.name}_scale_$scale.png'),
         );
       });
     }

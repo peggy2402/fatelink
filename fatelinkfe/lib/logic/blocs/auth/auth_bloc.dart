@@ -3,17 +3,17 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/device_id_helper.dart';
+import '../../../core/utils/secure_storage_helper.dart';
 import '../../../services/api_service.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = SecureStorageHelper.storage;
 
   AuthBloc() : super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);

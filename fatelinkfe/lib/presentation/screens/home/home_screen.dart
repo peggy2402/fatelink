@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fatelinkfe/data/models/match_user.dart';
@@ -68,9 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserInfo() async {
-    const secureStorage = FlutterSecureStorage();
-    final name = await secureStorage.read(key: 'userName');
-    final avatar = await secureStorage.read(key: 'avatarUrl');
+    final name = await SecureStorageHelper.read('userName');
+    final avatar = await SecureStorageHelper.read('avatarUrl');
 
     final prefs = await SharedPreferences.getInstance();
     final mood = prefs.getString('user_frequency_mood');

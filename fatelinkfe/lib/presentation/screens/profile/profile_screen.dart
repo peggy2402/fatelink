@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/utils/secure_storage_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../logic/blocs/profile/profile_bloc.dart';
@@ -48,11 +48,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadLocalCache() async {
-    const secureStorage = FlutterSecureStorage();
-    final name = await secureStorage.read(key: 'userName');
-    final avatar = await secureStorage.read(key: 'avatarUrl');
-    final userId = await secureStorage.read(key: 'userId');
-    final handle = await secureStorage.read(key: 'userHandle');
+    final name = await SecureStorageHelper.read('userName');
+    final avatar = await SecureStorageHelper.read('avatarUrl');
+    final userId = await SecureStorageHelper.read('userId');
+    final handle = await SecureStorageHelper.read('userHandle');
 
     final prefs = await SharedPreferences.getInstance();
     final mood = prefs.getString('user_frequency_mood');

@@ -2,13 +2,14 @@ import 'package:fatelinkfe/services/api_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import '../../core/utils/constants.dart';
+import '../../core/utils/secure_storage_helper.dart';
 import '../models/match_user.dart';
 
 class HomeRepository {
   final FlutterSecureStorage secureStorage;
 
   // Khuyến khích truyền vào qua Constructor để dễ dàng Unit Test
-  HomeRepository({this.secureStorage = const FlutterSecureStorage()});
+  HomeRepository({this.secureStorage = SecureStorageHelper.storage});
 
   Future<List<MatchUser>> fetchRecommendations({
     required BuildContext context,

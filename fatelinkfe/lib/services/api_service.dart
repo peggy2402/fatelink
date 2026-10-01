@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:fatelinkfe/presentation/screens/login/login_screen.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:fatelinkfe/core/utils/device_id_helper.dart';
+import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
 
 class ApiService {
-  static const _secureStorage = FlutterSecureStorage();
+  static const _secureStorage = SecureStorageHelper.storage;
 
   // Hàm hiển thị Loading Dialog
   static void _showLoadingDialog(BuildContext context) {

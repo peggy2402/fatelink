@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fatelinkfe/services/api_service.dart';
 import '../../core/utils/constants.dart';
+import '../../core/utils/secure_storage_helper.dart';
 
 class ProfileRepository {
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = SecureStorageHelper.storage;
 
   Future<Map<String, dynamic>> fetchUserProfile(BuildContext context) async {
     final token = await _secureStorage.read(key: 'accessToken');

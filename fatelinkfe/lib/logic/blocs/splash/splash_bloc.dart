@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fatelinkfe/services/api_service.dart';
+import '../../../core/utils/secure_storage_helper.dart';
 import 'splash_event.dart';
 import 'splash_state.dart';
 
 class SplashBloc extends Bloc<SplashEvent, SplashState> {
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = SecureStorageHelper.storage;
 
   SplashBloc() : super(SplashInitial()) {
     on<SplashStarted>(_onSplashStarted);

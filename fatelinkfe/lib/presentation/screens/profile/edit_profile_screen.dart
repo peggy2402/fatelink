@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/utils/secure_storage_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/back.dart';
 import '../../../core/utils/toast_utils.dart';
@@ -64,9 +64,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _loadPreferences() async {
-    const secureStorage = FlutterSecureStorage();
-    final savedHandle = await secureStorage.read(key: 'userHandle');
-    final savedName = await secureStorage.read(key: 'userName');
+    final savedHandle = await SecureStorageHelper.read('userHandle');
+    final savedName = await SecureStorageHelper.read('userName');
 
     final prefs = await SharedPreferences.getInstance();
     final locked = prefs.getBool('is_face_locked') ?? false;
@@ -205,7 +204,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final newAddress = _addressController.text.trim();
       final newTagline = _taglineController.text.trim();
 
-      const secureStorage = FlutterSecureStorage();
       final prefs = await SharedPreferences.getInstance();
 
       // Xử lý đổi tên hiển thị
@@ -217,7 +215,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
           return;
         }
-        await secureStorage.write(key: 'userName', value: newName);
+        await SecureStorageHelper.write('userName', newName);
         await prefs.setString('userName', newName);
         await prefs.setString('last_name_change_date', DateTime.now().toIso8601String());
       }
@@ -231,7 +229,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
           return;
         }
-        await secureStorage.write(key: 'userHandle', value: newHandle);
+        await SecureStorageHelper.write('userHandle', newHandle);
         await prefs.setString('user_handle', newHandle);
         await prefs.setString('last_handle_change_date', DateTime.now().toIso8601String());
       }

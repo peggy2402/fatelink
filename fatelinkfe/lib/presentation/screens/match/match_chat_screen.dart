@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
 import 'package:fatelinkfe/presentation/widgets/typing_indicator.dart';
 import 'package:fatelinkfe/services/api_service.dart';
 
@@ -26,7 +26,7 @@ class MatchChatScreen extends StatefulWidget {
 class _MatchChatScreenState extends State<MatchChatScreen> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = SecureStorageHelper.storage;
   bool _isPartnerTyping = false; // Trạng thái đối phương đang gõ
   // TODO: Khai báo List<ChatMessage> _messages = []; giống hệt bên ChatScreen
   bool _isNearBottom = true;

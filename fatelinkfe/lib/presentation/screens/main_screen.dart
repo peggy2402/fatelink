@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../core/utils/secure_storage_helper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/presentation/screens/home/home_screen.dart';
 import 'package:fatelinkfe/presentation/screens/chat/chat_screen.dart';
@@ -89,11 +89,8 @@ class _MainScreenState extends State<MainScreen>
     // Nếu chưa có key 'has_started_chat' hoặc giá trị là false, thì đây là lần đầu
     final hasChatted = prefs.getBool('has_started_chat') ?? false;
 
-    // Lấy URL ảnh đại diện đã lưu từ FlutterSecureStorage
-    const secureStorage = FlutterSecureStorage();
-    final avatar = await secureStorage.read(
-      key: 'avatarUrl',
-    ); // Key này phải khớp với key bạn lưu lúc Login
+    // Lấy URL ảnh đại diện đã lưu từ SecureStorageHelper
+    final avatar = await SecureStorageHelper.read('avatarUrl');
 
     if (mounted) {
       setState(() {
