@@ -23,17 +23,7 @@ export class GetRecommendationsUseCase {
       input.userId,
     );
 
-    // Nếu số lượng ứng viên trong database ít hơn 6 (vd: lúc mới mở app / chỉ có 1 mình test),
-    // kết hợp với hệ sinh thái ứng viên mô phỏng phong phú để trải nghiệm luôn chân thực & sống động!
-    if (candidates.length < 6) {
-      const simulatedCandidates = this.getSimulatedCandidates();
-      const existingIds = new Set(candidates.map((c) => c.id));
-      for (const sim of simulatedCandidates) {
-        if (!existingIds.has(sim.id)) {
-          candidates.push(sim);
-        }
-      }
-    }
+    // Chỉ trả về các ứng viên thực tế từ Database, không sinh dữ liệu ảo (mock/simulated)
 
     const userEmotions = currentUser?.emotions || {
       stress: 5,

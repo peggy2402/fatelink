@@ -98,20 +98,30 @@ class _EmotionRadarModalState extends State<EmotionRadarModal> {
   void _handleSkip() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_started_chat', true);
+    if (prefs.getString('user_frequency_hertz') == null) {
+      await prefs.setString('user_frequency_hertz', '528 Hz');
+      await prefs.setString('user_frequency_mood', 'Cân bằng khởi nguồn');
+      await prefs.setString('user_frequency_icon', '✨');
+      await prefs.setString('user_frequency_vibe', 'Bình yên');
+      await prefs.setString('user_frequency_signal', 'Lắng nghe');
+    }
     widget.onDismiss();
   }
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          color: Colors.black.withValues(alpha: 0.65),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SingleChildScrollView(
-            child: Container(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {}, // Chặn toàn bộ cử chỉ chạm xuyên xuống các widget phía dưới
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            color: Colors.black.withValues(alpha: 0.65),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SingleChildScrollView(
+              child: Container(
               constraints: const BoxConstraints(maxWidth: 420),
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
               decoration: BoxDecoration(
@@ -154,7 +164,8 @@ class _EmotionRadarModalState extends State<EmotionRadarModal> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCurrentStep() {

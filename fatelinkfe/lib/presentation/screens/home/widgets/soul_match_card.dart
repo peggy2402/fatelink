@@ -156,7 +156,7 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 Container(
                                   width: 4,
                                   height: 4,
@@ -165,13 +165,17 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Đang phát tần số',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF10B981),
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(width: 6),
+                                const Flexible(
+                                  child: Text(
+                                    'Đang phát tần số',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF10B981),
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -238,12 +242,16 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Text(
-                          '${widget.user.moodIcon != null ? "${widget.user.moodIcon} " : ""}${widget.user.emotion}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6366F1),
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            '${widget.user.moodIcon != null ? "${widget.user.moodIcon} " : ""}${widget.user.emotion}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

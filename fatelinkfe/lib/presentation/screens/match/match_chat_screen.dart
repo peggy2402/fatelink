@@ -1,4 +1,5 @@
 import 'package:fatelinkfe/core/utils/constants.dart';
+import 'package:fatelinkfe/core/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
@@ -74,16 +75,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       await ApiService.delete(url, context, token: token, showLoading: true);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã hủy ghép đôi thành công')),
-      );
+      ToastUtil.showSuccess(context, 'Đã hủy ghép đôi thành công');
       // Trở về màn hình trước (MatchesScreen) và trả về "true" để yêu cầu reload danh sách
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi kết nối mạng. Vui lòng thử lại!')),
-      );
+      ToastUtil.showError(context, 'Lỗi kết nối mạng. Vui lòng thử lại!');
     }
   }
 
@@ -121,9 +118,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 onTap: () {
                   Navigator.pop(context);
                   // TODO: Gọi API Report User
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã gửi báo cáo')),
-                  );
+                  ToastUtil.showSuccess(context, 'Đã gửi báo cáo thành công ✨');
                 },
               ),
               ListTile(

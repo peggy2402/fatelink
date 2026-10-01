@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fatelinkfe/data/models/match_user.dart';
@@ -22,17 +21,21 @@ import 'widgets/home_online_stories.dart';
 import 'widgets/home_filter_chips.dart';
 import 'widgets/soul_match_card.dart';
 import 'widgets/radar_scanner_modal.dart';
+import 'package:fatelinkfe/core/utils/toast_utils.dart';
+import 'package:fatelinkfe/data/repositories/profile_repository.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool showOnboarding;
   final VoidCallback onStartChat;
   final VoidCallback? onDismissOnboarding;
+  final VoidCallback? onRetakeRadar;
 
   const HomeScreen({
     super.key,
-    required this.showOnboarding,
+    this.showOnboarding = false,
     required this.onStartChat,
     this.onDismissOnboarding,
+    this.onRetakeRadar,
   });
 
   @override
@@ -58,6 +61,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadUserInfo();
+  }
+
   Future<void> _loadUserInfo() async {
     const secureStorage = FlutterSecureStorage();
     final name = await secureStorage.read(key: 'userName');
@@ -79,6 +88,42 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentUserMoodIcon = icon;
         _currentUserFrequency = hertz;
       });
+    }
+
+    // Luôn đồng bộ dữ liệu thật mới nhất từ Backend API
+    try {
+      if (mounted) {
+        final profileData = await ProfileRepository().fetchUserProfile(context);
+        final realUser = profileData['data'] ?? profileData['user'] ?? profileData;
+        if (realUser is Map<String, dynamic> && realUser.isNotEmpty) {
+          final realName = realUser['name'] ?? realUser['displayName'];
+          final realAvatar = realUser['avatar'];
+          final realMood = realUser['latestEmotion'] ?? realUser['mood'];
+          final realIcon = realUser['moodIcon'];
+          final realHertz = realUser['frequencyHertz'];
+
+          if (realName != null) await secureStorage.write(key: 'userName', value: realName.toString());
+          if (realAvatar != null) await secureStorage.write(key: 'avatarUrl', value: realAvatar.toString());
+          if (realMood != null) await prefs.setString('user_frequency_mood', realMood.toString());
+          if (realIcon != null) await prefs.setString('user_frequency_icon', realIcon.toString());
+          if (realHertz != null) await prefs.setString('user_frequency_hertz', realHertz.toString());
+
+          if (mounted) {
+            setState(() {
+              if (realName != null) {
+                _userName = realName.toString();
+                _userHandle = '@${_userName!.toLowerCase().replaceAll(' ', '')}';
+              }
+              if (realAvatar != null) _avatarUrl = realAvatar.toString();
+              if (realMood != null) _currentUserMood = realMood.toString();
+              if (realIcon != null) _currentUserMoodIcon = realIcon.toString();
+              if (realHertz != null) _currentUserFrequency = realHertz.toString();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync profile error: $e');
     }
   }
 
@@ -144,11 +189,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // --- Nội dung chính ---
-          SafeArea(
-            bottom: false,
+          Positioned.fill(
             child: RefreshIndicator(
               color: const Color(0xFFEC4899),
               backgroundColor: Colors.white,
+              edgeOffset: MediaQuery.of(context).padding.top,
               onRefresh: () async {
                 context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
                 await _loadUserInfo();
@@ -156,132 +201,166 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: ScrollConfiguration(
                 behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: SingleChildScrollView(
+                child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. Header (User Avatar, PRO Badge & Action Icons)
-                      HomeHeader(
+                  slivers: [
+                    // 1. Header nổi tự động ẩn khi vuốt xuống và hiện lại ngay khi vuốt lên (Facebook style)
+                    SliverAppBar(
+                      floating: true,
+                      snap: true,
+                      pinned: false,
+                      elevation: 0,
+                      scrolledUnderElevation: 3.0,
+                      shadowColor: Colors.black.withValues(alpha: 0.08),
+                      backgroundColor: Colors.transparent,
+                      surfaceTintColor: Colors.transparent,
+                      centerTitle: false,
+                      toolbarHeight: 74.0,
+                      automaticallyImplyLeading: false,
+                      titleSpacing: 0,
+                      flexibleSpace: ClipRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                          child: Container(
+                            color: const Color(0xFFF8FAFC).withValues(alpha: 0.88),
+                          ),
+                        ),
+                      ),
+                      title: HomeHeader(
                         avatarUrl: _avatarUrl,
                         userName: _userName,
                         userHandle: _userHandle,
                         onSearchTap: () => Navigator.of(context).pushNamed('/matches'),
                         onQrTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tính năng quét mã QR đang được thử nghiệm'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          ToastUtil.showInfo(context, 'Tính năng quét mã QR đang được thử nghiệm');
                         },
                         onNotificationTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Chưa có thông báo mới'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
+                          ToastUtil.showInfo(context, 'Chưa có thông báo mới ✨');
                         },
                         onSettingsTap: () {
                           context.read<MainBloc>().add(const ChangeTabEvent(3));
                         },
                       ),
+                    ),
 
-                      const SizedBox(height: 12),
+                    // 2. Banner AI Faye, Stories tâm trạng, Tiêu đề & Filter Chips
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
 
-                      // 2. Hero Banner "Trợ lý AI Faye"
-                      HomeHeroBanner(
-                        onStartChat: widget.onStartChat,
-                        onExplore: () {
-                          RadarScannerModal.show(
-                            context,
-                            onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
-                          );
-                        },
-                      ),
+                          // Hero Banner "Trợ lý AI Faye"
+                          HomeHeroBanner(
+                            onStartChat: widget.onStartChat,
+                            onExplore: () {
+                              RadarScannerModal.show(
+                                context,
+                                onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
+                              );
+                            },
+                          ),
 
-                      const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
-                      // 3. Online Avatars / Stories tâm trạng
-                      HomeOnlineStories(
-                        currentUserAvatar: _avatarUrl,
-                        currentUserMood: _currentUserMood,
-                        currentUserMoodIcon: _currentUserMoodIcon,
-                        currentUserFrequency: _currentUserFrequency,
-                        onRetakeRadar: () {
-                          setState(() => _showRetakeRadar = true);
-                        },
-                        onAddStory: () {
-                          setState(() => _showRetakeRadar = true);
-                        },
-                        onUserTap: (user) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Tần số của ${user['name']}: ${user['status']} ${user['mood']}'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      ),
+                          // Online Avatars / Stories tâm trạng
+                          BlocBuilder<HomeBloc, HomeState>(
+                            builder: (context, state) {
+                              return HomeOnlineStories(
+                                currentUserAvatar: _avatarUrl,
+                                currentUserMood: _currentUserMood,
+                                currentUserMoodIcon: _currentUserMoodIcon,
+                                currentUserFrequency: _currentUserFrequency,
+                                onlineUsers: state.matchedUsers,
+                                onRetakeRadar: () {
+                                  if (widget.onRetakeRadar != null) {
+                                    widget.onRetakeRadar!();
+                                  } else {
+                                    setState(() => _showRetakeRadar = true);
+                                  }
+                                },
+                                onAddStory: () {
+                                  if (widget.onRetakeRadar != null) {
+                                    widget.onRetakeRadar!();
+                                  } else {
+                                    setState(() => _showRetakeRadar = true);
+                                  }
+                                },
+                                onMatchUserTap: (user) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => UserDetailScreen(user: user),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
 
-                      const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
-                      // 4. Tiêu đề mục "Kết nối tâm hồn" & Nút "Xem tất cả"
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
+                          // Tiêu đề mục "Kết nối tâm hồn" & Nút "Xem tất cả"
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Kết nối tâm hồn',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF0F172A),
-                                    letterSpacing: -0.3,
-                                  ),
+                                const Row(
+                                  children: [
+                                    Text(
+                                      'Kết nối tâm hồn',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0F172A),
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Icon(Icons.favorite_rounded, color: Color(0xFFEC4899), size: 16),
+                                  ],
                                 ),
-                                SizedBox(width: 6),
-                                Icon(Icons.favorite_rounded, color: Color(0xFFEC4899), size: 16),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pushNamed('/matches'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF6366F1),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                  ),
+                                  child: const Text('Xem tất cả'),
+                                ),
                               ],
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pushNamed('/matches'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF6366F1),
-                                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                              ),
-                              child: const Text('Xem tất cả'),
-                            ),
-                          ],
-                        ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Filter Chips (Tất cả, Cô đơn, Phấn khích, Deep talk, Gần bạn)
+                          HomeFilterChips(
+                            selectedIndex: _selectedFilterIndex,
+                            onSelected: (index) {
+                              setState(() => _selectedFilterIndex = index);
+                            },
+                          ),
+
+                          const SizedBox(height: 10),
+                        ],
                       ),
+                    ),
 
-                      const SizedBox(height: 8),
-
-                      // 5. Filter Chips (Tất cả, Cô đơn, Phấn khích, Deep talk, Gần bạn)
-                      HomeFilterChips(
-                        selectedIndex: _selectedFilterIndex,
-                        onSelected: (index) {
-                          setState(() => _selectedFilterIndex = index);
-                        },
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // 6. Danh sách Card người dùng tương thích (Soul Match Feed)
-                      BlocBuilder<HomeBloc, HomeState>(
+                    // 3. Danh sách Card người dùng tương thích (Soul Match Feed)
+                    SliverToBoxAdapter(
+                      child: BlocBuilder<HomeBloc, HomeState>(
                         builder: (context, state) {
                           if (state.status == HomeStatus.initial || state.status == HomeStatus.loading) {
-                            return ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
+                            return Padding(
                               padding: EdgeInsets.only(bottom: bottomSafePadding),
-                              itemCount: 3,
-                              itemBuilder: (context, index) => const ShimmerUserCard(),
+                              child: const Column(
+                                children: [
+                                  ShimmerUserCard(),
+                                  ShimmerUserCard(),
+                                  ShimmerUserCard(),
+                                ],
+                              ),
                             );
                           }
 
@@ -289,30 +368,73 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           if (filteredUsers.isEmpty) {
                             return Container(
-                              height: 160,
-                              margin: EdgeInsets.only(bottom: bottomSafePadding),
-                              alignment: Alignment.center,
+                              margin: EdgeInsets.only(bottom: bottomSafePadding + 20, left: 16, right: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF6366F1).withValues(alpha: 0.05),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.bubble_chart_outlined, color: Colors.blueGrey.shade300, size: 40),
-                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 30),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  const Text(
+                                    'Chưa có tín hiệu xung quanh',
+                                    style: TextStyle(
+                                      color: Color(0xFF0F172A),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   Text(
                                     _selectedFilterIndex == 0
-                                        ? 'TalkWithFaye'.tr()
-                                        : 'Không tìm thấy người cùng tần số này',
+                                        ? 'Bạn đang là người duy nhất phát sóng bước sóng hôm nay! Khi có người dùng thật khác tham gia, họ sẽ xuất hiện tại đây.'
+                                        : 'Không tìm thấy người dùng nào cùng tần số bộ lọc này.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Colors.blueGrey.shade400,
-                                      fontSize: 14,
-                                      height: 1.4,
+                                      color: Colors.blueGrey.shade500,
+                                      fontSize: 13,
+                                      height: 1.45,
                                     ),
                                   ),
                                   if (_selectedFilterIndex != 0) ...[
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 10),
                                     TextButton(
                                       onPressed: () => setState(() => _selectedFilterIndex = 0),
-                                      child: const Text('Xem tất cả tần số', style: TextStyle(color: Color(0xFF6366F1))),
+                                      child: const Text('Xem tất cả tần số', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w700)),
+                                    ),
+                                  ] else ...[
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: () => widget.onStartChat(),
+                                      icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                                      label: const Text('Tâm sự cùng Faye AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF6366F1),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        elevation: 0,
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -320,35 +442,33 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           }
 
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
+                          return Padding(
                             padding: EdgeInsets.only(bottom: bottomSafePadding),
-                            itemCount: filteredUsers.length,
-                            itemBuilder: (context, index) {
-                              final user = filteredUsers[index];
-                              return SoulMatchCard(
-                                user: user,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => UserDetailScreen(user: user),
-                                  ),
-                                ),
-                                onChat: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => MatchChatScreen(
-                                      partnerId: user.id,
-                                      partnerName: user.name,
+                            child: Column(
+                              children: filteredUsers.map((user) {
+                                return SoulMatchCard(
+                                  user: user,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => UserDetailScreen(user: user),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                  onChat: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => MatchChatScreen(
+                                        partnerId: user.id,
+                                        partnerName: user.name,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                           );
                         },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/back.dart';
+import '../../../core/utils/toast_utils.dart';
 
 class SettingsListBlockScreen extends StatefulWidget {
   const SettingsListBlockScreen({super.key});
@@ -36,12 +37,7 @@ class _SettingsListBlockScreenState extends State<SettingsListBlockScreen> {
     setState(() {
       _blockedUsers.removeWhere((user) => user['id'] == id);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã bỏ chặn người dùng này'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastUtil.showSuccess(context, 'Đã bỏ chặn người dùng này ✨');
   }
 
   @override

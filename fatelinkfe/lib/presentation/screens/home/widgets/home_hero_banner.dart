@@ -27,17 +27,21 @@ class _HomeHeroBannerState extends State<HomeHeroBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 370;
+    final bannerHeight = isCompact ? 192.0 : 198.0;
+
     return Column(
       children: [
         SizedBox(
-          height: 185,
+          height: bannerHeight,
           child: PageView(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
             children: [
-              _buildFayeAiCard(),
-              _buildSoulRadarCard(),
-              _buildAnonymousCard(),
+              _buildFayeAiCard(isCompact: isCompact),
+              _buildSoulRadarCard(isCompact: isCompact),
+              _buildAnonymousCard(isCompact: isCompact),
             ],
           ),
         ),
@@ -51,7 +55,7 @@ class _HomeHeroBannerState extends State<HomeHeroBanner> {
     );
   }
 
-  Widget _buildFayeAiCard() {
+  Widget _buildFayeAiCard({bool isCompact = false}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: ClipRRect(
@@ -86,7 +90,10 @@ class _HomeHeroBannerState extends State<HomeHeroBanner> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                 child: Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isCompact ? 16 : 20,
+                    vertical: isCompact ? 14 : 18,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(26),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.2),
@@ -201,13 +208,16 @@ class _HomeHeroBannerState extends State<HomeHeroBanner> {
     );
   }
 
-  Widget _buildSoulRadarCard() {
+  Widget _buildSoulRadarCard({bool isCompact = false}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 16 : 20,
+            vertical: isCompact ? 14 : 18,
+          ),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFFEC4899), Color(0xFFFF6B6B)],
@@ -269,13 +279,16 @@ class _HomeHeroBannerState extends State<HomeHeroBanner> {
     );
   }
 
-  Widget _buildAnonymousCard() {
+  Widget _buildAnonymousCard({bool isCompact = false}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 16 : 20,
+            vertical: isCompact ? 14 : 18,
+          ),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF00E5FF), Color(0xFF3B82F6)],

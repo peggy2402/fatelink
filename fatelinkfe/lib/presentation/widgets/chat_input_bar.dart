@@ -21,8 +21,14 @@ class ChatInputBar extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
-              .copyWith(bottom: MediaQuery.of(context).padding.bottom + 6),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: MediaQuery.viewInsetsOf(context).bottom > 0
+                ? 8.0
+                : (MediaQuery.paddingOf(context).bottom + 6.0),
+          ),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.88),
             border: const Border(

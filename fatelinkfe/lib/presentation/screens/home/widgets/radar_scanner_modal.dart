@@ -41,12 +41,13 @@ class _RadarScannerModalState extends State<RadarScannerModal>
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
+          height: math.max(MediaQuery.of(context).size.height * 0.75, 520.0),
           decoration: BoxDecoration(
             color: const Color(0xFF0F172A).withValues(alpha: 0.92), // Dark Slate
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -178,7 +179,7 @@ class _RadarScannerModalState extends State<RadarScannerModal>
 
               // Bottom Result Action
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: EdgeInsets.fromLTRB(24.0, 16.0, 24.0, bottomInset > 0 ? bottomInset + 12 : 24.0),
                 child: Column(
                   children: [
                     Container(

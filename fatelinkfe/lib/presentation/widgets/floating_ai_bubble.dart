@@ -123,13 +123,14 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
     if (mounted) {
       setState(() {
         final size = MediaQuery.of(context).size;
+        final topPadding = MediaQuery.of(context).padding.top;
         if (savedLeft != null && savedTop != null) {
-          _left = savedLeft;
-          _top = savedTop;
+          _left = savedLeft.clamp(16.0, (size.width - 50.0 - 16.0).clamp(16.0, double.infinity));
+          _top = savedTop.clamp(topPadding + 16.0, (size.height - 180.0).clamp(topPadding + 16.0, double.infinity));
         } else {
           // Vị trí mặc định: mép phải, trên thanh BottomNav
-          _left = size.width - 50.0 - 16.0;
-          _top = size.height - 180.0;
+          _left = (size.width - 50.0 - 16.0).clamp(16.0, double.infinity);
+          _top = (size.height - 180.0).clamp(topPadding + 16.0, double.infinity);
         }
         // Đồng bộ vị trí ban đầu vào Controller
         _xController.value = _left;

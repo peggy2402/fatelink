@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:fatelinkfe/data/models/match_user.dart';
+import 'package:fatelinkfe/core/utils/toast_utils.dart';
 
 class HomeOnlineStories extends StatelessWidget {
   final String? currentUserAvatar;
   final String? currentUserMood;
   final String? currentUserMoodIcon;
   final String? currentUserFrequency;
+  final List<MatchUser>? onlineUsers;
   final VoidCallback? onAddStory;
   final VoidCallback? onRetakeRadar;
+  final Function(MatchUser)? onMatchUserTap;
   final Function(Map<String, String>)? onUserTap;
 
   const HomeOnlineStories({
@@ -15,55 +19,14 @@ class HomeOnlineStories extends StatelessWidget {
     this.currentUserMood,
     this.currentUserMoodIcon,
     this.currentUserFrequency,
+    this.onlineUsers,
     this.onAddStory,
     this.onRetakeRadar,
+    this.onMatchUserTap,
     this.onUserTap,
   });
 
-  static final List<Map<String, String>> defaultOnlineUsers = [
-    {
-      'name': 'Luna',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Luna&backgroundColor=f3e8ff',
-      'mood': '🌧️',
-      'status': 'Cô đơn',
-    },
-    {
-      'name': 'Alex',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Alex&backgroundColor=dbeafe',
-      'mood': '🎧',
-      'status': 'Nhạc Indie',
-    },
-    {
-      'name': 'Mia',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Mia&backgroundColor=fce7f3',
-      'mood': '✨',
-      'status': 'Phấn khích',
-    },
-    {
-      'name': 'Felix',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Felix&backgroundColor=e0e7ff',
-      'mood': '☕',
-      'status': 'Deep talk',
-    },
-    {
-      'name': 'Chloe',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Chloe&backgroundColor=fef3c7',
-      'mood': '🍃',
-      'status': 'Bình yên',
-    },
-    {
-      'name': 'Leo',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Leo&backgroundColor=dcfce7',
-      'mood': '🔥',
-      'status': 'Startup',
-    },
-    {
-      'name': 'Sophie',
-      'avatar': 'https://api.dicebear.com/7.x/adventurer/png?seed=Sophie&backgroundColor=fae8ff',
-      'mood': '🌙',
-      'status': 'Thức muộn',
-    },
-  ];
+
 
   @override
   Widget build(BuildContext context) {
@@ -121,17 +84,27 @@ class HomeOnlineStories extends StatelessWidget {
 
         // Stories Row
         SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: defaultOnlineUsers.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _buildAddStoryButton(context);
-              }
-              final user = defaultOnlineUsers[index - 1];
-              return _buildUserStoryItem(context, user);
+          height: 108,
+          child: Builder(
+            builder: (context) {
+              final hasRealUsers = onlineUsers != null && onlineUsers!.isNotEmpty;
+              final count = hasRealUsers ? onlineUsers!.length + 1 : 2;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: count,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _buildAddStoryButton(context);
+                  }
+                  if (hasRealUsers) {
+                    final user = onlineUsers![index - 1];
+                    return _buildMatchUserStoryItem(context, user);
+                  }
+                  return _buildInviteFriendStoryItem(context);
+                },
+              );
             },
           ),
         ),
@@ -147,14 +120,10 @@ class HomeOnlineStories extends StatelessWidget {
       child: GestureDetector(
         onTap: onRetakeRadar ?? onAddStory ??
             () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tính năng đăng story tâm trạng đang mở thử nghiệm'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              ToastUtil.showInfo(context, 'Tính năng đăng story tâm trạng đang mở thử nghiệm');
             },
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               alignment: Alignment.bottomRight,
@@ -223,9 +192,11 @@ class HomeOnlineStories extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               hasActiveFrequency ? 'Bạn' : 'Tâm trạng',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
                 color: hasActiveFrequency ? const Color(0xFF0F172A) : const Color(0xFF475569),
@@ -235,6 +206,8 @@ class HomeOnlineStories extends StatelessWidget {
             if (hasActiveFrequency)
               Text(
                 currentUserFrequency ?? 'Đang phát',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 10,
                   color: Color(0xFF6366F1),
@@ -247,12 +220,70 @@ class HomeOnlineStories extends StatelessWidget {
     );
   }
 
-  Widget _buildUserStoryItem(BuildContext context, Map<String, String> user) {
+  Widget _buildInviteFriendStoryItem(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: onAddStory ?? onRetakeRadar,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF1F5F9),
+                border: Border.all(
+                  color: const Color(0xFFE2E8F0),
+                  width: 1.5,
+                ),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: Color(0xFF6366F1),
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Mời bạn bè',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const Text(
+              'Cùng phát sóng',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMatchUserStoryItem(BuildContext context, MatchUser user) {
+    final avatarUrl = user.avatar ??
+        'https://api.dicebear.com/7.x/adventurer/png?seed=${Uri.encodeComponent(user.name)}&backgroundColor=e0e7ff';
+    final mood = user.moodIcon ?? _getEmotionIcon(user.emotion);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: GestureDetector(
-        onTap: () => onUserTap?.call(user),
+        onTap: () => onMatchUserTap?.call(user),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
@@ -282,7 +313,7 @@ class HomeOnlineStories extends StatelessWidget {
                     backgroundColor: const Color(0xFFF3E8FF),
                     child: ClipOval(
                       child: Image.network(
-                        user['avatar']!,
+                        avatarUrl,
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
@@ -311,18 +342,18 @@ class HomeOnlineStories extends StatelessWidget {
                       ],
                     ),
                     child: Text(
-                      user['mood'] ?? '✨',
+                      mood,
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             SizedBox(
               width: 66,
               child: Text(
-                user['name']!,
+                user.name,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -337,5 +368,17 @@ class HomeOnlineStories extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String _getEmotionIcon(String emotion) {
+    final lower = emotion.toLowerCase();
+    if (lower.contains('cô đơn') || lower.contains('buồn')) return '🌧️';
+    if (lower.contains('phấn khích') || lower.contains('vui')) return '✨';
+    if (lower.contains('deep') || lower.contains('suy')) return '☕';
+    if (lower.contains('ấm áp') || lower.contains('yêu')) return '☀️';
+    if (lower.contains('bình yên') || lower.contains('thảnh thơi')) return '🍃';
+    if (lower.contains('indie') || lower.contains('nhạc')) return '🎧';
+    if (lower.contains('cháy') || lower.contains('startup')) return '🔥';
+    return '💫';
   }
 }

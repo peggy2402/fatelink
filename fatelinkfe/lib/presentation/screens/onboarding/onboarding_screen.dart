@@ -115,59 +115,73 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildSlide(Map<String, dynamic> data) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Hiệu ứng icon bay bổng
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0.8, end: 1.0),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.elasticOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: data['color'].withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(data['icon'], size: 100, color: data['color']),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isShort = constraints.maxHeight < 520;
+        final iconSize = isShort ? 68.0 : 96.0;
+        final iconPadding = isShort ? 22.0 : 30.0;
+        final spacing1 = isShort ? 24.0 : 48.0;
+        final spacing2 = isShort ? 12.0 : 18.0;
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 8.0),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Hiệu ứng icon bay bổng
+                TweenAnimationBuilder(
+                  tween: Tween<double>(begin: 0.8, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        padding: EdgeInsets.all(iconPadding),
+                        decoration: BoxDecoration(
+                          color: (data['color'] as Color).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(data['icon'] as IconData, size: iconSize, color: data['color'] as Color),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 60),
-          Text(
-            data['title'],
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F1F1F),
-              height: 1.3,
+                SizedBox(height: spacing1),
+                Text(
+                  data['title'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isShort ? 22 : 26,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F1F1F),
+                    height: 1.25,
+                  ),
+                ),
+                SizedBox(height: spacing2),
+                Text(
+                  data['description'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isShort ? 14 : 15.5,
+                    color: Colors.grey.shade600,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            data['description'],
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildBottomSection() {
     return Padding(
-      padding: const EdgeInsets.all(40.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -195,12 +209,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onPressed: _onNext,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
-              elevation: 5,
-              shadowColor: AppColors.primary.withOpacity(0.5),
+              elevation: 4,
+              shadowColor: AppColors.primary.withOpacity(0.4),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -210,7 +224,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ? 'Tôi Đồng Ý'
                       : 'Tiếp tục',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -220,7 +234,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const Icon(
                     Icons.arrow_forward_rounded,
                     color: Colors.white,
-                    size: 20,
+                    size: 18,
                   ),
                 ],
               ],

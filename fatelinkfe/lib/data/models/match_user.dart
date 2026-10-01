@@ -7,6 +7,10 @@ class MatchUser {
   final List<String>? tags;
   final String? avatar;
   final String? moodIcon;
+  final bool isFaceLocked;
+  final bool isMutualFollow;
+  final List<String>? vibePhotos;
+  final String? bio;
 
   MatchUser({
     required this.id,
@@ -17,6 +21,10 @@ class MatchUser {
     this.tags,
     this.avatar,
     this.moodIcon,
+    this.isFaceLocked = false,
+    this.isMutualFollow = false,
+    this.vibePhotos,
+    this.bio,
   });
 
   factory MatchUser.fromJson(Map<String, dynamic> json) {
@@ -34,6 +42,12 @@ class MatchUser {
           .toList(),
       avatar: json['avatar'] as String?,
       moodIcon: json['moodIcon'] as String?,
+      isFaceLocked: json['isFaceLocked'] == true,
+      isMutualFollow: json['isMutualFollow'] == true || json['isMatched'] == true,
+      vibePhotos: (json['vibePhotos'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      bio: json['bio'] as String?,
     );
   }
 }

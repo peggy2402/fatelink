@@ -23,43 +23,50 @@ class LoginSocialOptionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // 1. Facebook
-        LoginSocialButton(
-          label: 'Facebook',
-          iconWidget: _buildFacebookBadge(),
-          isDisabled: isLoading,
-          onTap: () => ToastUtil.showInfo(
-            context,
-            'Facebook login trên app chưa được nối SDK.',
+        Expanded(
+          child: LoginSocialButton(
+            label: 'Facebook',
+            iconWidget: _buildFacebookBadge(),
+            isDisabled: isLoading,
+            onTap: () => ToastUtil.showInfo(
+              context,
+              'Facebook login trên app chưa được nối SDK.',
+            ),
           ),
         ),
 
         // 2. TikTok
-        LoginSocialButton(
-          label: 'TikTok',
-          iconWidget: _buildTikTokBadge(),
-          isLoading: isTikTokLoading,
-          isDisabled: isLoading && !isTikTokLoading,
-          onTap: onTikTokSignIn,
+        Expanded(
+          child: LoginSocialButton(
+            label: 'TikTok',
+            iconWidget: _buildTikTokBadge(),
+            isLoading: isTikTokLoading,
+            isDisabled: isLoading && !isTikTokLoading,
+            onTap: onTikTokSignIn,
+          ),
         ),
 
         // 3. Zalo
-        LoginSocialButton(
-          label: 'Zalo',
-          iconWidget: _buildZaloBadge(),
-          isLoading: isZaloLoading,
-          isDisabled: isLoading && !isZaloLoading,
-          onTap: onZaloSignIn,
+        Expanded(
+          child: LoginSocialButton(
+            label: 'Zalo',
+            iconWidget: _buildZaloBadge(),
+            isLoading: isZaloLoading,
+            isDisabled: isLoading && !isZaloLoading,
+            onTap: onZaloSignIn,
+          ),
         ),
 
         // 4. Phone SMS OTP
-        LoginSocialButton(
-          label: 'SMS OTP',
-          iconWidget: _buildPhoneBadge(),
-          isDisabled: isLoading,
-          onTap: onShowPhoneOtpSheet,
+        Expanded(
+          child: LoginSocialButton(
+            label: 'SMS OTP',
+            iconWidget: _buildPhoneBadge(),
+            isDisabled: isLoading,
+            onTap: onShowPhoneOtpSheet,
+          ),
         ),
       ],
     );
@@ -216,14 +223,14 @@ class _LoginSocialButtonState extends State<LoginSocialButton> {
         scale: _isPressed ? 0.92 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
-        child: SizedBox(
-          width: 68,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 58,
-                height: 58,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(18),
@@ -264,6 +271,8 @@ class _LoginSocialButtonState extends State<LoginSocialButton> {
               Text(
                 widget.label,
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

@@ -13,6 +13,7 @@ import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/menu.dart';
 import 'package:fatelinkfe/presentation/screens/home/widgets/radar_scanner_modal.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
 import '../../logic/blocs/main/main_state.dart';
@@ -20,6 +21,8 @@ import '../../logic/blocs/auth/auth_bloc.dart';
 import '../../logic/blocs/auth/auth_state.dart';
 import '../../logic/blocs/chat/chat_bloc.dart';
 import '../../logic/blocs/chat/chat_event.dart';
+import '../../logic/blocs/home/home_bloc.dart';
+import '../../logic/blocs/home/home_event.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -118,11 +121,19 @@ class _MainScreenState extends State<MainScreen>
   void _handleDismissOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_started_chat', true);
+    if (prefs.getString('user_frequency_hertz') == null) {
+      await prefs.setString('user_frequency_hertz', '528 Hz');
+      await prefs.setString('user_frequency_mood', 'Cân bằng khởi nguồn');
+      await prefs.setString('user_frequency_icon', '✨');
+      await prefs.setString('user_frequency_vibe', 'Bình yên');
+      await prefs.setString('user_frequency_signal', 'Lắng nghe');
+    }
     if (mounted) {
       setState(() {
         _showOnboarding = false;
         _hasStartedChat = true;
       });
+      context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
     }
   }
 
@@ -154,9 +165,10 @@ class _MainScreenState extends State<MainScreen>
           // Đưa danh sách screens vào trong builder để truy cập được currentIndex
           final List<Widget> screens = [
             HomeScreen(
-              showOnboarding: _showOnboarding,
+              showOnboarding: false,
               onStartChat: _handleStartChat,
               onDismissOnboarding: _handleDismissOnboarding,
+              onRetakeRadar: () => setState(() => _showOnboarding = true),
             ),
             const ExploreScreen(),
             ChatScreen(
@@ -228,54 +240,57 @@ class _MainScreenState extends State<MainScreen>
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    transitionBuilder: (child, animation) {
-                      return SlideTransition(
-                        position:
-                            Tween<Offset>(
-                              begin: const Offset(0, 0.8), // Trượt từ dưới lên
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
+                  child: IgnorePointer(
+                    ignoring: _showOnboarding,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (child, animation) {
+                        return SlideTransition(
+                          position:
+                              Tween<Offset>(
+                                begin: const Offset(0, 0.8), // Trượt từ dưới lên
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic,
+                                ),
                               ),
+                          child: FadeTransition(opacity: animation, child: child),
+                        );
+                      },
+                      child: (mainState.selectedIndex == 2 && _chatView == ChatView.room)
+                          ? ChatInputBar(
+                              key: const ValueKey('chatBar'),
+                              controller: _chatController,
+                              onSubmitted: (text) {
+                                if (text.trim().isNotEmpty) {
+                                  context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
+                                  _chatController.clear();
+                                }
+                              },
+                            )
+                          : CustomBottomNavBar(
+                              key: const ValueKey('navBar'),
+                              currentIndex: currentIndex,
+                              avatarUrl: _avatarUrl,
+                              onTap: (index) {
+                                context.read<MainBloc>().add(ChangeTabEvent(index));
+                                setState(() {
+                                  _isPopupOpen = false;
+                                  if (index == 2) _hasUnreadMessages = false;
+                                });
+                              },
+                              onHeartTap: () {
+                                RadarScannerModal.show(
+                                  context,
+                                  onConnectMatch: () {
+                                    Navigator.of(context).pushNamed('/matches');
+                                  },
+                                );
+                              },
                             ),
-                        child: FadeTransition(opacity: animation, child: child),
-                      );
-                    },
-                    child: (mainState.selectedIndex == 2 && _chatView == ChatView.room)
-                        ? ChatInputBar(
-                            key: const ValueKey('chatBar'),
-                            controller: _chatController,
-                            onSubmitted: (text) {
-                              if (text.trim().isNotEmpty) {
-                                context.read<ChatBloc>().add(ChatSendMessageEvent(text.trim()));
-                                _chatController.clear();
-                              }
-                            },
-                          )
-                        : CustomBottomNavBar(
-                            key: const ValueKey('navBar'),
-                            currentIndex: currentIndex,
-                            avatarUrl: _avatarUrl,
-                            onTap: (index) {
-                              context.read<MainBloc>().add(ChangeTabEvent(index));
-                              setState(() {
-                                _isPopupOpen = false;
-                                if (index == 2) _hasUnreadMessages = false;
-                              });
-                            },
-                            onHeartTap: () {
-                              RadarScannerModal.show(
-                                context,
-                                onConnectMatch: () {
-                                  Navigator.of(context).pushNamed('/matches');
-                                },
-                              );
-                            },
-                          ),
+                    ),
                   ),
                 ),
 
@@ -321,6 +336,13 @@ class _MainScreenState extends State<MainScreen>
                       },
                     ),
                   ),
+                ),
+
+              // Full Screen Onboarding Modal (Che phủ 100% màn hình, bao gồm cả Bottom Nav Bar)
+              if (_showOnboarding)
+                OnboardingModal(
+                  onStartChat: _handleStartChat,
+                  onDismiss: _handleDismissOnboarding,
                 ),
             ],
           );

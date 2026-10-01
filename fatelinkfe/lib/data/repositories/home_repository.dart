@@ -22,7 +22,10 @@ class HomeRepository {
     final response = await ApiService.get(url, context, token: token);
 
     if (response != null && response is List) {
-      return response.map((json) => MatchUser.fromJson(json)).toList();
+      return response
+          .map((json) => MatchUser.fromJson(json))
+          .where((user) => !user.id.startsWith('sim-'))
+          .toList();
     }
 
     return [];

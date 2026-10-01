@@ -82,7 +82,6 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildNavItem(
                           index: 0,
@@ -96,7 +95,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                           unselectedIcon: CupertinoIcons.compass,
                           selectedIcon: CupertinoIcons.compass_fill,
                         ),
-                        const SizedBox(width: 80), // Chừa không gian khoét lõm nút tim
+                        const SizedBox(width: 72), // Chừa không gian khoét lõm nút tim
                         _buildNavItem(
                           index: 2,
                           label: 'Trò chuyện',
@@ -174,13 +173,13 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
     final inactiveColor = const Color(0xFF94A3B8);
     final color = isSelected ? activeColor : inactiveColor;
 
-    return SizedBox(
-      width: 64,
+    return Expanded(
       child: GestureDetector(
         onTap: () => widget.onTap(index),
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 220),
@@ -246,6 +245,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
                 fontSize: 10,

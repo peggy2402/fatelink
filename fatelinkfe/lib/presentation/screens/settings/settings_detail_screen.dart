@@ -379,12 +379,25 @@ class _SettingsDetailScreenState extends State<SettingsDetailScreen> {
       color: Colors.white,
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFF4F46E5)),
-        title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF1E293B))),
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF475569))),
-            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 130),
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF475569)),
+              ),
+            ),
+            const SizedBox(width: 6),
             const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 22),
           ],
         ),

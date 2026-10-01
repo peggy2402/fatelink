@@ -53,6 +53,7 @@ dependencies:
   package_info_plus: ^8.1.0
   flutter_zalo: ^1.0.1
   google_fonts: ^6.3.2
+  qr_flutter: ^4.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

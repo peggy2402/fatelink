@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/back.dart';
+import '../../../core/utils/toast_utils.dart';
 
 class SettingsManageDeviceScreen extends StatefulWidget {
   const SettingsManageDeviceScreen({super.key});
@@ -39,12 +40,7 @@ class _SettingsManageDeviceScreenState extends State<SettingsManageDeviceScreen>
     setState(() {
       _devices.removeWhere((device) => device['id'] == id);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã đăng xuất thiết bị thành công'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastUtil.showSuccess(context, 'Đã đăng xuất thiết bị thành công ✨');
   }
 
   @override

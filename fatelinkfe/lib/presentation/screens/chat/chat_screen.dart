@@ -508,37 +508,46 @@ class ChatScreenState extends State<ChatScreen> {
                   radius: 18,
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('Faye AI',
-                            style: TextStyle(
-                                color: Colors.grey.shade800,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)]),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('BOT',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Faye AI',
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold)),
-                        )
-                      ],
-                    ),
-                    Text('Đang hoạt động...',
-                        style: TextStyle(
-                            color: Colors.green.shade600, fontSize: 12)),
-                  ],
+                                  color: Colors.grey.shade800,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                  colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)]),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('BOT',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold)),
+                          )
+                        ],
+                      ),
+                      Text('Đang hoạt động...',
+                          style: TextStyle(
+                              color: Colors.green.shade600, fontSize: 12)),
+                    ],
+                  ),
                 ),
               ],
             ),

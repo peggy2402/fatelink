@@ -1,13 +1,14 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../logic/blocs/auth/auth_bloc.dart';
 import '../../../../logic/blocs/auth/auth_event.dart';
+import '../../../../core/utils/toast_utils.dart';
 
 void _showSheetMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-  );
+  ToastUtil.showWarning(context, message);
 }
 
 bool _isValidEmail(String value) {
@@ -53,6 +54,7 @@ Future<void> showEmailAuthSheet(
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final nameController = TextEditingController();
+  final dobController = TextEditingController();
 
   await showModalBottomSheet(
     context: context,
@@ -62,142 +64,196 @@ Future<void> showEmailAuthSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (sheetContext) {
-      return Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 18,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 28,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD8DDE8),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          final mediaQuery = MediaQuery.of(sheetContext);
+          final bottomPadding = mediaQuery.viewInsets.bottom + math.max(mediaQuery.padding.bottom, 24.0);
+
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 18,
+                bottom: bottomPadding,
               ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              isRegister ? 'Đăng ký bằng email' : 'Đăng nhập bằng email',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF35164F),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              isRegister
-                  ? 'Tạo tài khoản bằng email và mật khẩu của bạn.'
-                  : 'Nhập email và mật khẩu để tiếp tục.',
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.4,
-                color: Color(0xFF7B8192),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (isRegister) ...[
-              TextField(
-                controller: nameController,
-                decoration: _sheetInputDecoration(
-                  labelText: 'Tên hiển thị',
-                  icon: Icons.badge_outlined,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: _sheetInputDecoration(
-                labelText: 'Email',
-                icon: Icons.mail_outline_rounded,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: _sheetInputDecoration(
-                labelText: 'Mật khẩu',
-                icon: Icons.lock_outline_rounded,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF3D8B),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD8DDE8),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
-                onPressed: () {
-                  final email = emailController.text.trim();
-                  final password = passwordController.text;
-                  final name = nameController.text.trim();
-
-                  if (isRegister && name.isEmpty) {
-                    _showSheetMessage(
-                      sheetContext,
-                      'Vui lòng nhập tên hiển thị.',
-                    );
-                    return;
-                  }
-
-                  if (!_isValidEmail(email)) {
-                    _showSheetMessage(
-                      sheetContext,
-                      'Vui lòng nhập email hợp lệ.',
-                    );
-                    return;
-                  }
-
-                  if (password.length < 6) {
-                    _showSheetMessage(
-                      sheetContext,
-                      'Mật khẩu phải có ít nhất 6 ký tự.',
-                    );
-                    return;
-                  }
-
-                  Navigator.pop(sheetContext);
-                  if (isRegister) {
-                    context.read<AuthBloc>().add(
-                      AuthEmailRegisterRequested(
-                        email: email,
-                        password: password,
-                        name: name,
+                const SizedBox(height: 18),
+                Text(
+                  isRegister ? 'Đăng ký bằng email' : 'Đăng nhập bằng email',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF35164F),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isRegister
+                      ? 'Tạo tài khoản bằng email, tên hiển thị & ngày sinh.'
+                      : 'Nhập email và mật khẩu để tiếp tục.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: Color(0xFF7B8192),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (isRegister) ...[
+                  TextField(
+                    controller: nameController,
+                    decoration: _sheetInputDecoration(
+                      labelText: 'Tên hiển thị',
+                      icon: Icons.badge_outlined,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime(now.year - 20, 1, 1),
+                        firstDate: DateTime(1940),
+                        lastDate: DateTime(now.year - 16, now.month, now.day),
+                        helpText: 'CHỌN NGÀY SINH CỦA BẠN',
+                      );
+                      if (picked != null) {
+                        setSheetState(() {
+                          dobController.text =
+                              '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                        });
+                      }
+                    },
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: dobController,
+                        decoration: _sheetInputDecoration(
+                          labelText: 'Ngày sinh',
+                          icon: Icons.cake_outlined,
+                        ),
                       ),
-                    );
-                  } else {
-                    context.read<AuthBloc>().add(
-                      AuthEmailLoginRequested(
-                        email: email,
-                        password: password,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _sheetInputDecoration(
+                    labelText: 'Email',
+                    icon: Icons.mail_outline_rounded,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: _sheetInputDecoration(
+                    labelText: 'Mật khẩu',
+                    icon: Icons.lock_outline_rounded,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF3D8B),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                    );
-                  }
-                },
-                child: Text(isRegister ? 'Đăng ký' : 'Đăng nhập'),
-              ),
+                    ),
+                    onPressed: () async {
+                      final email = emailController.text.trim();
+                      final password = passwordController.text;
+                      final name = nameController.text.trim();
+
+                      if (isRegister && name.isEmpty) {
+                        _showSheetMessage(
+                          sheetContext,
+                          'Vui lòng nhập tên hiển thị.',
+                        );
+                        return;
+                      }
+
+                      if (isRegister && dobController.text.isEmpty) {
+                        _showSheetMessage(
+                          sheetContext,
+                          'Vui lòng chọn ngày sinh của bạn.',
+                        );
+                        return;
+                      }
+
+                      if (!_isValidEmail(email)) {
+                        _showSheetMessage(
+                          sheetContext,
+                          'Vui lòng nhập email hợp lệ.',
+                        );
+                        return;
+                      }
+
+                      if (password.length < 6) {
+                        _showSheetMessage(
+                          sheetContext,
+                          'Mật khẩu phải có ít nhất 6 ký tự.',
+                        );
+                        return;
+                      }
+
+                      final navigator = Navigator.of(sheetContext);
+                      final authBloc = context.read<AuthBloc>();
+                      if (isRegister && dobController.text.isNotEmpty) {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('user_dob', dobController.text);
+                        await prefs.setString('userName', name);
+                      }
+
+                      navigator.pop();
+                      if (isRegister) {
+                        authBloc.add(
+                          AuthEmailRegisterRequested(
+                            email: email,
+                            password: password,
+                            name: name,
+                          ),
+                        );
+                      } else {
+                        authBloc.add(
+                          AuthEmailLoginRequested(
+                            email: email,
+                            password: password,
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(isRegister ? 'Đăng ký' : 'Đăng nhập'),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    },
+          ),
+        );
+      },
+    );
+  },
   );
 }
 
@@ -214,17 +270,22 @@ Future<void> showPhoneOtpSheet(BuildContext context) async {
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (sheetContext) {
-      return Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 18,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 28,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      final mediaQuery = MediaQuery.of(sheetContext);
+      final bottomPadding = mediaQuery.viewInsets.bottom + math.max(mediaQuery.padding.bottom, 24.0);
+
+      return SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 18,
+            bottom: bottomPadding,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 44,
@@ -355,9 +416,10 @@ Future<void> showPhoneOtpSheet(BuildContext context) async {
             ),
           ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  },
+);
 }
 
 Future<void> showMagicLinkSheet(BuildContext context) async {
@@ -371,17 +433,22 @@ Future<void> showMagicLinkSheet(BuildContext context) async {
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (sheetContext) {
-      return Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 18,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 28,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      final mediaQuery = MediaQuery.of(sheetContext);
+      final bottomPadding = mediaQuery.viewInsets.bottom + math.max(mediaQuery.padding.bottom, 24.0);
+
+      return SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 18,
+            bottom: bottomPadding,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 44,
@@ -453,7 +520,8 @@ Future<void> showMagicLinkSheet(BuildContext context) async {
             ),
           ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  },
+);
 }

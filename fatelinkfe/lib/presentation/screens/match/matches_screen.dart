@@ -7,6 +7,7 @@ import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart'; /
 import '../../../logic/blocs/matches/matches_bloc.dart';
 import '../../../logic/blocs/matches/matches_event.dart';
 import '../../../logic/blocs/matches/matches_state.dart';
+import '../../../core/utils/toast_utils.dart';
 
 class MatchedUser {
   final String id;
@@ -95,13 +96,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               // Gọi sự kiện unmatch
               context.read<MatchesBloc>().add(UnmatchUserEvent(user));
               
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('matches_cancelled ${user.name}'.tr()),
-                  backgroundColor: Colors.white.withOpacity(0.1),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              ToastUtil.showInfo(context, 'matches_cancelled ${user.name}'.tr());
             },
             child: const Text(
               'Hủy ghép đôi',
@@ -258,6 +253,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
           ),
           title: Text(
             user.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,

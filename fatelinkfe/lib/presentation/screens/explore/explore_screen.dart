@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
+import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
+import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
 
 // Main Screen Widget
 class ExploreScreen extends StatelessWidget {
@@ -35,46 +40,87 @@ class ExploreScreen extends StatelessWidget {
           // 4. Center Node (Current User)
           const _CenterNode(),
           
-          // 5. Orbiting Nodes (Other Profiles)
-          // These positions are for demonstration. In a real app, they'd be calculated.
-          _FloatingNode(
-            initialTop: MediaQuery.of(context).size.height * 0.25,
-            initialLeft: MediaQuery.of(context).size.width * 0.1,
-            userName: 'Jessica',
-            compatibility: 95,
-            avatarUrl: 'assets/images/default_avatar.png', // Placeholder
-            animationDelay: const Duration(milliseconds: 500),
-            onTap: () => _showMiniProfile(context),
-          ),
-          _FloatingNode(
-            initialTop: MediaQuery.of(context).size.height * 0.35,
-            initialLeft: MediaQuery.of(context).size.width * 0.7,
-            userName: 'David',
-            compatibility: 88,
-            avatarUrl: 'assets/images/default_avatar.png', // Placeholder
-            animationDelay: const Duration(milliseconds: 0),
-            onTap: () => _showMiniProfile(context),
-          ),
-          _FloatingNode(
-            initialTop: MediaQuery.of(context).size.height * 0.6,
-            initialLeft: MediaQuery.of(context).size.width * 0.2,
-            userName: 'Chloe',
-            compatibility: 91,
-            avatarUrl: 'assets/images/default_avatar.png', // Placeholder
-            animationDelay: const Duration(milliseconds: 800),
-            onTap: () => _showMiniProfile(context),
+          // 5. Orbiting Nodes (Real Matched Profiles from HomeBloc)
+          BlocBuilder<HomeBloc, HomeState>(
+            builder: (context, state) {
+              final users = state.matchedUsers;
+              if (users.isEmpty) {
+                return Positioned(
+                  bottom: 110,
+                  left: 24,
+                  right: 24,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.92),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withOpacity(0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 20),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Đang phát sóng & quét tìm tâm hồn đồng điệu...',
+                            style: TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final screenWidth = MediaQuery.of(context).size.width;
+              final screenHeight = MediaQuery.of(context).size.height;
+              final positions = [
+                Offset(screenWidth * 0.10, screenHeight * 0.23),
+                Offset(screenWidth * 0.62, screenHeight * 0.30),
+                Offset(screenWidth * 0.16, screenHeight * 0.58),
+                Offset(screenWidth * 0.64, screenHeight * 0.54),
+              ];
+
+              return Stack(
+                children: users.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final user = entry.value;
+                  final pos = positions[index % positions.length];
+                  return _FloatingNode(
+                    key: ValueKey(user.id),
+                    initialTop: pos.dy,
+                    initialLeft: pos.dx,
+                    userName: user.name,
+                    compatibility: user.compatibilityScore,
+                    avatarUrl: user.avatar ?? '',
+                    animationDelay: Duration(milliseconds: index * 400),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => UserDetailScreen(user: user),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
-    );
-  }
-
-  void _showMiniProfile(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _MiniProfileSheet(),
     );
   }
 }
@@ -219,6 +265,7 @@ class _CenterNode extends StatefulWidget {
 class _CenterNodeState extends State<_CenterNode>
     with SingleTickerProviderStateMixin {
   late AnimationController _pingController;
+  String? _avatarUrl;
 
   @override
   void initState() {
@@ -227,6 +274,15 @@ class _CenterNodeState extends State<_CenterNode>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    const secureStorage = FlutterSecureStorage();
+    final avatar = await secureStorage.read(key: 'avatarUrl');
+    if (mounted && avatar != null) {
+      setState(() => _avatarUrl = avatar);
+    }
   }
 
   @override
@@ -275,9 +331,12 @@ class _CenterNodeState extends State<_CenterNode>
                 ),
               ],
             ),
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 40,
-              backgroundImage: AssetImage('assets/images/default_avatar.png'),
+              backgroundColor: const Color(0xFFE0E7FF),
+              backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                  ? NetworkImage(_avatarUrl!) as ImageProvider
+                  : const AssetImage('assets/images/default_avatar.png'),
             ),
           ),
         ],
@@ -297,6 +356,7 @@ class _FloatingNode extends StatefulWidget {
   final VoidCallback onTap;
 
   const _FloatingNode({
+    super.key,
     required this.initialTop,
     required this.initialLeft,
     required this.userName,
@@ -370,7 +430,10 @@ class _FloatingNodeState extends State<_FloatingNode>
                     ),
                     child: CircleAvatar(
                       radius: 30,
-                      backgroundImage: AssetImage(widget.avatarUrl),
+                      backgroundColor: const Color(0xFFE0E7FF),
+                      backgroundImage: (widget.avatarUrl.isNotEmpty && widget.avatarUrl.startsWith('http'))
+                          ? NetworkImage(widget.avatarUrl) as ImageProvider
+                          : AssetImage(widget.avatarUrl.isNotEmpty ? widget.avatarUrl : 'assets/images/default_avatar.png'),
                       onBackgroundImageError: (_, __) {}, // Handle error
                     ),
                   ),
@@ -402,179 +465,22 @@ class _FloatingNodeState extends State<_FloatingNode>
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                widget.userName,
-                style: TextStyle(
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w600,
+              SizedBox(
+                width: 80,
+                child: Text(
+                  widget.userName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// Mini Profile Bottom Sheet Widget
-class _MiniProfileSheet extends StatelessWidget {
-  const _MiniProfileSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        color: Colors.transparent,
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.8,
-          builder: (_, controller) {
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.85),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                    border: Border(top: BorderSide(color: Colors.white, width: 1.5)),
-                  ),
-                  child: Stack(
-                    children: [
-                      ListView(
-                        controller: controller,
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: Image.asset(
-                                  'assets/images/default_avatar.png', // Placeholder
-                                  width: 120,
-                                  height: 180,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 120,
-                                    height: 180,
-                                    color: Colors.grey.shade200,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Jessica, 24',
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Tần số: 95% tương hợp',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.pink.shade400,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Container(
-                                            height: 50,
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(25),
-                                              gradient: const LinearGradient(
-                                                colors: [Colors.pinkAccent, Colors.orangeAccent],
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.pink.withOpacity(0.3),
-                                                  blurRadius: 10,
-                                                  offset: const Offset(0, 5),
-                                                )
-                                              ],
-                                            ),
-                                            child: ElevatedButton(
-                                              onPressed: () {},
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.transparent,
-                                                shadowColor: Colors.transparent,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(25),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Làm quen',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Container(
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.white,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.1),
-                                                blurRadius: 8,
-                                              )
-                                            ],
-                                          ),
-                                          child: IconButton(
-                                            icon: Icon(Icons.favorite_border, color: Colors.pink.shade300),
-                                            onPressed: () {},
-                                          ),
-                                        )
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Add more profile details here
-                          const SizedBox(height: 24),
-                          const Text('Giới thiệu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                          const SizedBox(height: 8),
-                          Text('Thích đi dạo bờ hồ, nghe nhạc Lofi và những buổi chiều mưa. Tìm một người có thể cùng nhau im lặng mà không thấy ngượng ngùng.', style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
-                        ],
-                      ),
-                      Positioned(
-                        top: 16,
-                        right: 16,
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: CircleAvatar(
-                            backgroundColor: Colors.black.withOpacity(0.1),
-                            child: const Icon(Icons.close, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
         ),
       ),
     );
