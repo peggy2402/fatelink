@@ -1,29 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../services/api_service.dart';
+import '../../../../core/services/image_picker_service.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/secure_storage_helper.dart';
 import '../../../../core/utils/toast_utils.dart';
+import '../../../../data/models/match_user.dart';
+import '../../profile/user_detail_screen.dart';
 
 class NotificationItem {
   final String id;
   final String title;
   final String message;
-  final String time;
-  final String type; // 'match', 'faye', 'system'
-  final String? avatarAsset;
-  final IconData icon;
-  final Color iconColor;
+  final DateTime createdAt;
+  final String type; // 'like', 'mutual_like', 'view', 'wave', 'system'
+  final String? senderId;
+  final String? senderName;
+  final String? senderAvatar;
   bool isRead;
 
   NotificationItem({
     required this.id,
     required this.title,
     required this.message,
-    required this.time,
+    required this.createdAt,
     required this.type,
-    this.avatarAsset,
-    required this.icon,
-    required this.iconColor,
+    this.senderId,
+    this.senderName,
+    this.senderAvatar,
     this.isRead = false,
   });
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    try {
+      parsedDate = json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'].toString()).toLocal()
+          : DateTime.now();
+    } catch (_) {
+      parsedDate = DateTime.now();
+    }
+
+    return NotificationItem(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? 'Thông báo',
+      message: json['message']?.toString() ?? '',
+      createdAt: parsedDate,
+      type: json['type']?.toString() ?? 'system',
+      senderId: json['senderId']?.toString(),
+      senderName: json['senderName']?.toString(),
+      senderAvatar: json['senderAvatar']?.toString(),
+      isRead: json['isRead'] == true,
+    );
+  }
+
+  String get timeAgo {
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+
+    if (difference.inSeconds < 60) {
+      return 'Vừa xong';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} phút trước';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} giờ trước';
+    } else if (difference.inDays == 1) {
+      final hour = createdAt.hour.toString().padLeft(2, '0');
+      final minute = createdAt.minute.toString().padLeft(2, '0');
+      return 'Hôm qua $hour:$minute';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ngày trước';
+    } else {
+      return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+    }
+  }
+
+  IconData get icon {
+    switch (type) {
+      case 'like':
+      case 'mutual_like':
+        return Icons.favorite_rounded;
+      case 'view':
+        return Icons.visibility_rounded;
+      case 'wave':
+        return Icons.waves_rounded;
+      case 'system':
+      default:
+        return Icons.auto_awesome;
+    }
+  }
+
+  Color get iconColor {
+    switch (type) {
+      case 'like':
+        return const Color(0xFFEC4899);
+      case 'mutual_like':
+        return const Color(0xFFF43F5E);
+      case 'view':
+        return const Color(0xFF8B5CF6);
+      case 'wave':
+        return const Color(0xFF00E5FF);
+      case 'system':
+      default:
+        return const Color(0xFF6366F1);
+    }
+  }
+
+  String get filterCategory {
+    if (type == 'system') return 'system';
+    return 'match';
+  }
 }
 
 class NotificationsModal extends StatefulWidget {
@@ -49,60 +135,47 @@ class NotificationsModal extends StatefulWidget {
 
 class _NotificationsModalState extends State<NotificationsModal> {
   String _selectedFilter = 'all'; // 'all', 'match', 'system'
-
-  late final List<NotificationItem> _notifications;
+  bool _isLoading = true;
+  List<NotificationItem> _notifications = [];
 
   @override
   void initState() {
     super.initState();
-    _notifications = [
-      NotificationItem(
-        id: '1',
-        title: 'Tần số tương hợp mới! ✨',
-        message: 'Soul#W13X8 vừa hòa âm cùng tần số "Bình yên" của bạn với độ tương thích lên đến 92%.',
-        time: '5 phút trước',
-        type: 'match',
-        avatarAsset: 'assets/avatars/avatar_1.png',
-        icon: Icons.favorite_rounded,
-        iconColor: const Color(0xFFEC4899),
-        isRead: false,
-      ),
-      NotificationItem(
-        id: '2',
-        title: 'Ai đó vừa thả tim bạn! 💕',
-        message: 'Một tâm hồn bí ẩn vừa thả tim hồ sơ của bạn. Cùng thả tim để mở khóa diện mạo nhé!',
-        time: '1 giờ trước',
-        type: 'match',
-        avatarAsset: 'assets/avatars/avatar_3.png',
-        icon: Icons.lock_open_rounded,
-        iconColor: const Color(0xFF8B5CF6),
-        isRead: false,
-      ),
-      NotificationItem(
-        id: '3',
-        title: 'Gợi ý kết nối từ Faye AI 🔮',
-        message: 'Đêm nay là thời điểm lý tưởng cho những câu chuyện sâu lắng (#DeepTalk). Có 3 người đang phát sóng gần bạn!',
-        time: 'Hôm nay 22:30',
-        type: 'system',
-        avatarAsset: 'assets/icon/app_logo.png',
-        icon: Icons.auto_awesome,
-        iconColor: const Color(0xFF6366F1),
-        isRead: true,
-      ),
-      NotificationItem(
-        id: '4',
-        title: 'Chào mừng bạn đến với Meyu! 🚀',
-        message: 'Khám phá thế giới qua lăng kính cảm xúc và kết nối những tâm hồn đồng điệu nhất.',
-        time: 'Hôm qua',
-        type: 'system',
-        icon: Icons.celebration_rounded,
-        iconColor: const Color(0xFF10B981),
-        isRead: true,
-      ),
-    ];
+    _fetchNotifications();
   }
 
-  void _markAllAsRead() {
+  Future<void> _fetchNotifications() async {
+    setState(() => _isLoading = true);
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && mounted) {
+        final url = '${AppConstants.baseUrl}/${AppConstants.notifications}';
+        final res = await ApiService.get(url, context, token: token);
+        if (res != null && res['success'] == true && res['data'] is List) {
+          final list = (res['data'] as List)
+              .map((item) => NotificationItem.fromJson(item as Map<String, dynamic>))
+              .toList();
+          if (mounted) {
+            setState(() {
+              _notifications = list;
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi tải thông báo: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
     setState(() {
       for (var item in _notifications) {
         item.isRead = true;
@@ -111,6 +184,54 @@ class _NotificationsModalState extends State<NotificationsModal> {
     HapticFeedback.lightImpact();
     widget.onClearBadge?.call();
     ToastUtil.showSuccess(context, 'Đã đánh dấu đã đọc tất cả thông báo');
+
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && mounted) {
+        final url = '${AppConstants.baseUrl}/${AppConstants.markAllNotificationsRead}';
+        await ApiService.patch(url, context, token: token, body: {});
+      }
+    } catch (e) {
+      debugPrint('Lỗi đánh dấu tất cả đã đọc: $e');
+    }
+  }
+
+  Future<void> _markSingleAsRead(NotificationItem item) async {
+    if (!item.isRead) {
+      setState(() {
+        item.isRead = true;
+      });
+      HapticFeedback.lightImpact();
+      try {
+        final token = await SecureStorageHelper.read('accessToken');
+        if (token != null && mounted) {
+          final url =
+              '${AppConstants.baseUrl}/${AppConstants.markNotificationRead(item.id)}';
+          await ApiService.patch(url, context, token: token, body: {});
+        }
+      } catch (e) {
+        debugPrint('Lỗi đánh dấu thông báo đã đọc: $e');
+      }
+    }
+
+    // Nếu thông báo liên quan đến User khác -> Mở trang hồ sơ tương tác
+    if (item.senderId != null && item.senderId!.isNotEmpty && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => UserDetailScreen(
+            user: MatchUser(
+              id: item.senderId!,
+              name: item.senderName ?? 'Tâm hồn bí ẩn',
+              emotion: 'Bình yên',
+              compatibilityScore: 88,
+              avatar: item.senderAvatar,
+              isFaceLocked: false,
+              isMutualFollow: item.type == 'mutual_like',
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -119,8 +240,8 @@ class _NotificationsModalState extends State<NotificationsModal> {
     final unreadCount = _notifications.where((n) => !n.isRead).length;
 
     final filteredList = _notifications.where((n) {
-      if (_selectedFilter == 'match') return n.type == 'match';
-      if (_selectedFilter == 'system') return n.type == 'system';
+      if (_selectedFilter == 'match') return n.filterCategory == 'match';
+      if (_selectedFilter == 'system') return n.filterCategory == 'system';
       return true;
     }).toList();
 
@@ -231,7 +352,7 @@ class _NotificationsModalState extends State<NotificationsModal> {
               children: [
                 _buildFilterChip('all', 'Tất cả'),
                 const SizedBox(width: 8),
-                _buildFilterChip('match', 'Tương hợp 💗'),
+                _buildFilterChip('match', 'Tương tác 💗'),
                 const SizedBox(width: 8),
                 _buildFilterChip('system', 'Hệ thống ✦'),
               ],
@@ -243,17 +364,31 @@ class _NotificationsModalState extends State<NotificationsModal> {
 
           // 4. Danh sách thông báo
           Flexible(
-            child: filteredList.isEmpty
-                ? _buildEmptyState()
-                : ListView.separated(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
-                    itemCount: filteredList.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final item = filteredList[index];
-                      return _buildNotificationCard(item);
-                    },
-                  ),
+            child: _isLoading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                      ),
+                    ),
+                  )
+                : filteredList.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        color: const Color(0xFF6366F1),
+                        onRefresh: _fetchNotifications,
+                        child: ListView.separated(
+                          padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+                          itemCount: filteredList.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final item = filteredList[index];
+                            return _buildNotificationCard(item);
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -286,12 +421,7 @@ class _NotificationsModalState extends State<NotificationsModal> {
 
   Widget _buildNotificationCard(NotificationItem item) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          item.isRead = true;
-        });
-        HapticFeedback.lightImpact();
-      },
+      onTap: () => _markSingleAsRead(item),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -322,10 +452,10 @@ class _NotificationsModalState extends State<NotificationsModal> {
                     color: item.iconColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: item.avatarAsset != null
+                  child: item.senderAvatar != null && item.senderAvatar!.isNotEmpty
                       ? ClipOval(
-                          child: Image.asset(
-                            item.avatarAsset!,
+                          child: Image(
+                            image: ImagePickerService.getImageProvider(item.senderAvatar!),
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) => Icon(
                               item.icon,
@@ -403,7 +533,7 @@ class _NotificationsModalState extends State<NotificationsModal> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    item.time,
+                    item.timeAgo,
                     style: const TextStyle(
                       fontFamily: 'BeVietnamPro',
                       fontSize: 11,
@@ -429,8 +559,8 @@ class _NotificationsModalState extends State<NotificationsModal> {
             Container(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

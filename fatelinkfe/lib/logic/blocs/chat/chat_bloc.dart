@@ -60,21 +60,62 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
-  void _onSendMessage(ChatSendMessageEvent event, Emitter<ChatState> emit) {
-    if (!chatRepository.isSocketConnected) {
-      emit(state.copyWith(errorMessage: "Mất kết nối máy chủ. Đang thử kết nối lại..."));
-      add(ClearNotificationEvents());
-      chatRepository.reconnectSocket();
+  Future<void> _onSendMessage(ChatSendMessageEvent event, Emitter<ChatState> emit) async {
+    final userMessage = ChatMessage(text: event.text, isSentByMe: true, timestamp: DateTime.now());
+    emit(state.copyWith(
+      messages: List.from(state.messages)..add(userMessage),
+      showEmotionSuggestions: false,
+      isTyping: true,
+    ));
+
+    // 1. Thử gửi qua WebSocket nếu đang kết nối
+    if (chatRepository.isSocketConnected) {
+      chatRepository.sendMessage(event.text);
+      _typingTimer?.cancel();
+      _typingTimer = Timer(const Duration(seconds: 12), () async {
+        if (state.isTyping) {
+          final token = await secureStorage.read(key: 'accessToken');
+          if (token != null) {
+            final reply = await chatRepository.sendAiMessageViaRest(event.text, token);
+            if (reply != null && reply.isNotEmpty) {
+              add(ChatMessageReceived(ChatMessage(
+                text: reply,
+                isSentByMe: false,
+                timestamp: DateTime.now(),
+              )));
+              return;
+            }
+          }
+          add(ChatTypingTimeout());
+        }
+      });
       return;
     }
 
-    final userMessage = ChatMessage(text: event.text, isSentByMe: true, timestamp: DateTime.now());
-    emit(state.copyWith(messages: List.from(state.messages)..add(userMessage), showEmotionSuggestions: false, isTyping: true));
+    // 2. Nếu Socket chưa kết nối, chuyển ngay sang HTTP REST Fallback
+    chatRepository.reconnectSocket();
+    final token = await secureStorage.read(key: 'accessToken');
+    if (token != null) {
+      final reply = await chatRepository.sendAiMessageViaRest(event.text, token);
+      if (reply != null && reply.isNotEmpty) {
+        emit(state.copyWith(
+          messages: List.from(state.messages)..add(ChatMessage(
+            text: reply,
+            isSentByMe: false,
+            timestamp: DateTime.now(),
+          )),
+          isTyping: false,
+        ));
+        return;
+      }
+    }
 
-    chatRepository.sendMessage(event.text);
-    
-    _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 15), () => add(ChatTypingTimeout()));
+    // 3. Nếu cả hai phương thức đều không thành công
+    emit(state.copyWith(
+      isTyping: false,
+      errorMessage: "Mạng yếu hoặc Faye đang bận. Vui lòng thử lại sau!",
+    ));
+    add(ClearNotificationEvents());
   }
 
   void _onMessageReceived(ChatMessageReceived event, Emitter<ChatState> emit) {

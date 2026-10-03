@@ -16,6 +16,11 @@ import type { GetUserProfileUseCase } from '@contexts/users/application/usecases
 import type { UpdateFcmTokenUseCase } from '@contexts/users/application/usecases/update-fcm-token.usecase';
 import type { UpdateUserFrequencyUseCase } from '@contexts/users/application/usecases/update-user-frequency.usecase';
 import type { UpdateUserProfileUseCase } from '@contexts/users/application/usecases/update-user-profile.usecase';
+import type { RecordProfileViewUseCase } from '@contexts/users/application/usecases/record-profile-view.usecase';
+import type { ToggleUserLikeUseCase } from '@contexts/users/application/usecases/toggle-user-like.usecase';
+import type { RecordWaveUseCase } from '@contexts/users/application/usecases/record-wave.usecase';
+import type { GetNotificationsUseCase } from '@contexts/users/application/usecases/get-notifications.usecase';
+import type { MarkNotificationReadUseCase } from '@contexts/users/application/usecases/mark-notification-read.usecase';
 import { USERS_APPLICATION_TOKENS } from '@contexts/users/composition/users.tokens';
 import {
   UpdateFcmTokenDto,
@@ -36,12 +41,49 @@ export class UsersController {
     private readonly updateUserFrequencyUseCase: UpdateUserFrequencyUseCase,
     @Inject(USERS_APPLICATION_TOKENS.updateUserProfile)
     private readonly updateUserProfileUseCase: UpdateUserProfileUseCase,
+    @Inject(USERS_APPLICATION_TOKENS.recordProfileView)
+    private readonly recordProfileViewUseCase: RecordProfileViewUseCase,
+    @Inject(USERS_APPLICATION_TOKENS.toggleUserLike)
+    private readonly toggleUserLikeUseCase: ToggleUserLikeUseCase,
+    @Inject(USERS_APPLICATION_TOKENS.recordWave)
+    private readonly recordWaveUseCase: RecordWaveUseCase,
+    @Inject(USERS_APPLICATION_TOKENS.getNotifications)
+    private readonly getNotificationsUseCase: GetNotificationsUseCase,
+    @Inject(USERS_APPLICATION_TOKENS.markNotificationRead)
+    private readonly markNotificationReadUseCase: MarkNotificationReadUseCase,
   ) {}
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyProfile(@Request() req: AuthenticatedRequest) {
     return this.getUserProfileUseCase.execute({ userId: req.user.sub });
+  }
+
+  @Get('notifications')
+  @UseGuards(JwtAuthGuard)
+  async getMyNotifications(@Request() req: AuthenticatedRequest) {
+    return this.getNotificationsUseCase.execute({ userId: req.user.sub });
+  }
+
+  @Patch('notifications/read-all')
+  @UseGuards(JwtAuthGuard)
+  async markAllNotificationsRead(@Request() req: AuthenticatedRequest) {
+    return this.markNotificationReadUseCase.execute({
+      userId: req.user.sub,
+      markAll: true,
+    });
+  }
+
+  @Patch('notifications/:notificationId/read')
+  @UseGuards(JwtAuthGuard)
+  async markNotificationRead(
+    @Request() req: AuthenticatedRequest,
+    @Param('notificationId') notificationId: string,
+  ) {
+    return this.markNotificationReadUseCase.execute({
+      userId: req.user.sub,
+      notificationId,
+    });
   }
 
   @Get(':id/matches')
@@ -52,6 +94,42 @@ export class UsersController {
   @Get(':id/profile')
   async getProfile(@Param('id') id: string) {
     return this.getUserProfileUseCase.execute({ userId: id });
+  }
+
+  @Post(':id/view')
+  @UseGuards(JwtAuthGuard)
+  async recordProfileView(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.recordProfileViewUseCase.execute({
+      targetUserId: id,
+      viewerId: req.user.sub,
+    });
+  }
+
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  async toggleLike(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.toggleUserLikeUseCase.execute({
+      targetUserId: id,
+      likerId: req.user.sub,
+    });
+  }
+
+  @Post(':id/wave')
+  @UseGuards(JwtAuthGuard)
+  async recordWave(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.recordWaveUseCase.execute({
+      targetUserId: id,
+      senderId: req.user.sub,
+    });
   }
 
   @Post('fcm-token')

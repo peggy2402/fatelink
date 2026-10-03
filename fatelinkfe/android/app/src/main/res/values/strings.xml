@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="appID" translatable="false">3205454775701109337</string>
+    <string name="widget_name">Tri kỷ Tâm hồn FateLink</string>
+    <string name="widget_description">Theo dõi tần số cảm xúc và tâm hồn đồng điệu gần bạn nhất</string>
 </resources>

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:fatelinkfe/services/api_service.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
@@ -47,7 +48,7 @@ class ChatRepository {
     _socket = IO.io(
       AppConstants.serverUrl,
       IO.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .setAuth({'token': token})
           .build(),
@@ -75,6 +76,39 @@ class ChatRepository {
     if (_socket != null && _socket!.connected) {
       _socket!.emit('sendMessage', {'text': text});
     }
+  }
+
+  /// Phương thức gửi tin nhắn AI trực tiếp qua HTTP REST (Fallback khi Socket bị ngắt hoặc chậm)
+  Future<String?> sendAiMessageViaRest(String text, String token) async {
+    final url = Uri.parse('${AppConstants.baseUrl}/chat/message');
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'message': text}),
+      ).timeout(const Duration(seconds: 25));
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        if (data['reply'] != null) {
+          final raw = data['reply'].toString();
+          try {
+            final clean = raw.replaceAll(RegExp(r'```json|```'), '').trim();
+            final parsed = jsonDecode(clean);
+            if (parsed is Map && parsed['reply'] != null) {
+              return parsed['reply'].toString();
+            }
+          } catch (_) {}
+          return raw;
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi gửi tin nhắn AI qua REST fallback: $e');
+    }
+    return null;
   }
 
   void reconnectSocket() => _socket?.connect();

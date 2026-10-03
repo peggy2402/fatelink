@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'services/fcm_service.dart';
+import 'services/cosmic_widget_service.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'logic/blocs/auth/auth_bloc.dart';
 import 'data/repositories/chat_repository.dart';
@@ -56,6 +57,12 @@ void main() async {
       debugPrint(
         'Cảnh báo: Không thể khởi tạo NetworkConnectivityService: $netErr',
       );
+    }
+
+    try {
+      await CosmicWidgetService.instance.initialize();
+    } catch (widgetErr) {
+      debugPrint('Cảnh báo: Không thể khởi tạo CosmicWidgetService: $widgetErr');
     }
   } catch (e, stackTrace) {
     debugPrint('Lỗi khởi tạo App: $e\n$stackTrace');

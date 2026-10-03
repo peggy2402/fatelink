@@ -64,7 +64,29 @@
                     android:host="tiktok"
                     android:pathPrefix="/auth" />
             </intent-filter>
+            <!-- Deep link khi người dùng chạm vào Widget trên màn hình chính -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="fatelink"
+                    android:host="match" />
+            </intent-filter>
         </activity>
+
+        <!-- Tiện ích màn hình chính (Cosmic Soulmate Glance Widget) -->
+        <receiver
+            android:name=".CosmicSoulmateWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/cosmic_soulmate_widget_info" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

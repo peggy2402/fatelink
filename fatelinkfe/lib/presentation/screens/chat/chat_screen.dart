@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../logic/blocs/chat/chat_bloc.dart';
 import '../../../logic/blocs/chat/chat_event.dart';
 import '../../../logic/blocs/chat/chat_state.dart';
+import '../../../logic/blocs/home/home_bloc.dart';
+import '../../../data/models/match_user.dart';
 
 // Components tách rời sạch sẽ
 import 'widgets/chat_conversation_tile.dart';
@@ -12,7 +14,9 @@ import 'widgets/chat_online_stories.dart';
 import 'widgets/chat_room_app_bar.dart';
 import 'widgets/chat_typing_indicator_bubble.dart';
 import '../match/cosmic_broadcast_screen.dart';
+import '../match/match_chat_screen.dart';
 import '../home/widgets/radar_scanner_modal.dart';
+import '../home/widgets/notifications_modal.dart';
 
 // Enum để quản lý 2 chế độ xem: Danh sách hoặc Phòng trò chuyện
 enum ChatView { list, room }
@@ -304,7 +308,26 @@ class ChatScreenState extends State<ChatScreen> {
           if (_isSearchOpen)
             SliverToBoxAdapter(child: _buildSearchBar()),
           SliverToBoxAdapter(
-            child: ChatOnlineStories(onFayeTap: _switchToRoomView),
+            child: Builder(
+              builder: (ctx) {
+                final homeUsers = ctx.watch<HomeBloc>().state.matchedUsers;
+                return ChatOnlineStories(
+                  onFayeTap: _switchToRoomView,
+                  onlineUsers: homeUsers,
+                  onUserTap: (user) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MatchChatScreen(
+                          partnerName: user.name,
+                          partnerId: user.id,
+                        ),
+                      ),
+                    );
+                  },
+                  onDiscoverTap: _showNewChatActionModal,
+                );
+              },
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -468,15 +491,97 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  SliverList _buildConversationList() {
-    // Lọc theo search và category filter
+  Widget _buildConversationList() {
+    final chatState = context.watch<ChatBloc>().state;
+    final homeUsers = context.watch<HomeBloc>().state.matchedUsers;
+
+    // 1. Phân tích tin nhắn cuối cùng của Faye AI
+    final hasAiMessages = chatState.messages.isNotEmpty;
+    final lastAiMsg = hasAiMessages ? chatState.messages.last : null;
+    final String lastAiText = lastAiMsg != null
+        ? lastAiMsg.text
+        : 'Chào bạn, hôm nay của bạn thế nào?';
+    final String lastAiTime = lastAiMsg != null
+        ? '${lastAiMsg.timestamp.hour.toString().padLeft(2, '0')}:${lastAiMsg.timestamp.minute.toString().padLeft(2, '0')}'
+        : '10:36';
+
+    // 2. Gom danh sách các item hiển thị
+    final List<Widget> conversationTiles = [];
+
+    // Item 1: Faye AI
     final bool matchFaye = _searchQuery.isEmpty ||
         'faye ai'.contains(_searchQuery.toLowerCase()) ||
-        'chào bạn, hôm nay của bạn thế nào?'.contains(_searchQuery.toLowerCase());
+        lastAiText.toLowerCase().contains(_searchQuery.toLowerCase());
+    final bool showFaye = matchFaye &&
+        (_selectedFilter == 'all' || _selectedFilter == 'ai' || _selectedFilter == 'unread');
 
-    final bool showFaye = matchFaye && (_selectedFilter == 'all' || _selectedFilter == 'ai' || _selectedFilter == 'unread');
+    if (showFaye) {
+      conversationTiles.add(
+        ChatConversationTile(
+          name: 'Faye AI',
+          imageUrl: 'assets/images/avt_faye_ai.png',
+          lastMessage: lastAiText,
+          time: lastAiTime,
+          unreadCount: hasAiMessages ? 0 : 1,
+          isBot: true,
+          onTap: _switchToRoomView,
+        ),
+      );
+    }
 
-    if (!showFaye) {
+    // Item 2: Tin nhắn hệ thống FateLink
+    final bool matchSystem = _searchQuery.isEmpty ||
+        'hệ thống fatelink'.contains(_searchQuery.toLowerCase()) ||
+        'thông báo'.contains(_searchQuery.toLowerCase());
+    final bool showSystem = matchSystem && (_selectedFilter == 'all');
+
+    if (showSystem) {
+      conversationTiles.add(
+        ChatConversationTile(
+          name: 'Hệ thống FateLink',
+          systemIcon: Icons.all_inclusive_rounded,
+          lastMessage: 'Chào mừng bạn đến với FateLink! Khám phá tần số tâm hồn ngay ✨',
+          time: 'Hôm nay',
+          unreadCount: 0,
+          isSystem: true,
+          onTap: () => NotificationsModal.show(context),
+        ),
+      );
+    }
+
+    // Item 3+: Các người dùng thật (User-to-User)
+    if (_selectedFilter == 'all') {
+      for (final user in homeUsers) {
+        final bool matchUser = _searchQuery.isEmpty ||
+            user.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            user.emotion.toLowerCase().contains(_searchQuery.toLowerCase());
+
+        if (matchUser) {
+          conversationTiles.add(
+            ChatConversationTile(
+              name: user.name,
+              imageUrl: user.avatar,
+              lastMessage: 'Tần số tương hợp ${user.compatibilityScore}% • ${user.emotion}',
+              time: 'Vừa xong',
+              unreadCount: 0,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MatchChatScreen(
+                      partnerName: user.name,
+                      partnerId: user.id,
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }
+      }
+    }
+
+    // Trạng thái trống khi tìm kiếm hoặc lọc không có kết quả
+    if (conversationTiles.isEmpty) {
       return SliverList(
         delegate: SliverChildListDelegate([
           Padding(
@@ -520,19 +625,8 @@ class ChatScreenState extends State<ChatScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          // Cuộc trò chuyện với trợ lý Faye AI
-          return ChatConversationTile(
-            name: 'Faye AI',
-            imageUrl: 'assets/images/avt_faye_ai.png',
-            lastMessage: 'Chào bạn, hôm nay của bạn thế nào?',
-            time: '10:36',
-            unreadCount: 1,
-            isBot: true,
-            onTap: _switchToRoomView,
-          );
-        },
-        childCount: 1,
+        (context, index) => conversationTiles[index],
+        childCount: conversationTiles.length,
       ),
     );
   }

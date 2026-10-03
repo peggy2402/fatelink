@@ -47,4 +47,22 @@ export interface UserRepository {
       }[];
     },
   ): Promise<User | null>;
+  recordProfileView(
+    targetUserId: string,
+    viewerId: string,
+  ): Promise<{ profileViews: number }>;
+  toggleLike(
+    targetUserId: string,
+    likerId: string,
+  ): Promise<{ likesReceived: number; isLiked: boolean; isMutual: boolean }>;
+  recordWave(
+    targetUserId: string,
+    senderId: string,
+  ): Promise<{ wavesReceived: number }>;
+  getNotifications(userId: string): Promise<any[]>;
+  markNotificationAsRead(
+    userId: string,
+    notificationId: string,
+  ): Promise<boolean>;
+  markAllNotificationsAsRead(userId: string): Promise<boolean>;
 }

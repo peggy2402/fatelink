@@ -29,6 +29,10 @@ export class User {
   frequencyHertz?: string;
   moodIcon?: string;
   desiredVibe?: string;
+  likesReceived?: number;
+  profileViews?: number;
+  wavesReceived?: number;
+  likedUsers?: string[];
 
   static rehydrate(props: {
     id?: string;
@@ -51,6 +55,10 @@ export class User {
     frequencyHertz?: string;
     moodIcon?: string;
     desiredVibe?: string;
+    likesReceived?: number;
+    profileViews?: number;
+    wavesReceived?: number;
+    likedUsers?: string[];
   }): User {
     const user = new User();
     Object.assign(user, props);

@@ -9,6 +9,9 @@ import '../../../core/utils/anonymous_avatar_helper.dart';
 import '../../widgets/cosmic_pulse_received_modal.dart';
 import '../../../core/services/image_picker_service.dart';
 import '../../../data/models/vibe_photo_item.dart';
+import '../../../core/utils/constants.dart';
+import '../../../core/utils/secure_storage_helper.dart';
+import '../../../services/api_service.dart';
 
 class UserDetailScreen extends StatefulWidget {
   final MatchUser user;
@@ -38,48 +41,90 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     _isFollowing = widget.user.isMutualFollow;
     _isMutualFollow = widget.user.isMutualFollow;
     _likesCount = widget.user.resolvedLikesCount;
+    _recordProfileView();
+  }
+
+  Future<void> _recordProfileView() async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null &&
+          widget.user.id.isNotEmpty &&
+          !widget.user.id.startsWith('echo-')) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userRecordView(widget.user.id)}';
+        await ApiService.post(url, context, token: token);
+      }
+    } catch (_) {}
   }
 
   // Điều kiện hiển thị diện mạo: Cả 2 phải follow nhau VÀ đối phương không bật Khóa diện mạo
   bool get canViewIdentity => _isMutualFollow && !widget.user.isFaceLocked;
 
-  void _toggleFollow() {
+  Future<void> _toggleFollow() async {
     HapticFeedback.lightImpact();
+    final nextState = !_isFollowing;
     setState(() {
-      _isFollowing = !_isFollowing;
-      // Mô phỏng phản hồi từ cộng đồng: khi bạn thả tim, 2 người cùng kết nối nhau!
-      _isMutualFollow = _isFollowing;
-      if (_isFollowing) {
+      _isFollowing = nextState;
+      if (nextState) {
         _likesCount += 1;
       } else {
         _likesCount = (_likesCount > 0) ? _likesCount - 1 : 0;
       }
     });
 
-    if (_isMutualFollow) {
-      if (widget.user.isFaceLocked) {
-        ToastUtil.showInfo(
-          context,
-          'Hai bạn đã thả tim nhau! 💕 Nhưng đối phương đang bật Khóa diện mạo.',
-        );
-      } else {
-        ToastUtil.showSuccess(
-          context,
-          'Cả hai cùng thả tim! Diện mạo đã được mở khóa ✨',
-        );
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null &&
+          widget.user.id.isNotEmpty &&
+          !widget.user.id.startsWith('echo-')) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userToggleLike(widget.user.id)}';
+        final res = await ApiService.post(url, context, token: token);
+        if (res != null && mounted) {
+          final isMutual = res['isMutual'] == true;
+          setState(() {
+            _isMutualFollow = isMutual;
+            if (res['likesReceived'] is num) {
+              _likesCount = (res['likesReceived'] as num).toInt();
+            }
+          });
+          if (isMutual) {
+            ToastUtil.showSuccess(
+              context,
+              '✨ Định mệnh giao thoa! Cả hai đã cùng thả tim! Diện mạo đã được mở khóa.',
+            );
+            return;
+          }
+        }
       }
+    } catch (_) {}
+
+    if (nextState) {
+      ToastUtil.showSuccess(context, 'Đã thả tim kết nối cùng đối phương 💕');
     } else {
       ToastUtil.showInfo(context, 'Đã bỏ thả tim đối phương');
     }
   }
 
-  void _handleSendWave(String displayName) {
+  Future<void> _handleSendWave(String displayName) async {
     HapticFeedback.mediumImpact();
     setState(() => _isWaveSent = true);
     ToastUtil.showSuccess(
       context,
       'Đã phát sóng 432Hz tới $displayName! Tín hiệu đang lan tỏa ✨',
     );
+
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null &&
+          widget.user.id.isNotEmpty &&
+          !widget.user.id.startsWith('echo-')) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userRecordWave(widget.user.id)}';
+        await ApiService.post(url, context, token: token);
+      }
+    } catch (_) {}
+
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) {
         CosmicPulseReceivedModal.show(context, sender: widget.user);

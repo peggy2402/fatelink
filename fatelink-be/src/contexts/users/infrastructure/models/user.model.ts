@@ -86,6 +86,18 @@ export class User {
 
   @Prop({ default: '' })
   desiredVibe!: string;
+
+  @Prop({ default: 0 })
+  likesReceived!: number;
+
+  @Prop({ default: 0 })
+  profileViews!: number;
+
+  @Prop({ default: 0 })
+  wavesReceived!: number;
+
+  @Prop({ type: [String], default: () => [] })
+  likedUsers!: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

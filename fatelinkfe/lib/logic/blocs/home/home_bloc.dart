@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/data/repositories/home_repository.dart';
+import '../../../services/cosmic_widget_service.dart';
 import 'home_event.dart';
 import 'home_state.dart';
 
@@ -20,6 +22,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final users = await homeRepository.fetchRecommendations(
         context: event.context,
       );
+      if (users.isNotEmpty) {
+        unawaited(CosmicWidgetService.instance.updateFromMatchUser(users.first));
+      }
       emit(state.copyWith(status: HomeStatus.loaded, matchedUsers: users));
     } catch (e) {
       emit(
@@ -41,6 +46,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final users = await homeRepository.fetchRecommendations(
         context: event.context,
       );
+      if (users.isNotEmpty) {
+        unawaited(CosmicWidgetService.instance.updateFromMatchUser(users.first));
+      }
       emit(state.copyWith(status: HomeStatus.loaded, matchedUsers: users));
     } catch (e) {
       emit(

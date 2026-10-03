@@ -5,10 +5,12 @@ class SettingsInterfaceBottomSheet extends StatefulWidget {
   const SettingsInterfaceBottomSheet({super.key, required this.currentValue});
 
   @override
-  State<SettingsInterfaceBottomSheet> createState() => _SettingsInterfaceBottomSheetState();
+  State<SettingsInterfaceBottomSheet> createState() =>
+      _SettingsInterfaceBottomSheetState();
 }
 
-class _SettingsInterfaceBottomSheetState extends State<SettingsInterfaceBottomSheet> {
+class _SettingsInterfaceBottomSheetState
+    extends State<SettingsInterfaceBottomSheet> {
   late String _selectedValue;
 
   @override
@@ -20,102 +22,178 @@ class _SettingsInterfaceBottomSheetState extends State<SettingsInterfaceBottomSh
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 20, 24, bottomInset > 0 ? 12 : 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header có nút Đóng
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Giao diện',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // Content: 3 Hình ảnh trên 1 hàng
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildImageOption('Sáng', Icons.light_mode_rounded),
-                  _buildImageOption('Tối', Icons.dark_mode_rounded),
-                  _buildImageOption('Hệ thống', Icons.settings_system_daydream_rounded),
-                ],
-              ),
-              const SizedBox(height: 32),
-              
-              // Nút Xác Nhận
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context, _selectedValue),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  child: const Text('Xác nhận', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 20,
+                offset: Offset(0, -4),
               ),
             ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset > 0 ? 12 : 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Thanh Drag Handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4.5,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+
+                  // Header Tiêu đề & Nút Đóng
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Chủ đề giao diện',
+                        style: TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      IconButton(
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B), size: 22),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3 Card lựa chọn giao diện trực quan
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildImageOption('Sáng', Icons.light_mode_rounded, 'Nền sáng'),
+                      _buildImageOption('Tối', Icons.dark_mode_rounded, 'Cosmic Dark'),
+                      _buildImageOption('Hệ thống', Icons.settings_system_daydream_rounded, 'Tự động'),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Nút Xác Nhận với Gradient Cosmic
+                  Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, _selectedValue),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Xác nhận',
+                        style: TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildImageOption(String title, IconData mockIcon) {
+  Widget _buildImageOption(String title, IconData icon, String subtitle) {
     final isSelected = _selectedValue == title;
-    
+
     return GestureDetector(
       onTap: () => setState(() => _selectedValue = title),
-      child: Column(
-        children: [
-          // Khung giả lập Ảnh (Bạn có thể thay Container này bằng Image.asset)
-          Container(
-            width: 86,
-            height: 130,
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFEEF2FF) : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade300,
-                width: 2,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6366F1).withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.8 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 26,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
               ),
             ),
-            child: Center(child: Icon(mockIcon, size: 40, color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade400)),
-          ),
-          const SizedBox(height: 12),
-          Text(title, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, color: const Color(0xFF1E293B))),
-          const SizedBox(height: 12),
-          // Nút Checkbox Tròn
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: isSelected ? const Color(0xFF4F46E5) : Colors.grey.shade400, width: 2),
-              color: isSelected ? const Color(0xFF4F46E5) : Colors.transparent,
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? const Color(0xFF4338CA) : const Color(0xFF1E293B),
+              ),
             ),
-            child: isSelected ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 11,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

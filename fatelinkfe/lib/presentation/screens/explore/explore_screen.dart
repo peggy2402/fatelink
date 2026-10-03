@@ -286,23 +286,10 @@ class _ExploreScreenState extends State<ExploreScreen>
     }
   }
 
-  /// Tổng hợp danh sách người dùng kết hợp giữa API và Cosmic Echoes
+  /// Tổng hợp danh sách người dùng thực tế từ API Recommendations
   List<MatchUser> _getConsolidatedUsers(List<MatchUser> apiUsers) {
-    final List<MatchUser> list = [];
-
-    // 1. Đưa các user thật từ API lên đầu
-    list.addAll(apiUsers);
-
-    // 2. Nếu danh sách quá ít (< 5), bổ sung các tần số sóng bí ẩn mô phỏng
-    if (list.length < 5) {
-      final existingIds = list.map((u) => u.id).toSet();
-      for (final echo in _fallbackEchoes) {
-        if (!existingIds.contains(echo.id)) {
-          list.add(echo);
-        }
-        if (list.length >= 6) break;
-      }
-    }
+    // Chỉ lấy người dùng thực tế từ Database, loại bỏ hoàn toàn việc tự động chèn mockdata
+    final List<MatchUser> list = List.from(apiUsers);
 
     // 3. Áp dụng bộ lọc chuyên sâu
     var filtered = _filterCriteria.apply(list);

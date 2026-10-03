@@ -448,12 +448,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 16),
                             _buildSoulStatsCard(
-                              likesCount: (data['likesCount'] is num)
-                                  ? (data['likesCount'] as num).toInt()
-                                  : (120 + (userId.hashCode.abs() % 145)),
-                              matchedCount: (data['matchedCount'] is num)
-                                  ? (data['matchedCount'] as num).toInt()
-                                  : (18 + (userId.hashCode.abs() % 35)),
+                              likesCount: (data['likesReceived'] is num)
+                                  ? (data['likesReceived'] as num).toInt()
+                                  : ((data['likesCount'] is num)
+                                      ? (data['likesCount'] as num).toInt()
+                                      : 0),
+                              viewsCount: (data['profileViews'] is num)
+                                  ? (data['profileViews'] as num).toInt()
+                                  : ((data['matchedCount'] is num)
+                                      ? (data['matchedCount'] as num).toInt()
+                                      : 0),
                               frequency: frequency,
                             ),
                             const SizedBox(height: 20),
@@ -815,10 +819,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // A2. Thẻ Chỉ Số Tâm Hồn Cá Nhân (Lượt thả tim, Đã cộng hưởng, Tần số phát)
+  // A2. Thẻ Chỉ Số Tâm Hồn Cá Nhân (Lượt thả tim, Lượt ghé thăm, Tần số phát)
   Widget _buildSoulStatsCard({
     required int likesCount,
-    required int matchedCount,
+    required int viewsCount,
     required String frequency,
   }) {
     return Container(
@@ -876,7 +880,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Container(width: 1, height: 30, color: const Color(0xFFF1F5F9)),
 
-          // 2. Đã cộng hưởng
+          // 2. Lượt ghé thăm hồ sơ (Profile Views thật)
           Expanded(
             child: Column(
               children: [
@@ -884,13 +888,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.sync_alt_rounded,
+                      Icons.visibility_rounded,
                       color: Color(0xFF6366F1),
                       size: 19,
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '$matchedCount',
+                      '$viewsCount',
                       style: const TextStyle(
                         fontFamily: 'BeVietnamPro',
                         fontSize: 17,
@@ -902,7 +906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 3),
                 const Text(
-                  'Đã cộng hưởng',
+                  'Lượt ghé thăm',
                   style: TextStyle(
                     fontFamily: 'BeVietnamPro',
                     fontSize: 11.5,

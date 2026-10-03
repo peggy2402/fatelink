@@ -1,7 +1,7 @@
 class AppConstants {
   // Thay đổi URL tại ĐÂY để áp dụng cho toàn bộ dự án
-  // static const String serverUrl = 'https://fatelink-be.fly.dev';
-  static const String serverUrl = 'http://127.0.0.1:3000'; // iOS Simulator / Web / Desktop
+  static const String serverUrl = 'https://fatelink-be.fly.dev';
+  // static const String serverUrl = 'http://127.0.0.1:3000'; // iOS Simulator / Web / Desktop
   // static const String serverUrl = 'http://192.168.0.213:3000'; // Dành cho iPhone thật trong cùng mạng WiFi
 
   // Nối sẵn /api để dùng cho các request HTTP thông thường
@@ -26,6 +26,12 @@ class AppConstants {
   static const String updateFcmToken = 'users/fcm-token';
   static const String updateUserProfile = 'users/profile';
   static const String uploadImage = 'upload/image';
+  static String userRecordView(String userId) => 'users/$userId/view';
+  static String userToggleLike(String userId) => 'users/$userId/like';
+  static String userRecordWave(String userId) => 'users/$userId/wave';
+  static const String notifications = 'users/notifications';
+  static String markNotificationRead(String id) => 'users/notifications/$id/read';
+  static const String markAllNotificationsRead = 'users/notifications/read-all';
 
   // Điều khoản và dịch vụ, Chính sách v.v
   static const String childSafety = '/child-safety.html';

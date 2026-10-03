@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 
 /// Item một cuộc trò chuyện trong danh sách chat (ChatConversationTile):
-/// - Avatar kèm chấm trạng thái online và badge BOT nếu là AI
-/// - Tên người gửi, tin nhắn cuối cùng thu gọn 1 dòng
-/// - Thời gian tin nhắn và huy hiệu số lượng tin chưa đọc
+/// - Phân loại: Bot AI Faye, Tin nhắn hệ thống FateLink, hoặc Bạn bè thật (User-to-User)
+/// - Avatar linh hoạt: Hỗ trợ URL Network, Asset hoặc Icon hệ thống
+/// - Tên người gửi, tin nhắn cuối cùng thu gọn 1 dòng, thời gian và huy hiệu chưa đọc
 class ChatConversationTile extends StatelessWidget {
   final String name;
-  final String imageUrl;
+  final String? imageUrl;
+  final IconData? systemIcon;
   final String lastMessage;
   final String time;
   final int unreadCount;
   final bool isBot;
+  final bool isSystem;
   final VoidCallback onTap;
 
   const ChatConversationTile({
     super.key,
     required this.name,
-    required this.imageUrl,
+    this.imageUrl,
+    this.systemIcon,
     required this.lastMessage,
     required this.time,
     this.unreadCount = 0,
     this.isBot = false,
+    this.isSystem = false,
     required this.onTap,
   });
 
@@ -32,12 +36,12 @@ class ChatConversationTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: hasUnread
-            ? const Color(0xFF00E5FF).withValues(alpha: 0.05)
+            ? const Color(0xFF6366F1).withValues(alpha: 0.04)
             : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Avatar
+            // Avatar / Icon
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -47,31 +51,36 @@ class ChatConversationTile extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: isBot
                         ? const LinearGradient(
-                            colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                            colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    border: isBot ? null : Border.all(color: Colors.grey.shade300),
+                    border: isBot
+                        ? null
+                        : Border.all(
+                            color: isSystem
+                                ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                                : const Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
                   ),
-                  child: CircleAvatar(
-                    radius: 26,
-                    backgroundImage: AssetImage(imageUrl),
-                  ),
+                  child: _buildAvatarContent(),
                 ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00FFB2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                if (!isSystem)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
                     ),
                   ),
-                ),
                 if (isBot)
                   Positioned(
                     top: -2,
@@ -80,7 +89,7 @@ class ChatConversationTile extends StatelessWidget {
                       width: 18,
                       height: 18,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF9C27B0),
+                        color: Color(0xFF8B5CF6),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -105,9 +114,10 @@ class ChatConversationTile extends StatelessWidget {
                         child: Text(
                           name,
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
-                            color: Colors.grey.shade900,
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 15.5,
+                            fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w600,
+                            color: const Color(0xFF0F172A),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -118,17 +128,34 @@ class ChatConversationTile extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)],
-                            ),
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'BOT',
+                            'AI BOT',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                              fontFamily: 'BeVietnamPro',
+                              color: Color(0xFF4F46E5),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ] else if (isSystem) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'HỆ THỐNG',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              color: Color(0xFF059669),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
@@ -138,53 +165,48 @@ class ChatConversationTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     lastMessage,
+                    style: TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 13,
+                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                      color: hasUnread ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
-                      color: hasUnread ? Colors.grey.shade900 : Colors.grey.shade600,
-                    ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
 
-            // Thời gian & Huy hiệu tin chưa đọc
+            // Thời gian & Badge Chưa đọc
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   time,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: hasUnread ? const Color(0xFFFF2A6D) : Colors.grey.shade500,
-                    fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 11.5,
+                    color: hasUnread ? const Color(0xFF6366F1) : const Color(0xFF94A3B8),
+                    fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 6),
                 if (hasUnread)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF2A6D), Color(0xFFFF5E97)],
-                      ),
+                      color: const Color(0xFFEC4899),
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF2A6D).withValues(alpha: 0.4),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Text(
-                      unreadCount > 9 ? '9+' : unreadCount.toString(),
+                      unreadCount > 9 ? '9+' : '$unreadCount',
                       style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
                         color: Colors.white,
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   )
@@ -193,6 +215,51 @@ class ChatConversationTile extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarContent() {
+    if (isSystem) {
+      return CircleAvatar(
+        radius: 26,
+        backgroundColor: const Color(0xFFEEF2FF),
+        child: Icon(
+          systemIcon ?? Icons.notifications_active_rounded,
+          color: const Color(0xFF6366F1),
+          size: 26,
+        ),
+      );
+    }
+
+    final url = imageUrl;
+    if (url != null && (url.startsWith('http://') || url.startsWith('https://'))) {
+      return CircleAvatar(
+        radius: 26,
+        backgroundColor: const Color(0xFFF1F5F9),
+        backgroundImage: NetworkImage(url),
+      );
+    }
+
+    if (url != null && url.isNotEmpty) {
+      return CircleAvatar(
+        radius: 26,
+        backgroundColor: const Color(0xFFF1F5F9),
+        backgroundImage: AssetImage(url),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 26,
+      backgroundColor: const Color(0xFFEEF2FF),
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontFamily: 'BeVietnamPro',
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF4F46E5),
         ),
       ),
     );

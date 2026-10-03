@@ -335,6 +335,37 @@ class ApiService {
     }
   }
 
+  // Phương thức PATCH dùng chung
+  static Future<dynamic> patch(
+    String url,
+    BuildContext context, {
+    String? token,
+    Object? body,
+    bool showLoading = false,
+  }) async {
+    if (showLoading) _showLoadingDialog(context);
+    try {
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      final response = await _sendWithRefresh((activeToken) {
+        final nextHeaders = Map<String, String>.from(headers);
+        if (activeToken != null) {
+          nextHeaders['Authorization'] = 'Bearer $activeToken';
+        }
+        return http.patch(
+          Uri.parse(url),
+          headers: nextHeaders,
+          body: jsonEncode(body),
+        );
+      }, context, token: token);
+      if (!context.mounted) {
+        return _handleResponseWithoutContext(response);
+      }
+      return _handleResponse(response, context);
+    } finally {
+      if (showLoading && context.mounted) _hideLoadingDialog(context);
+    }
+  }
+
   // Phương thức DELETE dùng chung
   static Future<dynamic> delete(
     String url,
