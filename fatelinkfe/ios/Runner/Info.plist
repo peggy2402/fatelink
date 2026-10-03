@@ -89,5 +89,29 @@
 		<string>zaloshareext</string>
 	</array>
 
+	<!-- Quyền Vị trí (Location) để tính khoảng cách và tìm người ở gần -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Meyu cần quyền truy cập vị trí để tìm kiếm những người bạn đồng điệu ở gần bạn.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Meyu cần quyền truy cập vị trí để cập nhật khoảng cách kết nối khi bạn di chuyển.</string>
+
+	<!-- Quyền Camera & Ảnh để quét mã QR và đăng tải hình ảnh -->
+	<key>NSCameraUsageDescription</key>
+	<string>Meyu cần quyền truy cập camera để quét mã QR kết nối bạn bè.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Meyu cần quyền truy cập thư viện ảnh để bạn chọn và tải lên ảnh đại diện hoặc khoảnh khắc.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Meyu cần quyền lưu ảnh vào thư viện khi bạn lưu mã QR hoặc ảnh kết nối.</string>
+
+	<!-- Quyền Micro cho tin nhắn thoại -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Meyu cần quyền truy cập micro để bạn ghi âm và gửi tin nhắn thoại.</string>
+
+	<!-- Thông báo nền & Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

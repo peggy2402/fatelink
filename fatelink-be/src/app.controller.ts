@@ -14,7 +14,7 @@ export class AppController {
     description: 'Trả về câu chào để xác nhận Server đang hoạt động.',
   })
   getHello(): string {
-    return 'Meyu API is running';
+    return 'Fatelink API is running';
   }
 
   @Get('.well-known/assetlinks.json')

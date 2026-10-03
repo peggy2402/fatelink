@@ -1,9 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart';
 import '../../../core/utils/toast_utils.dart';
 import '../../../core/responsive/responsive.dart';
+import '../../../core/utils/anonymous_avatar_helper.dart';
+import '../../widgets/cosmic_pulse_received_modal.dart';
+import '../../../core/services/image_picker_service.dart';
+import '../../../data/models/vibe_photo_item.dart';
 
 class UserDetailScreen extends StatefulWidget {
   final MatchUser user;
@@ -17,6 +22,8 @@ class UserDetailScreen extends StatefulWidget {
 class _UserDetailScreenState extends State<UserDetailScreen> {
   late bool _isFollowing;
   late bool _isMutualFollow;
+  late int _likesCount;
+  bool _isWaveSent = false;
 
   // Danh sách ảnh Vibe khoảnh khắc mặc định nếu user chưa có
   static const List<String> defaultVibePhotos = [
@@ -30,16 +37,23 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     super.initState();
     _isFollowing = widget.user.isMutualFollow;
     _isMutualFollow = widget.user.isMutualFollow;
+    _likesCount = widget.user.resolvedLikesCount;
   }
 
   // Điều kiện hiển thị diện mạo: Cả 2 phải follow nhau VÀ đối phương không bật Khóa diện mạo
   bool get canViewIdentity => _isMutualFollow && !widget.user.isFaceLocked;
 
   void _toggleFollow() {
+    HapticFeedback.lightImpact();
     setState(() {
       _isFollowing = !_isFollowing;
       // Mô phỏng phản hồi từ cộng đồng: khi bạn thả tim, 2 người cùng kết nối nhau!
       _isMutualFollow = _isFollowing;
+      if (_isFollowing) {
+        _likesCount += 1;
+      } else {
+        _likesCount = (_likesCount > 0) ? _likesCount - 1 : 0;
+      }
     });
 
     if (_isMutualFollow) {
@@ -57,6 +71,20 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     } else {
       ToastUtil.showInfo(context, 'Đã bỏ thả tim đối phương');
     }
+  }
+
+  void _handleSendWave(String displayName) {
+    HapticFeedback.mediumImpact();
+    setState(() => _isWaveSent = true);
+    ToastUtil.showSuccess(
+      context,
+      'Đã phát sóng 432Hz tới $displayName! Tín hiệu đang lan tỏa ✨',
+    );
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        CosmicPulseReceivedModal.show(context, sender: widget.user);
+      }
+    });
   }
 
   @override
@@ -77,17 +105,13 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         ? widget.user.vibePhotos!
         : defaultVibePhotos;
 
-    final soulId = widget.user.id.isNotEmpty && widget.user.id.length >= 4
-        ? widget.user.id.substring(widget.user.id.length - 4).toUpperCase()
-        : 'SOUL';
-
-    final displayName = canViewIdentity ? widget.user.name : 'Tâm hồn #$soulId';
+    final displayName = canViewIdentity ? widget.user.name : widget.user.anonymousName;
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // Background ambient gradient
+          // Background ambient gradient mượt mà (Không dùng BackdropFilter tràn viền gây vệt vuông)
           Positioned(
             top: -80,
             right: -80,
@@ -96,7 +120,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFEC4899).withValues(alpha: 0.15),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFEC4899).withValues(alpha: 0.15),
+                    const Color(0xFFEC4899).withValues(alpha: 0.0),
+                  ],
+                ),
               ),
             ),
           ),
@@ -108,14 +137,13 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryColor.withValues(alpha: 0.12),
+                gradient: RadialGradient(
+                  colors: [
+                    primaryColor.withValues(alpha: 0.12),
+                    primaryColor.withValues(alpha: 0.0),
+                  ],
+                ),
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-              child: const SizedBox(),
             ),
           ),
 
@@ -206,9 +234,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
+                                      color: const Color(0xFF6366F1).withValues(alpha: 0.16),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
                                     ),
                                   ],
                                 ),
@@ -216,8 +244,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      Image.network(
-                                        avatarUrl,
+                                      Image(
+                                        image: canViewIdentity
+                                            ? NetworkImage(avatarUrl) as ImageProvider
+                                            : AssetImage(AnonymousAvatarHelper.getAnonymousAvatarAsset(widget.user.id)),
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) => const CircleAvatar(
                                           radius: 60,
@@ -225,25 +255,30 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                           child: Icon(Icons.person_rounded, color: Color(0xFF6366F1), size: 60),
                                         ),
                                       ),
-                                      // Lớp phủ Kính mờ (Blur) nếu chưa mở diện mạo
+                                      // Lớp phủ Kính mờ nhẹ + Huy hiệu Linh vật ẩn danh nếu chưa mở diện mạo
                                       if (!canViewIdentity)
-                                        BackdropFilter(
-                                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                                          child: Container(
-                                            color: Colors.black.withValues(alpha: 0.35),
-                                            child: const Center(
-                                              child: Column(
+                                        Container(
+                                          color: Colors.black.withValues(alpha: 0.18),
+                                          child: Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(alpha: 0.6),
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                              ),
+                                              child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.lock_rounded, color: Colors.white, size: 30),
-                                                  SizedBox(height: 2),
+                                                  const Icon(Icons.lock_rounded, color: Colors.white, size: 13),
+                                                  const SizedBox(width: 4),
                                                   Text(
-                                                    'Ẩn danh',
-                                                    style: TextStyle(
+                                                    AnonymousAvatarHelper.getAnonymousPersonaName(widget.user.id),
+                                                    style: const TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w800,
-                                                      letterSpacing: 0.5,
+                                                      fontSize: 10.5,
+                                                      fontWeight: FontWeight.w700,
+                                                      letterSpacing: 0.2,
                                                     ),
                                                   ),
                                                 ],
@@ -400,7 +435,144 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                           }).toList(),
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 20),
+
+                        // --- THẺ CHỈ SỐ TÂM HỒN (SỐ LƯỢT TIM, HÒA HỢP, TẦN SỐ) ---
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6366F1).withValues(alpha: 0.05),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              // 1. Số lượt tim
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          _isFollowing ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                          color: const Color(0xFFEC4899),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          '$_likesCount',
+                                          style: const TextStyle(
+                                            fontFamily: 'BeVietnamPro',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    const Text(
+                                      'Lượt thả tim',
+                                      style: TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 11,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(width: 1, height: 28, color: const Color(0xFFF1F5F9)),
+
+                              // 2. Độ tương hợp
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.auto_awesome_rounded,
+                                          color: Color(0xFF6366F1),
+                                          size: 17,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${widget.user.compatibilityScore}%',
+                                          style: const TextStyle(
+                                            fontFamily: 'BeVietnamPro',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    const Text(
+                                      'Độ hòa hợp',
+                                      style: TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 11,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(width: 1, height: 28, color: const Color(0xFFF1F5F9)),
+
+                              // 3. Tần số kết nối
+                              const Expanded(
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.bolt_rounded,
+                                          color: Color(0xFF10B981),
+                                          size: 19,
+                                        ),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          '432 Hz',
+                                          style: TextStyle(
+                                            fontFamily: 'BeVietnamPro',
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 3),
+                                    Text(
+                                      'Tần số sóng',
+                                      style: TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 11,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
                         // Soul Compatibility Card (Điểm tương thích nổi bật)
                         Container(
@@ -555,7 +727,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 ),
                 const SizedBox(width: 12),
 
-                // Nút Bắt đầu trò chuyện
+                // Nút Hành Động Chính: "Trò chuyện ngay" (nếu đã kết nối) HOẶC "Gửi sóng 432Hz" (nếu chưa kết nối)
                 Expanded(
                   child: Container(
                     height: 56,
@@ -563,7 +735,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.35),
+                          color: (_isMutualFollow
+                                  ? const Color(0xFF6366F1)
+                                  : (_isWaveSent ? const Color(0xFF10B981) : const Color(0xFFEC4899)))
+                              .withValues(alpha: 0.35),
                           blurRadius: 18,
                           offset: const Offset(0, 6),
                         ),
@@ -571,34 +746,48 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                     ),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => MatchChatScreen(
-                              partnerName: displayName,
-                              partnerId: widget.user.id,
+                        if (_isMutualFollow) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => MatchChatScreen(
+                                partnerName: displayName,
+                                partnerId: widget.user.id,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          _handleSendWave(displayName);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
+                        backgroundColor: _isMutualFollow
+                            ? const Color(0xFF6366F1)
+                            : (_isWaveSent ? const Color(0xFF10B981) : const Color(0xFFEC4899)),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                         elevation: 0,
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.chat_bubble_rounded, size: 20),
-                          SizedBox(width: 8),
+                          Icon(
+                            _isMutualFollow
+                                ? Icons.chat_bubble_rounded
+                                : (_isWaveSent ? Icons.check_circle_rounded : Icons.bolt_rounded),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'Bắt đầu trò chuyện',
+                              _isMutualFollow
+                                  ? 'Trò chuyện ngay'
+                                  : (_isWaveSent ? 'Đã phát sóng 432Hz' : 'Gửi sóng 432Hz'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: const TextStyle(
+                                fontFamily: 'BeVietnamPro',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -679,7 +868,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             physics: const BouncingScrollPhysics(),
             itemCount: photos.length,
             itemBuilder: (context, index) {
-              final photoUrl = photos[index];
+              final raw = photos[index];
+              final item = VibePhotoItem.fromRaw(raw);
               return Container(
                 width: 105,
                 margin: const EdgeInsets.only(right: 12),
@@ -698,14 +888,49 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        photoUrl,
+                      Image(
+                        image: ImagePickerService.getImageProvider(item.imageUrl),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: const Color(0xFFE2E8F0),
                           child: const Icon(Icons.image_not_supported_rounded, color: Color(0xFF94A3B8)),
                         ),
                       ),
+                      // Huy hiệu thời gian tự hủy góc dưới (nếu đã mở diện mạo)
+                      if (canViewIdentity && !item.isExpired)
+                        Positioned(
+                          bottom: 6,
+                          left: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.timer_outlined, color: Colors.white, size: 10),
+                                const SizedBox(width: 3),
+                                Flexible(
+                                  child: Text(
+                                    item.remainingTimeFormatted,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       // Lớp Kính Mờ Blur nếu diện mạo bị khóa
                       if (!canViewIdentity)
                         BackdropFilter(

@@ -1,17 +1,26 @@
-import 'package:fatelinkfe/core/utils/constants.dart';
-import 'package:fatelinkfe/core/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
-import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
-import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
-import 'package:fatelinkfe/presentation/widgets/typing_indicator.dart';
-import 'package:fatelinkfe/services/api_service.dart';
+import 'package:flutter/services.dart';
 
+import '../../../core/utils/constants.dart';
+import '../../../core/utils/secure_storage_helper.dart';
+import '../../../core/utils/toast_utils.dart';
+import '../../../data/models/chat_message.dart';
+import '../../../presentation/widgets/chat_input_bar.dart';
+import '../../../presentation/widgets/typing_indicator.dart';
+import '../../../services/api_service.dart';
+
+// Components tách rời sạch sẽ
+import 'widgets/match_ai_suggestion_sheet.dart';
+import 'widgets/match_options_bottom_sheet.dart';
+
+/// Màn hình trò chuyện giữa 2 người dùng đã ghép đôi (MatchChatScreen):
+/// - Giao diện Cosmic Dark sang trọng, đồng bộ với chủ đề định mệnh của FateLink
+/// - Bố cục Column chuẩn mực: ChatInputBar luôn cố định ở đáy, không bao giờ bị nhảy lên giữa
+/// - Tắt hoàn toàn hàng chip bot Faye AI, hiển thị đúng hintText cho người đối diện
+/// - Nút gợi ý câu mở lời từ Faye AI (AutoAwesome) thông minh
 class MatchChatScreen extends StatefulWidget {
   final String partnerName;
-  final String partnerId; // Bổ sung ID của partner
+  final String partnerId;
 
   const MatchChatScreen({
     super.key,
@@ -27,8 +36,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final _secureStorage = SecureStorageHelper.storage;
-  bool _isPartnerTyping = false; // Trạng thái đối phương đang gõ
-  // TODO: Khai báo List<ChatMessage> _messages = []; giống hệt bên ChatScreen
+
+  bool _isPartnerTyping = false;
+  final List<ChatMessage> _messages = [];
   bool _isNearBottom = true;
   int _unreadCount = 0;
 
@@ -36,16 +46,23 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+
+    // Tin nhắn mở đầu từ hệ thống/đối phương
+    _messages.add(
+      ChatMessage(
+        text: 'Xin chào! Rất vui vì định mệnh đã kết nối chúng ta hôm nay ✨',
+        isSentByMe: false,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   void _scrollListener() {
     if (!_scrollController.hasClients) return;
-    
+
     final isNearBottom = _scrollController.offset <= 100.0;
     if (_isNearBottom != isNearBottom) {
-      setState(() {
-        _isNearBottom = isNearBottom;
-      });
+      setState(() => _isNearBottom = isNearBottom);
     }
     if (isNearBottom && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
@@ -54,7 +71,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(0.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -69,14 +90,13 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   Future<void> _handleUnmatch() async {
     try {
       final token = await _secureStorage.read(key: 'accessToken');
+      if (!mounted) return;
       final url = '${AppConstants.baseUrl}/matches/${widget.partnerId}/unmatch';
 
-      // Gọi API với cờ showLoading: true, hệ thống sẽ tự động hiện Spinner và tự tắt
       await ApiService.delete(url, context, token: token, showLoading: true);
 
       if (!mounted) return;
       ToastUtil.showSuccess(context, 'Đã hủy ghép đôi thành công');
-      // Trở về màn hình trước (MatchesScreen) và trả về "true" để yêu cầu reload danh sách
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -84,284 +104,276 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
-  void _showOptionsBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF001520),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(
-                  Icons.report_problem_outlined,
-                  color: Colors.orange,
-                ),
-                title: const Text(
-                  'Báo cáo người dùng',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Gọi API Report User
-                  ToastUtil.showSuccess(context, 'Đã gửi báo cáo thành công ✨');
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.person_remove_outlined,
-                  color: Colors.redAccent,
-                ),
-                title: const Text(
-                  'Hủy ghép đôi (Unmatch)',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-                onTap: () {
-                  Navigator.pop(context); // Đóng BottomSheet
-                  // Thực thi logic gọi API
-                  _handleUnmatch();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _onAiSuggestionTap() {
-    // Hiển thị BottomSheet gợi ý câu chat từ AI
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF001520),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundImage: AssetImage(
-                      'assets/images/avt_faye_ai.png',
-                    ),
-                    radius: 16,
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Faye gợi ý mở lời:',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildSuggestionChip(
-                'Chào cậu, hôm nay của cậu có mệt lắm không?',
-              ),
-              _buildSuggestionChip(
-                'Faye bảo tần số của mình khá hợp nhau, cậu có thích ngắm mưa không?',
-              ),
-              _buildSuggestionChip(
-                'Hi ${widget.partnerName}, cậu có đang nghe bài hát nào hay không share mình với?',
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSuggestionChip(String text) {
-    return GestureDetector(
-      onTap: () {
-        _chatController.text = text;
+  void _showOptionsModal() {
+    MatchOptionsBottomSheet.show(
+      context,
+      onReport: () {
         Navigator.pop(context);
+        ToastUtil.showSuccess(context, 'Đã gửi báo cáo thành công ✨');
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1E88E5).withOpacity(0.3)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
-        ),
-      ),
+      onUnmatch: () {
+        Navigator.pop(context);
+        _handleUnmatch();
+      },
     );
   }
 
-  // Widget hiển thị bong bóng chat "Đang gõ..."
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const CircleAvatar(
-            backgroundImage: AssetImage('assets/images/default_avatar.png'),
-            radius: 16,
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                bottomLeft: Radius.circular(4),
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
-            ),
-            child: const TypingIndicator(),
-          ),
-        ],
-      ),
+  void _showAiSuggestionModal() {
+    MatchAiSuggestionSheet.show(
+      context,
+      partnerName: widget.partnerName,
+      onSelectSuggestion: (text) {
+        _chatController.text = text;
+      },
     );
+  }
+
+  void _handleSendMessage(String text) {
+    if (text.trim().isEmpty) return;
+    HapticFeedback.lightImpact();
+
+    setState(() {
+      _messages.insert(
+        0,
+        ChatMessage(
+          text: text.trim(),
+          isSentByMe: true,
+          timestamp: DateTime.now(),
+        ),
+      );
+    });
+
+    _chatController.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+    // Giả lập phản hồi từ đối phương sau 2.5s
+    _simulatePartnerReply();
+  }
+
+  void _simulatePartnerReply() {
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      setState(() => _isPartnerTyping = true);
+
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (!mounted) return;
+        setState(() {
+          _isPartnerTyping = false;
+          _messages.insert(
+            0,
+            ChatMessage(
+              text: 'Cảm ơn tin nhắn của bạn nhé! Mình vừa đọc được rồi nè ❤️',
+              isSentByMe: false,
+              timestamp: DateTime.now(),
+            ),
+          );
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF001520),
+      backgroundColor: const Color(0xFF070B18),
       appBar: AppBar(
-        backgroundColor: Colors.white.withOpacity(0.05),
+        backgroundColor: const Color(0xFF0E1326),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          widget.partnerName,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.partnerName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Row(
+              children: [
+                Icon(Icons.circle, color: Color(0xFF00FFB2), size: 8),
+                SizedBox(width: 4),
+                Text(
+                  'Đang trực tuyến',
+                  style: TextStyle(color: Color(0xFF00FFB2), fontSize: 11),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
+          // Nút AI gợi ý mở lời thông minh
           IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showOptionsBottomSheet,
+            tooltip: 'Faye AI gợi ý câu mở lời',
+            icon: const Icon(Icons.auto_awesome, color: Color(0xFF00F0FF), size: 22),
+            onPressed: _showAiSuggestionModal,
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white70),
+            onPressed: _showOptionsModal,
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Khung hiển thị tin nhắn và Typing Indicator
-          Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  reverse: true, // Dùng list ngược để luôn dính đáy
-                  // padding bottom 90 để không bị ChatInputBar che khuất
-                  padding: const EdgeInsets.only(top: 120.0, bottom: 90.0),
-                  itemCount: _isPartnerTyping
-                      ? 1
-                      : 0, // Cần cộng thêm _messages.length sau này
-                  itemBuilder: (context, index) {
-                    if (_isPartnerTyping) {
-                      if (index == 0) return _buildTypingIndicator();
-                      // return _buildMessageBubble(_messages[_messages.length - index]);
-                    }
-                    return const SizedBox.shrink(); // return _buildMessageBubble(_messages[_messages.length - 1 - index]);
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // Nút cuộn xuống dưới cùng / Báo tin nhắn chưa đọc
-          if (!_isNearBottom)
-            Positioned(
-              right: 16,
-              bottom: 90, // Trên ChatInputBar một chút
-              child: GestureDetector(
-                onTap: () {
-                  _scrollToBottom();
-                  setState(() => _unreadCount = 0);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))
-                    ],
+      // Bố cục Column chuẩn mực: Đảm bảo ChatInputBar LUÔN bám sát foot điện thoại
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Khung hiển thị tin nhắn và Typing Indicator
+            Expanded(
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    itemCount: _messages.length + (_isPartnerTyping ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (_isPartnerTyping) {
+                        if (index == 0) return _buildTypingIndicator();
+                        return _buildMessageBubble(_messages[index - 1]);
+                      }
+                      return _buildMessageBubble(_messages[index]);
+                    },
                   ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 28),
-                      if (_unreadCount > 0)
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFF3B30),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(_unreadCount > 9 ? '9+' : '$_unreadCount',
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+
+                  // Nút cuộn xuống dưới cùng khi có tin nhắn mới
+                  if (!_isNearBottom)
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: GestureDetector(
+                        onTap: () {
+                          _scrollToBottom();
+                          setState(() => _unreadCount = 0);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161B30),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        )
-                    ],
-                  ),
-                ),
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
 
-          // Chat Input Bar ở dưới cùng
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: ChatInputBar(
+            // Thanh ChatInputBar chuẩn tối, không có chips bot Faye AI
+            ChatInputBar(
               controller: _chatController,
-              onSubmitted: (text) {
-                if (text.trim().isNotEmpty) {
-                  // TODO: Implement logic to send message via socket
-                  _chatController.clear();
-                  // Bắt buộc cuộn xuống khi chính user chủ động gửi tin
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _scrollToBottom();
-                  });
-                }
-              },
+              showQuickChips: false, // TẮT CHIPS BOT FAYE AI
+              isDark: true,          // THEME TỐI ĐỒNG BỘ
+              hintText: 'Nhắn tin cho ${widget.partnerName}...',
+              onSubmitted: _handleSendMessage,
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Nút AI Bong bóng trôi nổi
-          FloatingAiBubble(
-            onTap: _onAiSuggestionTap,
-            hasNotification: true, // Chấm đỏ để user biết có thể bấm vào nhờ AI
+  Widget _buildMessageBubble(ChatMessage msg) {
+    final isMe = msg.isSentByMe;
+    final timeString =
+        "${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}";
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.74,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: isMe
+                    ? const LinearGradient(
+                        colors: [Color(0xFFFF2A6D), Color(0xFFFF5E97)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF1E2640), Color(0xFF161C30)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+                  bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
+                ),
+                border: isMe
+                    ? null
+                    : Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                msg.text,
+                style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                timeString,
+                style: const TextStyle(color: Colors.white38, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161C30),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(18),
+              topRight: Radius.circular(18),
+              bottomLeft: Radius.circular(4),
+              bottomRight: Radius.circular(18),
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-        ],
+          child: const TypingIndicator(),
+        ),
       ),
     );
   }

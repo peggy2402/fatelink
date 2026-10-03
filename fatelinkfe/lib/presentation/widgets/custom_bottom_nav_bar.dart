@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../core/responsive/responsive.dart';
+import '../../core/services/image_picker_service.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -210,8 +211,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                         ),
                       ),
                       child: ClipOval(
-                        child: Image.network(
-                          widget.avatarUrl!,
+                        child: Image(
+                          image: ImagePickerService.getImageProvider(widget.avatarUrl!),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Icon(
                             isSelected ? selectedIcon : unselectedIcon,

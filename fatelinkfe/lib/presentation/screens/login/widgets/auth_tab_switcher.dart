@@ -78,7 +78,7 @@ class AuthTabSwitcher extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: isLogin ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: isLogin ? FontWeight.w700 : FontWeight.w500,
                             color: isLogin ? Colors.white : const Color(0xFF64748B),
                           ),
                         ),
@@ -136,7 +136,7 @@ class AuthTabSwitcher extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: !isLogin ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: !isLogin ? FontWeight.w700 : FontWeight.w500,
                             color: !isLogin ? Colors.white : const Color(0xFF64748B),
                           ),
                         ),

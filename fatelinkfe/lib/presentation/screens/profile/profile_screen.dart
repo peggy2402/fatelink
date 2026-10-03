@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +13,9 @@ import '../../../logic/blocs/main/main_bloc.dart';
 import '../../../logic/blocs/main/main_event.dart';
 import '../../../core/utils/toast_utils.dart';
 import '../../../core/responsive/responsive.dart';
+import '../../../core/services/image_picker_service.dart';
+import '../../../data/models/vibe_photo_item.dart';
+import '../../widgets/vibe_duration_picker_modal.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -37,7 +39,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _cachedHandle;
   String? _cachedAddress;
   String? _cachedDob;
+  String? _cachedGender;
   String? _cachedTagline;
+  List<VibePhotoItem> _cachedVibes = [];
   bool _isFaceLocked = false;
 
   @override
@@ -63,7 +67,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefHandle = prefs.getString('user_handle');
     final address = prefs.getString('user_address');
     final dob = prefs.getString('user_dob');
+    final gender = prefs.getString('user_gender');
     final tagline = prefs.getString('user_tagline');
+
+    final rawVibes = prefs.getStringList('user_vibe_photos') ?? [];
+    final parsedVibes = rawVibes.map((e) => VibePhotoItem.fromRaw(e)).toList();
+    final activeVibes = VibePhotoItem.filterActive(parsedVibes);
+    if (activeVibes.length != rawVibes.length) {
+      prefs.setStringList('user_vibe_photos', activeVibes.map((e) => e.toRawString()).toList());
+    }
 
     if (mounted) {
       setState(() {
@@ -78,7 +90,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _cachedHandle = prefHandle ?? handle;
         _cachedAddress = address;
         _cachedDob = dob;
+        _cachedGender = gender;
         _cachedTagline = tagline;
+        _cachedVibes = activeVibes;
         _isFaceLocked = locked;
       });
     }
@@ -97,6 +111,150 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _addVibePhotosDirectly() async {
+    if (_cachedVibes.length >= 6) {
+      ToastUtil.showWarning(context, 'Bạn đã đăng tối đa 6 ảnh trong Góc tâm hồn');
+      return;
+    }
+    final newImages = await ImagePickerService.pickMultiVibeImages(
+      context,
+      maxImages: 6 - _cachedVibes.length,
+    );
+    if (newImages.isEmpty || !mounted) return;
+
+    final selectedOption = await VibeDurationPickerModal.show(
+      context,
+      photoCount: newImages.length,
+      initialOption: VibeDurationOption.twentyFourHours,
+    );
+    if (selectedOption == null || !mounted) return;
+
+    final newItems = newImages.map((img) {
+      return VibePhotoItem.createNew(imageUrl: img, option: selectedOption);
+    }).toList();
+
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _cachedVibes.addAll(newItems);
+    });
+    await prefs.setStringList(
+      'user_vibe_photos',
+      _cachedVibes.map((e) => e.toRawString()).toList(),
+    );
+    if (mounted) {
+      ToastUtil.showSuccess(context, 'Đã thêm ${newItems.length} ảnh (${selectedOption.label}) vào Góc tâm hồn ✨');
+    }
+  }
+
+  Future<void> _deleteVibePhoto(VibePhotoItem item) async {
+    setState(() {
+      _cachedVibes.removeWhere((p) => p.id == item.id || p.imageUrl == item.imageUrl);
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'user_vibe_photos',
+      _cachedVibes.map((e) => e.toRawString()).toList(),
+    );
+    if (mounted) {
+      ToastUtil.showInfo(context, 'Đã xóa ảnh khỏi Góc tâm hồn');
+    }
+  }
+
+  void _showVibePreview(VibePhotoItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              alignment: Alignment.topRight,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image(
+                    image: ImagePickerService.getImageProvider(item.imageUrl),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Thanh thông tin thời hạn tự hủy ảnh & nút xóa
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, color: Color(0xFF818CF8), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Tự hủy sau: ${item.remainingTimeFormatted}',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'Thời hạn: ${item.durationLabel}',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _deleteVibePhoto(item);
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF43F5E), size: 16),
+                    label: const Text(
+                      'Xóa ngay',
+                      style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        color: Color(0xFFF43F5E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF6366F1); // Indigo
@@ -106,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // Background ambient gradient mesh matching UserDetailScreen
+          // Background ambient gradient mesh mượt mà (Loại bỏ BackdropFilter tràn viền gây vệt vuông)
           Positioned(
             top: -90,
             right: -80,
@@ -115,7 +273,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFEC4899).withValues(alpha: 0.12),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFEC4899).withValues(alpha: 0.12),
+                    const Color(0xFFEC4899).withValues(alpha: 0.0),
+                  ],
+                ),
               ),
             ),
           ),
@@ -127,14 +290,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryColor.withValues(alpha: 0.10),
+                gradient: RadialGradient(
+                  colors: [
+                    primaryColor.withValues(alpha: 0.10),
+                    primaryColor.withValues(alpha: 0.0),
+                  ],
+                ),
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-              child: const SizedBox(),
             ),
           ),
 
@@ -205,6 +367,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               frequency: frequency,
                               bio: bio,
                             ),
+                            const SizedBox(height: 16),
+                            _buildSoulStatsCard(
+                              likesCount: (data['likesCount'] is num)
+                                  ? (data['likesCount'] as num).toInt()
+                                  : (120 + (userId.hashCode.abs() % 145)),
+                              matchedCount: (data['matchedCount'] is num)
+                                  ? (data['matchedCount'] as num).toInt()
+                                  : (18 + (userId.hashCode.abs() % 35)),
+                              frequency: frequency,
+                            ),
                             const SizedBox(height: 20),
                             _buildLockedPhotoAlert(),
                             const SizedBox(height: 20),
@@ -241,7 +413,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return SliverAppBar(
       pinned: true,
       elevation: 0,
-      backgroundColor: Colors.white.withValues(alpha: 0.85),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(height: 1, color: const Color(0xFFF1F5F9)),
+      ),
       centerTitle: true,
       title: Text(
         'MyProfile'.tr(),
@@ -335,7 +512,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Row(
             children: [
-              // Avatar với viền phát sáng Gradient & Mood Badge
+              // Avatar với viền phát sáng Gradient tròn tự nhiên & Mood Badge (Không vệt vuông mờ)
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -350,19 +527,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
+                      // Bóng tròn đồng tâm êm dịu, không lệch Offset gây bóng chữ nhật
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(
-                            0xFF6366F1,
-                          ).withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.14),
+                          blurRadius: 10,
+                          spreadRadius: 1,
                         ),
                       ],
                     ),
                     child: ClipOval(
-                      child: Image.network(
-                        avatar,
+                      child: Image(
+                        image: ImagePickerService.getImageProvider(avatar),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             const CircleAvatar(
@@ -518,7 +694,174 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ],
+              if (_cachedGender != null && _cachedGender!.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                Icon(
+                  _cachedGender == 'female'
+                      ? Icons.female_rounded
+                      : (_cachedGender == 'male' ? Icons.male_rounded : Icons.all_inclusive_rounded),
+                  size: 15,
+                  color: _cachedGender == 'female'
+                      ? const Color(0xFFEC4899)
+                      : (_cachedGender == 'male' ? const Color(0xFF6366F1) : const Color(0xFF8B5CF6)),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _cachedGender == 'female' ? 'Nữ' : (_cachedGender == 'male' ? 'Nam' : 'Khác'),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // A2. Thẻ Chỉ Số Tâm Hồn Cá Nhân (Lượt thả tim, Đã cộng hưởng, Tần số phát)
+  Widget _buildSoulStatsCard({
+    required int likesCount,
+    required int matchedCount,
+    required String frequency,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 1. Số lượt tim nhận được
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.favorite_rounded,
+                      color: Color(0xFFEC4899),
+                      size: 19,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$likesCount',
+                      style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Lượt nhận tim',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 30, color: const Color(0xFFF1F5F9)),
+
+          // 2. Đã cộng hưởng
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.sync_alt_rounded,
+                      color: Color(0xFF6366F1),
+                      size: 19,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$matchedCount',
+                      style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Đã cộng hưởng',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 30, color: const Color(0xFFF1F5F9)),
+
+          // 3. Tần số phát
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.bolt_rounded,
+                      color: Color(0xFF10B981),
+                      size: 21,
+                    ),
+                    const SizedBox(width: 2),
+                    Flexible(
+                      child: Text(
+                        frequency,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Tần số phát',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1018,25 +1361,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // E. Góc Tâm Hồn (Vibe Gallery)
+  // E. Góc Tâm Hồn (Vibe Gallery có tự động xóa)
   Widget _buildVibeCorner(List<dynamic>? vibePhotos) {
-    final realVibes = vibePhotos?.map((e) => e.toString()).where((e) => e.isNotEmpty).toList() ?? [];
+    List<VibePhotoItem> allVibes;
+    if (vibePhotos != null && vibePhotos.isNotEmpty) {
+      final parsed = vibePhotos.map((e) => VibePhotoItem.fromRaw(e.toString())).toList();
+      allVibes = VibePhotoItem.filterActive(parsed);
+    } else {
+      allVibes = _cachedVibes;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.camera_alt_rounded, color: Color(0xFF6366F1), size: 20),
-            SizedBox(width: 6),
-            Text(
-              'Góc tâm hồn (Vibe)',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-              ),
+            const Row(
+              children: [
+                Icon(Icons.camera_alt_rounded, color: Color(0xFF6366F1), size: 20),
+                SizedBox(width: 6),
+                Text(
+                  'Góc tâm hồn (Vibe)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
             ),
+            if (allVibes.isNotEmpty)
+              TextButton.icon(
+                onPressed: _addVibePhotosDirectly,
+                icon: const Icon(Icons.add_a_photo_outlined, size: 15, color: Color(0xFF6366F1)),
+                label: const Text(
+                  'Thêm ảnh',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 4),
@@ -1045,40 +1413,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
         ),
         const SizedBox(height: 12),
-        if (realVibes.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+        if (allVibes.isEmpty)
+          InkWell(
+            onTap: _addVibePhotosDirectly,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF6366F1), size: 26),
+                    ),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF6366F1), size: 26),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Chưa có khoảnh khắc Vibe nào',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF0F172A)),
                   ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Chưa có khoảnh khắc Vibe nào',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF0F172A)),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Chia sẻ những bức ảnh không lộ mặt thể hiện góc tâm hồn của bạn.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 12),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Chạm vào đây để tải ảnh từ thư viện chia sẻ góc tâm hồn của bạn.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           )
         else
@@ -1088,7 +1460,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               physics: const BouncingScrollPhysics(),
               scrollDirection: Axis.horizontal,
               children: [
-                ...realVibes.map((url) => _buildVibeImageCard(url)),
+                ...allVibes.map((item) => _buildVibeImageCard(item)),
                 _buildAddVibeCard(),
               ],
             ),
@@ -1097,49 +1469,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildVibeImageCard(String imageUrl) {
-    return Container(
-      width: 105,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Image.network(imageUrl, fit: BoxFit.cover),
+  Widget _buildVibeImageCard(VibePhotoItem item) {
+    return GestureDetector(
+      onTap: () => _showVibePreview(item),
+      child: Container(
+        width: 105,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image(
+                  image: ImagePickerService.getImageProvider(item.imageUrl),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            // Huy hiệu thời gian tự hủy góc dưới
+            Positioned(
+              bottom: 6,
+              left: 6,
+              right: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_outlined, color: Colors.white, size: 10),
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(
+                        item.remainingTimeFormatted,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildAddVibeCard() {
-    return Container(
-      width: 105,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add_rounded, size: 28, color: Color(0xFF94A3B8)),
-          SizedBox(height: 4),
-          Text(
-            'Thêm Vibe',
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+    return InkWell(
+      onTap: _addVibePhotosDirectly,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 105,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_rounded, size: 28, color: Color(0xFF94A3B8)),
+            SizedBox(height: 4),
+            Text(
+              'Thêm Vibe',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

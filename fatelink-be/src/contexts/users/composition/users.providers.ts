@@ -8,6 +8,7 @@ import type { UserRepository } from '@contexts/users/domain/repositories/user.re
 import type { Provider } from '@nestjs/common';
 
 import { UpdateUserFrequencyUseCase } from '@contexts/users/application/usecases/update-user-frequency.usecase';
+import { UpdateUserProfileUseCase } from '@contexts/users/application/usecases/update-user-profile.usecase';
 
 export const usersUseCaseProviders: Provider[] = [
   {
@@ -40,6 +41,12 @@ export const usersUseCaseProviders: Provider[] = [
       new UpdateUserFrequencyUseCase(userRepository),
     inject: [USER_REPOSITORY],
   },
+  {
+    provide: USERS_APPLICATION_TOKENS.updateUserProfile,
+    useFactory: (userRepository: UserRepository) =>
+      new UpdateUserProfileUseCase(userRepository),
+    inject: [USER_REPOSITORY],
+  },
 ];
 
 export const usersUseCases = [
@@ -48,4 +55,5 @@ export const usersUseCases = [
   USERS_APPLICATION_TOKENS.updateFcmToken,
   USERS_APPLICATION_TOKENS.updateUserTraits,
   USERS_APPLICATION_TOKENS.updateUserFrequency,
+  USERS_APPLICATION_TOKENS.updateUserProfile,
 ];

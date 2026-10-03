@@ -44,7 +44,7 @@ class LoginSupportButton extends StatelessWidget {
                   'Hỗ trợ 24/7',
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFFF43F5E),
                   ),
                 ),

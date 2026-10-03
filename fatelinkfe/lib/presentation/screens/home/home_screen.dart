@@ -1,15 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fatelinkfe/data/models/match_user.dart';
+import 'package:fatelinkfe/core/services/app_permission_service.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_event.dart';
 import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
-import 'package:fatelinkfe/logic/blocs/main/main_bloc.dart';
-import 'package:fatelinkfe/logic/blocs/main/main_event.dart';
 import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
 import 'package:fatelinkfe/presentation/widgets/shimmer_user_card.dart';
 import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
@@ -18,10 +18,14 @@ import 'package:fatelinkfe/presentation/screens/match/match_chat_screen.dart';
 import 'widgets/home_header.dart';
 import 'widgets/home_hero_banner.dart';
 import 'widgets/home_online_stories.dart';
-import 'widgets/home_filter_chips.dart';
 import 'widgets/soul_match_card.dart';
-import 'widgets/radar_scanner_modal.dart';
-import 'package:fatelinkfe/core/utils/toast_utils.dart';
+import 'widgets/soul_filter_modal.dart';
+import '../match/cosmic_broadcast_screen.dart';
+import 'widgets/qr_hub_modal.dart';
+import 'widgets/notifications_modal.dart';
+import 'soul_connections_screen.dart';
+import '../settings/settings_detail_screen.dart';
+import 'package:fatelinkfe/data/models/match_filter_criteria.dart';
 import 'package:fatelinkfe/data/repositories/profile_repository.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -50,7 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _currentUserMoodIcon;
   String? _currentUserFrequency;
   bool _showRetakeRadar = false;
-  int _selectedFilterIndex = 0;
+  bool _hasUnreadNotification = true;
+  MatchFilterCriteria _filterCriteria = const MatchFilterCriteria();
 
   @override
   void initState() {
@@ -59,6 +64,88 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!widget.showOnboarding) {
       context.read<HomeBloc>().add(LoadRecommendationsEvent(context));
     }
+    // Xin cấp quyền vị trí thân thiện khi khởi động app
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppPermissionService.checkAndRequestInitialPermissions(context);
+      }
+    });
+  }
+
+  void _openFilterModal(List<MatchUser> allUsers) async {
+    final result = await SoulFilterModal.show(
+      context,
+      initialCriteria: _filterCriteria,
+      allUsers: allUsers,
+      onApply: (newCriteria) {
+        setState(() {
+          _filterCriteria = newCriteria;
+        });
+      },
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _filterCriteria = result;
+      });
+    }
+  }
+
+  Widget _buildFilterChipItem({
+    required String label,
+    required bool isSelected,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6366F1) : Colors.white.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isSelected ? Colors.white : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? Colors.white : const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -126,14 +213,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<MatchUser> _filterUsers(List<MatchUser> users) {
-    if (_selectedFilterIndex == 0) return users; // Tất cả
-    final filterName = HomeFilterChips.filters[_selectedFilterIndex]['label'] as String;
-    if (filterName == 'Gần bạn') return users; // Tất cả ứng viên xung quanh
-    return users.where((u) {
-      return u.emotion.toLowerCase().contains(filterName.toLowerCase());
-    }).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,25 +282,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    // 1. Header nổi tự động ẩn khi vuốt xuống và hiện lại ngay khi vuốt lên (Facebook style)
+                    // 1. Header kính mờ ghim cố định (Facebook/Instagram style) bảo vệ Status Bar & Dynamic Island
                     SliverAppBar(
-                      floating: true,
-                      snap: true,
-                      pinned: false,
+                      floating: false,
+                      snap: false,
+                      pinned: true,
                       elevation: 0,
-                      scrolledUnderElevation: 3.0,
-                      shadowColor: Colors.black.withValues(alpha: 0.08),
+                      scrolledUnderElevation: 2.0,
+                      shadowColor: Colors.black.withValues(alpha: 0.06),
                       backgroundColor: Colors.transparent,
                       surfaceTintColor: Colors.transparent,
+                      systemOverlayStyle: const SystemUiOverlayStyle(
+                        statusBarColor: Colors.transparent,
+                        statusBarIconBrightness: Brightness.dark,
+                        statusBarBrightness: Brightness.light,
+                      ),
                       centerTitle: false,
                       toolbarHeight: 74.0,
                       automaticallyImplyLeading: false,
                       titleSpacing: 0,
                       flexibleSpace: ClipRect(
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                           child: Container(
-                            color: const Color(0xFFF8FAFC).withValues(alpha: 0.88),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC).withValues(alpha: 0.88),
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  width: 0.8,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -229,20 +321,46 @@ class _HomeScreenState extends State<HomeScreen> {
                         avatarUrl: _avatarUrl,
                         userName: _userName,
                         userHandle: _userHandle,
-                        onSearchTap: () => Navigator.of(context).pushNamed('/matches'),
+                        hasNotification: _hasUnreadNotification,
+                        onSearchTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => SoulConnectionsScreen(
+                                initialFilter: _filterCriteria,
+                                isSearchInitiallyOpen: true,
+                              ),
+                            ),
+                          );
+                        },
                         onQrTap: () {
-                          ToastUtil.showInfo(context, 'Tính năng quét mã QR đang được thử nghiệm');
+                          QrHubModal.show(
+                            context,
+                            userName: _userName,
+                            userHandle: _userHandle,
+                            avatarUrl: _avatarUrl,
+                          );
                         },
                         onNotificationTap: () {
-                          ToastUtil.showInfo(context, 'Chưa có thông báo mới ✨');
+                          NotificationsModal.show(
+                            context,
+                            onClearBadge: () {
+                              setState(() {
+                                _hasUnreadNotification = false;
+                              });
+                            },
+                          );
                         },
                         onSettingsTap: () {
-                          context.read<MainBloc>().add(const ChangeTabEvent(3));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsDetailScreen(),
+                            ),
+                          );
                         },
                       ),
                     ),
 
-                    // 2. Banner AI Faye, Stories tâm trạng, Tiêu đề & Filter Chips
+                    // 2. Banner AI Faye, Stories tâm trạng, Tiêu đề kết nối
                     SliverToBoxAdapter(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,9 +371,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           HomeHeroBanner(
                             onStartChat: widget.onStartChat,
                             onExplore: () {
-                              RadarScannerModal.show(
-                                context,
-                                onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CosmicBroadcastScreen(),
+                                ),
                               );
                             },
                           ),
@@ -320,7 +439,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pushNamed('/matches'),
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => SoulConnectionsScreen(
+                                          initialFilter: _filterCriteria,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                   style: TextButton.styleFrom(
                                     foregroundColor: const Color(0xFF6366F1),
                                     textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
@@ -331,17 +458,145 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
 
-                          // Filter Chips (Tất cả, Cô đơn, Phấn khích, Deep talk, Gần bạn)
-                          HomeFilterChips(
-                            selectedIndex: _selectedFilterIndex,
-                            onSelected: (index) {
-                              setState(() => _selectedFilterIndex = index);
+                          // Bộ lọc đa chiều (Nút Lọc Modal + Giới tính + Khu vực + Độ tuổi)
+                          BlocBuilder<HomeBloc, HomeState>(
+                            builder: (context, state) {
+                              final activeCount = _filterCriteria.activeFilterCount;
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  children: [
+                                    // 1. Nút mở Modal Bộ lọc chính
+                                    GestureDetector(
+                                      onTap: () => _openFilterModal(state.matchedUsers),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6.5),
+                                        decoration: BoxDecoration(
+                                          color: activeCount > 0
+                                              ? const Color(0xFF6366F1)
+                                              : Colors.white.withValues(alpha: 0.95),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: activeCount > 0
+                                                ? const Color(0xFF6366F1)
+                                                : const Color(0xFFE2E8F0),
+                                            width: 1,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: (activeCount > 0 ? const Color(0xFF6366F1) : Colors.black)
+                                                  .withValues(alpha: activeCount > 0 ? 0.25 : 0.04),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.tune_rounded,
+                                              size: 14,
+                                              color: activeCount > 0 ? Colors.white : const Color(0xFF6366F1),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'Bộ lọc',
+                                              style: TextStyle(
+                                                fontFamily: 'BeVietnamPro',
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: activeCount > 0 ? Colors.white : const Color(0xFF0F172A),
+                                              ),
+                                            ),
+                                            if (activeCount > 0) ...[
+                                              const SizedBox(width: 5),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFEC4899),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Text(
+                                                  '$activeCount',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'BeVietnamPro',
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    // 2. Chip Lọc Giới tính nhanh
+                                    _buildFilterChipItem(
+                                      label: _filterCriteria.gender == 'all'
+                                          ? 'Giới tính'
+                                          : (_filterCriteria.gender == 'female' ? 'Nữ' : 'Nam'),
+                                      isSelected: _filterCriteria.gender != 'all',
+                                      icon: Icons.wc_rounded,
+                                      onTap: () {
+                                        setState(() {
+                                          if (_filterCriteria.gender == 'all') {
+                                            _filterCriteria = _filterCriteria.copyWith(gender: 'female');
+                                          } else if (_filterCriteria.gender == 'female') {
+                                            _filterCriteria = _filterCriteria.copyWith(gender: 'male');
+                                          } else {
+                                            _filterCriteria = _filterCriteria.copyWith(gender: 'all');
+                                          }
+                                        });
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    // 3. Chip Lọc Toàn quốc / Gần bạn / Trong thành phố
+                                    _buildFilterChipItem(
+                                      label: _filterCriteria.locationScope == 'nearby'
+                                          ? 'Gần bạn (< 5km)'
+                                          : (_filterCriteria.locationScope == 'city'
+                                              ? 'Trong thành phố (< 25km)'
+                                              : 'Toàn quốc'),
+                                      isSelected: _filterCriteria.locationScope != 'all',
+                                      icon: Icons.public_rounded,
+                                      onTap: () {
+                                        setState(() {
+                                          if (_filterCriteria.locationScope == 'all') {
+                                            _filterCriteria = _filterCriteria.copyWith(locationScope: 'nearby');
+                                          } else if (_filterCriteria.locationScope == 'nearby') {
+                                            _filterCriteria = _filterCriteria.copyWith(locationScope: 'city');
+                                          } else {
+                                            _filterCriteria = _filterCriteria.copyWith(locationScope: 'all');
+                                          }
+                                        });
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    // 4. Chip Lọc Độ tuổi
+                                    _buildFilterChipItem(
+                                      label: '${_filterCriteria.ageRange.start.round()}-${_filterCriteria.ageRange.end.round()} tuổi',
+                                      isSelected: _filterCriteria.ageRange.start > 18 || _filterCriteria.ageRange.end < 45,
+                                      icon: Icons.cake_rounded,
+                                      onTap: () => _openFilterModal(state.matchedUsers),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 14),
                         ],
                       ),
                     ),
@@ -363,9 +618,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           }
 
-                          final filteredUsers = _filterUsers(state.matchedUsers);
+                          final matchedUsers = _filterCriteria.apply(state.matchedUsers);
 
-                          if (filteredUsers.isEmpty) {
+                          if (matchedUsers.isEmpty) {
+                            final bool isFiltered = !_filterCriteria.isDefault;
                             return Container(
                               margin: EdgeInsets.only(bottom: bottomSafePadding + 20, left: 16, right: 16),
                               padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
@@ -391,14 +647,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                       shape: BoxShape.circle,
                                       color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                                     ),
-                                    child: const Center(
-                                      child: Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 30),
+                                    child: Center(
+                                      child: Icon(
+                                        isFiltered ? Icons.filter_alt_off_rounded : Icons.radar_rounded,
+                                        color: const Color(0xFF6366F1),
+                                        size: 30,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 14),
-                                  const Text(
-                                    'Chưa có tín hiệu xung quanh',
-                                    style: TextStyle(
+                                  Text(
+                                    isFiltered ? 'Chưa có ai phù hợp bộ lọc' : 'Chưa có tín hiệu xung quanh',
+                                    style: const TextStyle(
                                       color: Color(0xFF0F172A),
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
@@ -406,24 +666,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    _selectedFilterIndex == 0
-                                        ? 'Bạn đang là người duy nhất phát sóng bước sóng hôm nay! Khi có người dùng thật khác tham gia, họ sẽ xuất hiện tại đây.'
-                                        : 'Không tìm thấy người dùng nào cùng tần số bộ lọc này.',
+                                    isFiltered
+                                        ? 'Hiện tại chưa có người dùng nào khớp với tiêu chí bạn chọn. Hãy thử nới lỏng bộ lọc nhé!'
+                                        : 'Bạn đang là người duy nhất phát sóng bước sóng hôm nay! Khi có người dùng thật khác tham gia, họ sẽ xuất hiện tại đây.',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.blueGrey.shade500,
+                                    style: const TextStyle(
+                                      color: Color(0xFF64748B),
                                       fontSize: 13,
                                       height: 1.45,
                                     ),
                                   ),
-                                  if (_selectedFilterIndex != 0) ...[
-                                    const SizedBox(height: 10),
-                                    TextButton(
-                                      onPressed: () => setState(() => _selectedFilterIndex = 0),
-                                      child: const Text('Xem tất cả tần số', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w700)),
-                                    ),
-                                  ] else ...[
-                                    const SizedBox(height: 16),
+                                  const SizedBox(height: 16),
+                                  if (isFiltered)
+                                    ElevatedButton.icon(
+                                      onPressed: () => setState(() => _filterCriteria = const MatchFilterCriteria()),
+                                      icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
+                                      label: const Text('Đặt lại bộ lọc', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF6366F1),
+                                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        elevation: 0,
+                                      ),
+                                    )
+                                  else
                                     ElevatedButton.icon(
                                       onPressed: () => widget.onStartChat(),
                                       icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
@@ -435,7 +701,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         elevation: 0,
                                       ),
                                     ),
-                                  ],
                                 ],
                               ),
                             );
@@ -444,7 +709,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return Padding(
                             padding: EdgeInsets.only(bottom: bottomSafePadding),
                             child: Column(
-                              children: filteredUsers.map((user) {
+                              children: matchedUsers.map((user) {
                                 return SoulMatchCard(
                                   user: user,
                                   onTap: () => Navigator.of(context).push(
@@ -456,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     MaterialPageRoute(
                                       builder: (context) => MatchChatScreen(
                                         partnerId: user.id,
-                                        partnerName: user.name,
+                                        partnerName: user.displayName,
                                       ),
                                     ),
                                   ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'services/fcm_service.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'logic/blocs/auth/auth_bloc.dart';
@@ -18,9 +18,21 @@ import 'logic/blocs/main/main_bloc.dart';
 import 'logic/blocs/main/main_event.dart';
 import 'logic/blocs/splash/splash_bloc.dart';
 import 'core/router/app_router.dart';
+import 'core/services/network_connectivity_service.dart';
+import 'presentation/widgets/network_status_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   
   try {
     await EasyLocalization.ensureInitialized();
@@ -34,6 +46,12 @@ void main() async {
       await FcmService.initialize();
     } catch (fcmError) {
       debugPrint('Cảnh báo: Không thể khởi tạo FCM (Thường xảy ra trên máy ảo iOS): $fcmError');
+    }
+
+    try {
+      await NetworkConnectivityService.instance.initialize();
+    } catch (netErr) {
+      debugPrint('Cảnh báo: Không thể khởi tạo NetworkConnectivityService: $netErr');
     }
   } catch (e, stackTrace) {
     debugPrint('Lỗi khởi tạo App: $e\n$stackTrace');
@@ -112,8 +130,14 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             primarySwatch: Colors.blue,
-            textTheme: GoogleFonts.notoSansTextTheme(),
-            primaryTextTheme: GoogleFonts.notoSansTextTheme(),
+            fontFamily: 'BeVietnamPro',
+            appBarTheme: const AppBarTheme(
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+              ),
+            ),
           ),
           builder: (context, child) {
             final mediaQuery = MediaQuery.of(context);
@@ -124,7 +148,7 @@ class MyApp extends StatelessWidget {
                   maxScaleFactor: 1.5,
                 ),
               ),
-              child: child!,
+              child: NetworkStatusBanner(child: child!),
             );
           },
           localizationsDelegates: context.localizationDelegates,

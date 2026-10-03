@@ -23,6 +23,8 @@ class AppConstants {
   static String userFCMToken(String userId) => 'users/$userId/fcm-token';
   static String matchmakingRecommendations = 'matchmaking/recommendations';
   static const String updateFcmToken = 'users/fcm-token';
+  static const String updateUserProfile = 'users/profile';
+  static const String uploadImage = 'upload/image';
 
   // Điều khoản và dịch vụ, Chính sách v.v
   static const String childSafety = '/child-safety.html';

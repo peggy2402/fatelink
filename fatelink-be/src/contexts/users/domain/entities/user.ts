@@ -1,11 +1,26 @@
 import { type EmotionVector } from '@shared/kernel/emotion-vector';
 
+export interface VibePhotoDomain {
+  id: string;
+  imageUrl: string;
+  createdAt: Date;
+  durationMinutes: number;
+  expiresAt: Date;
+}
+
 export class User {
   id?: string;
   email?: string;
+  handle?: string;
   name!: string;
   displayName?: string;
   avatar!: string;
+  bio!: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
+  isFaceLocked?: boolean;
+  vibePhotos?: VibePhotoDomain[];
   latestEmotion!: string;
   emotions!: EmotionVector;
   personality!: number[];
@@ -18,13 +33,19 @@ export class User {
   static rehydrate(props: {
     id?: string;
     email?: string;
+    handle?: string;
     name: string;
     displayName?: string;
     avatar: string;
+    bio: string;
+    gender?: string;
+    dateOfBirth?: string;
+    address?: string;
+    isFaceLocked?: boolean;
+    vibePhotos?: VibePhotoDomain[];
     latestEmotion: string;
     emotions: EmotionVector;
     personality: number[];
-    bio: string;
     fcmToken: string;
     tags?: string[];
     frequencyHertz?: string;

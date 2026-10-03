@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../presentation/screens/match/match_chat_screen.dart';
 import '../../presentation/screens/match/matches_screen.dart';
+import '../../presentation/screens/home/soul_connections_screen.dart';
 import '../../presentation/screens/onboarding/onboarding_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/main_screen.dart';
@@ -15,6 +16,10 @@ class AppRouter {
       case '/matches':
         return MaterialPageRoute(
           builder: (context) => const MatchesScreen(),
+        );
+      case '/soul-connections':
+        return MaterialPageRoute(
+          builder: (context) => const SoulConnectionsScreen(),
         );
       case '/match-chat':
         final args = settings.arguments;

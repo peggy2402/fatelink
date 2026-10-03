@@ -54,6 +54,9 @@ dependencies:
   flutter_zalo: ^1.0.1
   google_fonts: ^6.3.2
   qr_flutter: ^4.1.0
+  connectivity_plus: ^7.3.2
+  permission_handler: 11.3.1
+  image_picker: ^1.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -80,10 +83,9 @@ flutter:
     - assets/icon/
     - assets/images/
     - assets/translations/
+    - assets/fonts/
+    - assets/avatars/
     # - assets/lottie/
-    # - assets/fonts/
-    # - assets/animations/
-    # - assets/avatars/
     # - assets/placeholders/
     # - assets/flags/
     # - assets/emoji/
@@ -94,31 +96,21 @@ flutter:
     # - assets/overlays/
     # - assets/decoration/
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
-
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  fonts:
+    - family: BeVietnamPro
+      fonts:
+        - asset: assets/fonts/BeVietnamPro-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/BeVietnamPro-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BeVietnamPro-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BeVietnamPro-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BeVietnamPro-Bold.ttf
+          weight: 800
+        - asset: assets/fonts/BeVietnamPro-Black.ttf
+          weight: 900
 
 flutter_launcher_icons:
   android: true

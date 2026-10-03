@@ -62,7 +62,7 @@ class MagicLinkCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: isCompact ? 13 : 15,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: const Color(0xFF2F173D),
                       height: 1.2,
                     ),

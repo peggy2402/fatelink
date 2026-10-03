@@ -109,8 +109,8 @@ class _LoginGoogleButtonState extends State<LoginGoogleButton> {
                             'Tiếp tục với Google',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: -0.2,
                             ),
                           ),

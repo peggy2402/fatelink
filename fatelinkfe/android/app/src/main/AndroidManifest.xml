@@ -1,5 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Kết nối mạng & kiểm tra trạng thái internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- Định vị vị trí để tính khoảng cách & tìm bạn bè xung quanh -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- Camera để quét mã QR kết nối -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- Truy cập ảnh để đổi avatar và chia sẻ khoảnh khắc -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+
+    <!-- Micro cho tin nhắn thoại -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <!-- Nhận thông báo đẩy (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Meyu"
         android:name=".MainApplication"

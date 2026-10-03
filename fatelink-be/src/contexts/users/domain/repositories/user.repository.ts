@@ -27,4 +27,24 @@ export interface UserRepository {
   ): Promise<User | null>;
   findAll(): Promise<User[]>;
   banUser(userId: string, isBanned: boolean): Promise<User | null>;
+  updateProfile(
+    userId: string,
+    data: {
+      name?: string;
+      handle?: string;
+      avatar?: string;
+      bio?: string;
+      gender?: string;
+      dateOfBirth?: string;
+      address?: string;
+      isFaceLocked?: boolean;
+      vibePhotos?: {
+        id: string;
+        imageUrl: string;
+        createdAt?: Date;
+        durationMinutes?: number;
+        expiresAt: Date;
+      }[];
+    },
+  ): Promise<User | null>;
 }

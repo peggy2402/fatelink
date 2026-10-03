@@ -1,13 +1,17 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../data/models/match_user.dart';
 import '../../../../core/responsive/responsive.dart';
+import '../../../../core/utils/anonymous_avatar_helper.dart';
+import '../../../../core/utils/toast_utils.dart';
+import '../../../widgets/cosmic_pulse_received_modal.dart';
 
 class SoulMatchCard extends StatefulWidget {
   final MatchUser user;
   final VoidCallback? onTap;
   final VoidCallback? onChat;
   final VoidCallback? onLike;
+  final VoidCallback? onWaveSent;
 
   const SoulMatchCard({
     super.key,
@@ -15,6 +19,7 @@ class SoulMatchCard extends StatefulWidget {
     this.onTap,
     this.onChat,
     this.onLike,
+    this.onWaveSent,
   });
 
   @override
@@ -23,6 +28,22 @@ class SoulMatchCard extends StatefulWidget {
 
 class _SoulMatchCardState extends State<SoulMatchCard> {
   bool _isLiked = false;
+  bool _isWaveSent = false;
+
+  void _handleSendWave() {
+    HapticFeedback.mediumImpact();
+    setState(() => _isWaveSent = true);
+    widget.onWaveSent?.call();
+    ToastUtil.showSuccess(
+      context,
+      'Đã phát sóng 432Hz tới ${widget.user.displayName}! Tín hiệu đang lan tỏa ✨',
+    );
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        CosmicPulseReceivedModal.show(context, sender: widget.user);
+      }
+    });
+  }
 
   // Giả lập tag cảm xúc phong phú dựa trên tên/emotion
   List<String> _resolveTags(String emotion) {
@@ -53,72 +74,42 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
     final distance = widget.user.distanceKm != null
         ? '${widget.user.distanceKm} km'
         : _resolveDistance(widget.user.id);
-    final avatarUrl = widget.user.avatar ??
-        'https://api.dicebear.com/7.x/adventurer/png?seed=${Uri.encodeComponent(widget.user.name)}&backgroundColor=e0e7ff';
 
     return ResponsiveCenter(
       maxWidth: 580,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
         child: GestureDetector(
-        onTap: widget.onTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.06),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: const Color(0xFFE2E8F0),
+                width: 1.0,
               ),
-              child: Column(
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.07),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // --- Header của Card: Avatar + Tên + Match % Badge ---
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Avatar với viền phát sáng nhẹ
-                      Container(
-                        width: 58,
-                        height: 58,
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            avatarUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-                              radius: 28,
-                              backgroundColor: Color(0xFFE0E7FF),
-                              child: Icon(Icons.person_rounded, color: Color(0xFF6366F1), size: 28),
-                            ),
-                          ),
-                        ),
+                      // Avatar với viền phát sáng nhẹ & hỗ trợ avatar ẩn danh
+                      AnonymousAvatarHelper.buildAvatar(
+                        user: widget.user,
+                        size: 58,
                       ),
                       const SizedBox(width: 14),
 
@@ -131,19 +122,22 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    widget.user.name,
+                                    widget.user.displayName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 17,
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
                                       letterSpacing: -0.2,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                const Icon(Icons.verified_rounded, color: Color(0xFF3B82F6), size: 15),
+                                if (widget.user.canViewIdentity)
+                                  const Icon(Icons.verified_rounded, color: Color(0xFF3B82F6), size: 15)
+                                else
+                                  const Icon(Icons.lock_rounded, color: Color(0xFFEC4899), size: 14),
                               ],
                             ),
                             const SizedBox(height: 3),
@@ -325,42 +319,71 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                       ),
                       const SizedBox(width: 10),
 
-                      // Nút Nhắn tin nhanh (Quick Message)
+                      // Nút Hành Động: "Trò chuyện" (nếu đã match/cộng hưởng) HOẶC "Gửi sóng 432Hz" (nếu chưa match)
                       Expanded(
                         child: InkWell(
-                          onTap: widget.onChat,
+                          onTap: () {
+                            if (widget.user.isMutualFollow) {
+                              widget.onChat?.call();
+                            } else {
+                              _handleSendWave();
+                            }
+                          },
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
                             constraints: const BoxConstraints(minHeight: 48),
                             alignment: Alignment.center,
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              gradient: widget.user.isMutualFollow
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : (_isWaveSent
+                                      ? const LinearGradient(
+                                          colors: [Color(0xFF10B981), Color(0xFF059669)],
+                                        )
+                                      : const LinearGradient(
+                                          colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )),
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                                  color: (widget.user.isMutualFollow
+                                          ? const Color(0xFF6366F1)
+                                          : (_isWaveSent
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFEC4899)))
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 16),
-                                SizedBox(width: 8),
+                                Icon(
+                                  widget.user.isMutualFollow
+                                      ? Icons.chat_bubble_outline_rounded
+                                      : (_isWaveSent ? Icons.check_circle_rounded : Icons.bolt_rounded),
+                                  color: Colors.white,
+                                  size: 17,
+                                ),
+                                const SizedBox(width: 7),
                                 Flexible(
                                   child: Text(
-                                    'Gửi tin nhắn',
+                                    widget.user.isMutualFollow
+                                        ? 'Trò chuyện'
+                                        : (_isWaveSent ? 'Đã gửi sóng' : 'Gửi sóng 432Hz'),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
@@ -379,8 +402,6 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
             ),
           ),
         ),
-      ),
-    ),
-  );
-}
+      );
+  }
 }

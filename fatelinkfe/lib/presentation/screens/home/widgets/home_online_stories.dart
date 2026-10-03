@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fatelinkfe/data/models/match_user.dart';
 import 'package:fatelinkfe/core/utils/toast_utils.dart';
 import 'package:fatelinkfe/core/responsive/responsive.dart';
+import 'package:fatelinkfe/core/utils/anonymous_avatar_helper.dart';
 
 class HomeOnlineStories extends StatelessWidget {
   final String? currentUserAvatar;
@@ -31,7 +32,7 @@ class HomeOnlineStories extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textScale = MediaQuery.textScalerOf(context).scale(1.0);
-    final storiesHeight = math.max(108.0, 72.0 + (38.0 * textScale));
+    final storiesHeight = math.max(114.0, 76.0 + (38.0 * textScale));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +105,7 @@ class HomeOnlineStories extends StatelessWidget {
 
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
                   itemCount: count,
                   itemBuilder: (context, index) {
                     if (index == 0) {
@@ -139,7 +140,7 @@ class HomeOnlineStories extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
-              alignment: Alignment.bottomRight,
+              clipBehavior: Clip.none,
               children: [
                 Container(
                   width: 64,
@@ -178,30 +179,56 @@ class HomeOnlineStories extends StatelessWidget {
                         : const AssetImage('assets/images/default_avatar.png'),
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.all(hasActiveFrequency ? 2 : 3),
-                  decoration: BoxDecoration(
-                    color: hasActiveFrequency ? Colors.white : null,
-                    gradient: hasActiveFrequency
-                        ? null
-                        : const LinearGradient(
-                            colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                // Mood Icon ở góc trên bên phải khi đang phát sóng
+                if (hasActiveFrequency)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
                           ),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 4,
+                        ],
                       ),
-                    ],
+                      child: Text(
+                        currentUserMoodIcon ?? '✨',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
                   ),
-                  child: hasActiveFrequency
-                      ? Text(
-                          currentUserMoodIcon ?? '✨',
-                          style: const TextStyle(fontSize: 12),
-                        )
-                      : const Icon(Icons.add, color: Colors.white, size: 14),
+                // Nút hành động ở góc dưới bên phải (+ hoặc nút edit nhỏ)
+                Positioned(
+                  bottom: -1,
+                  right: -1,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      hasActiveFrequency ? Icons.edit_rounded : Icons.add,
+                      color: Colors.white,
+                      size: hasActiveFrequency ? 11 : 13,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -304,8 +331,6 @@ class HomeOnlineStories extends StatelessWidget {
   }
 
   Widget _buildMatchUserStoryItem(BuildContext context, MatchUser user) {
-    final avatarUrl = user.avatar ??
-        'https://api.dicebear.com/7.x/adventurer/png?seed=${Uri.encodeComponent(user.name)}&backgroundColor=e0e7ff';
     final mood = user.moodIcon ?? _getEmotionIcon(user.emotion);
 
     return Padding(
@@ -318,56 +343,31 @@ class HomeOnlineStories extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // Pulse LED Energy Gradient Ring
-                Container(
-                  width: 64,
-                  height: 64,
-                  padding: const EdgeInsets.all(2.5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFEC4899), Color(0xFF8B5CF6), Color(0xFF00E5FF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: const Color(0xFFF3E8FF),
-                    child: ClipOval(
-                      child: Image.network(
-                        avatarUrl,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-                          radius: 28,
-                          backgroundImage: AssetImage('assets/images/default_avatar.png'),
-                        ),
-                      ),
-                    ),
+                // Pulse LED Energy Gradient Ring & Anonymous/Real Avatar
+                AnonymousAvatarHelper.buildAvatar(
+                  user: user,
+                  size: 64,
+                  customGradient: const LinearGradient(
+                    colors: [Color(0xFFEC4899), Color(0xFF8B5CF6), Color(0xFF00E5FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                // Mood Emoji Badge
+                // Mood Emoji Badge (Tần số đang phát) - Đặt ở góc trên bên phải
                 Positioned(
+                  top: -2,
                   right: -2,
-                  bottom: -2,
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(2.5),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: Colors.black.withValues(alpha: 0.12),
                           blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -381,15 +381,16 @@ class HomeOnlineStories extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             SizedBox(
-              width: 66,
+              width: 76,
               child: Text(
-                user.name,
+                user.displayName,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
                   color: Color(0xFF1E293B),
                 ),
               ),

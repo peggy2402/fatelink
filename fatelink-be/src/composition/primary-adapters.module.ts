@@ -4,6 +4,7 @@ import { AdminContextModule } from '@contexts/admin/composition/admin-context.mo
 import { AuthContextModule } from '@contexts/auth/composition/auth-context.module';
 import { ChatContextModule } from '@contexts/chat/composition/chat-context.module';
 import { MatchingContextModule } from '@contexts/matching/composition/matching-context.module';
+import { MediaContextModule } from '@contexts/media/composition/media-context.module';
 import { SupportContextModule } from '@contexts/support/composition/support-context.module';
 import { UsersContextModule } from '@contexts/users/composition/users-context.module';
 import { ApplicationErrorFilter } from '@shared/presentation/filters/application-error.filter';
@@ -16,6 +17,7 @@ import { ApplicationErrorFilter } from '@shared/presentation/filters/application
     ChatContextModule,
     MatchingContextModule,
     AdminContextModule,
+    MediaContextModule,
   ],
   providers: [
     {

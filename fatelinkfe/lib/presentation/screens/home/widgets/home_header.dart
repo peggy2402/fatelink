@@ -6,6 +6,7 @@ class HomeHeader extends StatelessWidget {
   final String? userName;
   final String? userHandle;
   final bool isPro;
+  final bool hasNotification;
   final VoidCallback? onSearchTap;
   final VoidCallback? onQrTap;
   final VoidCallback? onNotificationTap;
@@ -17,6 +18,7 @@ class HomeHeader extends StatelessWidget {
     this.userName,
     this.userHandle,
     this.isPro = false,
+    this.hasNotification = true,
     this.onSearchTap,
     this.onQrTap,
     this.onNotificationTap,
@@ -186,25 +188,26 @@ class HomeHeader extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Icon(Icons.notifications_none_rounded, color: const Color(0xFF334155), size: isCompact ? 18 : 20),
-              Positioned(
-                right: -1,
-                top: -1,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEC4899),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFEC4899).withValues(alpha: 0.5),
-                        blurRadius: 4,
-                      ),
-                    ],
+              if (hasNotification)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEC4899),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEC4899).withValues(alpha: 0.5),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

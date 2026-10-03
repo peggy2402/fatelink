@@ -115,18 +115,76 @@ export class MongooseUserRepository implements UserRepositoryPort {
       .then((item) => (item ? this.toDomainUser(item) : null));
   }
 
+  async updateProfile(
+    userId: string,
+    data: {
+      name?: string;
+      handle?: string;
+      avatar?: string;
+      bio?: string;
+      gender?: string;
+      dateOfBirth?: string;
+      address?: string;
+      isFaceLocked?: boolean;
+      vibePhotos?: {
+        id: string;
+        imageUrl: string;
+        createdAt?: Date;
+        durationMinutes?: number;
+        expiresAt: Date;
+      }[];
+    },
+  ): Promise<DomainUser | null> {
+    const updateData: Record<string, any> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.handle !== undefined) updateData.handle = data.handle;
+    if (data.avatar !== undefined) updateData.avatar = data.avatar;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.isFaceLocked !== undefined) updateData.isFaceLocked = data.isFaceLocked;
+    if (data.vibePhotos !== undefined) {
+      const now = new Date();
+      updateData.vibePhotos = data.vibePhotos.filter(
+        (p) => new Date(p.expiresAt) > now,
+      );
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(userId, { $set: updateData }, { new: true })
+      .exec();
+    return updated ? this.toDomainUser(updated) : null;
+  }
+
   private toDomainUser(document: HydratedDocument<User>): DomainUser {
     const plainUser = document.toObject();
+    const now = new Date();
+    const activeVibes = ((plainUser as any).vibePhotos || [])
+      .filter((v: any) => new Date(v.expiresAt) > now)
+      .map((v: any) => ({
+        id: v.id,
+        imageUrl: v.imageUrl,
+        createdAt: new Date(v.createdAt),
+        durationMinutes: v.durationMinutes,
+        expiresAt: new Date(v.expiresAt),
+      }));
 
     return DomainUser.rehydrate({
       id: document._id.toString(),
       email: plainUser.email,
+      handle: (plainUser as any).handle,
       name: plainUser.name,
       avatar: plainUser.avatar,
+      bio: plainUser.bio,
+      gender: (plainUser as any).gender,
+      dateOfBirth: (plainUser as any).dateOfBirth,
+      address: (plainUser as any).address,
+      isFaceLocked: (plainUser as any).isFaceLocked ?? false,
+      vibePhotos: activeVibes,
       latestEmotion: plainUser.latestEmotion,
       emotions: { ...plainUser.emotions },
       personality: [...plainUser.personality],
-      bio: plainUser.bio,
       fcmToken: plainUser.fcmToken,
       tags: plainUser.tags ? [...plainUser.tags] : [],
       frequencyHertz: plainUser.frequencyHertz,

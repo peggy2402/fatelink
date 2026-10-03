@@ -11,7 +11,7 @@ import 'package:fatelinkfe/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/floating_ai_bubble.dart';
 import 'package:fatelinkfe/presentation/widgets/chat_input_bar.dart';
 import 'package:fatelinkfe/presentation/widgets/menu.dart';
-import 'package:fatelinkfe/presentation/screens/home/widgets/radar_scanner_modal.dart';
+import 'package:fatelinkfe/presentation/screens/match/cosmic_broadcast_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
 import '../../logic/blocs/main/main_bloc.dart';
@@ -279,11 +279,14 @@ class _MainScreenState extends State<MainScreen>
                                 });
                               },
                               onHeartTap: () {
-                                RadarScannerModal.show(
-                                  context,
-                                  onConnectMatch: () {
-                                    Navigator.of(context).pushNamed('/matches');
-                                  },
+                                Navigator.of(context).push(
+                                  PageRouteBuilder(
+                                    transitionDuration: const Duration(milliseconds: 400),
+                                    pageBuilder: (context, anim1, anim2) => const CosmicBroadcastScreen(),
+                                    transitionsBuilder: (context, anim1, anim2, child) {
+                                      return FadeTransition(opacity: anim1, child: child);
+                                    },
+                                  ),
                                 );
                               },
                             ),

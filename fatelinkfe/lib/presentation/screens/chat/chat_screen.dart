@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
-import 'package:fatelinkfe/presentation/widgets/back.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fatelinkfe/presentation/widgets/typing_indicator.dart';
-import 'package:fatelinkfe/data/models/chat_message.dart';
-import 'package:fatelinkfe/logic/blocs/chat/chat_bloc.dart';
-import 'package:fatelinkfe/logic/blocs/chat/chat_event.dart';
-import 'package:fatelinkfe/logic/blocs/chat/chat_state.dart';
-import 'package:easy_localization/easy_localization.dart';
 
-// Enum để quản lý 2 chế độ xem
+import '../../../logic/blocs/chat/chat_bloc.dart';
+import '../../../logic/blocs/chat/chat_event.dart';
+import '../../../logic/blocs/chat/chat_state.dart';
+
+// Components tách rời sạch sẽ
+import 'widgets/chat_conversation_tile.dart';
+import 'widgets/chat_message_bubble.dart';
+import 'widgets/chat_online_stories.dart';
+import 'widgets/chat_room_app_bar.dart';
+import 'widgets/chat_typing_indicator_bubble.dart';
+import '../match/cosmic_broadcast_screen.dart';
+import '../home/widgets/radar_scanner_modal.dart';
+
+// Enum để quản lý 2 chế độ xem: Danh sách hoặc Phòng trò chuyện
 enum ChatView { list, room }
 
 class ChatScreen extends StatefulWidget {
@@ -31,28 +36,36 @@ class ChatScreen extends StatefulWidget {
 class ChatScreenState extends State<ChatScreen> {
   ChatView _currentView = ChatView.list;
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   int _previousMessageCount = 0;
   bool _isNearBottom = true;
   int _unreadCount = 0;
+  bool _isSearchOpen = false;
+  String _searchQuery = '';
+  String _selectedFilter = 'all'; // 'all', 'ai', 'unread'
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim();
+      });
+    });
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
   }
 
   void _scrollListener() {
     if (!_scrollController.hasClients) return;
-    
-    // Detect if user is within 100 pixels from the bottom
+
+    // Nhận diện khi người dùng ở sát đáy (dưới 100px)
     final isNearBottom = _scrollController.offset <= 100.0;
     if (_isNearBottom != isNearBottom) {
-      setState(() {
-        _isNearBottom = isNearBottom;
-      });
+      setState(() => _isNearBottom = isNearBottom);
     }
-    
+
     if (isNearBottom && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
     }
@@ -62,12 +75,14 @@ class ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   void _switchToRoomView() {
     setState(() => _currentView = ChatView.room);
-    _scrollToBottom(animated: false); // Cuộn xuống ngay khi chuyển view
+    _scrollToBottom(animated: false);
     widget.onViewChanged(ChatView.room);
   }
 
@@ -79,16 +94,191 @@ class ChatScreenState extends State<ChatScreen> {
   void _scrollToBottom({bool animated = true}) {
     if (_scrollController.hasClients) {
       if (animated) {
-        _scrollController.animateTo(0.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       } else {
         _scrollController.jumpTo(0.0);
       }
     }
   }
 
+  void _toggleSearch() {
+    setState(() {
+      _isSearchOpen = !_isSearchOpen;
+      if (!_isSearchOpen) {
+        _searchController.clear();
+        _searchQuery = '';
+        _searchFocusNode.unfocus();
+      } else {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  /// Hiển thị Menu hành động nhanh khi người dùng bấm dấu "+" trên AppBar
+  void _showNewChatActionModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Color(0xFF6366F1), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Khởi tạo kết nối mới',
+                    style: TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Lựa chọn phương thức kết nối và giao lưu tần số cùng người khác',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 18),
+
+              // 1. Trò chuyện cùng Faye AI
+              _buildActionItem(
+                icon: Icons.psychology_rounded,
+                color: const Color(0xFF6366F1),
+                title: 'Tâm sự cùng Trợ lý Faye AI',
+                subtitle: 'Giải tỏa cảm xúc, lắng nghe và thấu cảm 24/7',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _switchToRoomView();
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // 2. Phát sóng tần số 432Hz
+              _buildActionItem(
+                icon: Icons.podcasts_rounded,
+                color: const Color(0xFFEC4899),
+                title: 'Phát sóng tần số 432Hz',
+                subtitle: 'Tìm người cùng gu tần số trong 120 giây',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CosmicBroadcastScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // 3. Quét Radar tâm trạng
+              _buildActionItem(
+                icon: Icons.radar_rounded,
+                color: const Color(0xFF10B981),
+                title: 'Quét Radar đo lường cảm xúc',
+                subtitle: 'Khám phá các linh hồn đang đồng điệu xung quanh',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  RadarScannerModal.show(
+                    context,
+                    onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionItem({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Sử dụng AnimatedSwitcher để tạo hiệu ứng chuyển cảnh mượt mà
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       transitionBuilder: (child, animation) {
@@ -100,20 +290,31 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // --- WIDGETS CHO MÀN HÌNH DANH SÁCH CHAT ---
+  // ==========================================
+  // 1. GIAO DIỆN DANH SÁCH CUỘC TRÒ CHUYỆN
+  // ==========================================
 
   Widget _buildChatListView() {
     return Scaffold(
       key: const ValueKey('ChatListView'),
-      backgroundColor: const Color(0xFFF8F9FA), // Nền sáng
+      backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
         slivers: [
           _buildListAppBar(),
-          SliverToBoxAdapter(child: _buildSearchBar()),
-          SliverToBoxAdapter(child: _buildOnlineStatusList()),
+          if (_isSearchOpen)
+            SliverToBoxAdapter(child: _buildSearchBar()),
+          SliverToBoxAdapter(
+            child: ChatOnlineStories(onFayeTap: _switchToRoomView),
+          ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: _buildFilterChips(),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
               child: Divider(color: Colors.grey.shade200, height: 1),
             ),
           ),
@@ -125,152 +326,203 @@ class ChatScreenState extends State<ChatScreen> {
 
   SliverAppBar _buildListAppBar() {
     return SliverAppBar(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
       pinned: true,
-      expandedHeight: 120.0,
+      elevation: 0,
+      expandedHeight: 96.0,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-        title: Text(
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 14),
+        title: const Text(
           'Trò chuyện',
           style: TextStyle(
-            color: Colors.grey.shade800,
-            fontWeight: FontWeight.bold,
+            fontFamily: 'BeVietnamPro',
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
+            letterSpacing: -0.4,
           ),
         ),
       ),
       actions: [
-        _buildAppBarIcon(Icons.search),
-        _buildAppBarIcon(Icons.add),
+        IconButton(
+          onPressed: _toggleSearch,
+          tooltip: 'Tìm kiếm tin nhắn',
+          icon: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: _isSearchOpen
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.12)
+                  : const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _isSearchOpen ? Icons.close_rounded : Icons.search_rounded,
+              color: _isSearchOpen ? const Color(0xFF6366F1) : const Color(0xFF475569),
+              size: 19,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: _showNewChatActionModal,
+          tooltip: 'Bắt đầu kết nối mới',
+          icon: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: const BoxDecoration(
+              color: Color(0xFF6366F1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.add_rounded, color: Colors.white, size: 19),
+          ),
+        ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildAppBarIcon(IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: CircleAvatar(
-        backgroundColor: Colors.grey.shade200,
-        child: Icon(icon, color: Colors.grey.shade600, size: 22),
+  Widget _buildFilterChips() {
+    return Row(
+      children: [
+        _buildChip('all', 'Tất cả'),
+        const SizedBox(width: 8),
+        _buildChip('ai', 'Trợ lý AI Faye 🤖'),
+        const SizedBox(width: 8),
+        _buildChip('unread', 'Chưa đọc 💬'),
+      ],
+    );
+  }
+
+  Widget _buildChip(String key, String label) {
+    final isSelected = _selectedFilter == key;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = key),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF6366F1) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.25)
+                  : Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'BeVietnamPro',
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        style: const TextStyle(
+          fontFamily: 'BeVietnamPro',
+          fontSize: 14,
+          color: Color(0xFF0F172A),
+        ),
         decoration: InputDecoration(
-          hintText: 'Tìm kiếm tin nhắn...',
-          hintStyle: TextStyle(color: Colors.grey.shade500),
-          prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
+          hintText: 'Tìm cuộc trò chuyện hoặc người đồng điệu...',
+          hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6366F1), size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 16, color: Color(0xFF94A3B8)),
+                  onPressed: () => _searchController.clear(),
+                )
+              : null,
           filled: true,
-          fillColor: Colors.grey.shade200,
+          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30.0),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(20.0),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20.0),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20.0),
+            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         ),
       ),
     );
   }
 
-  Widget _buildOnlineStatusList() {
-    return SizedBox(
-      height: 90,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 10, // Faye AI + 9 users
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _buildOnlineAvatar(
-              name: 'Faye AI',
-              imageUrl: 'assets/images/avt_faye_ai.png',
-              isBot: true,
-            );
-          }
-          return _buildOnlineAvatar(
-            name: 'User ${index + 1}',
-            imageUrl: 'assets/images/default_avatar.png',
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildOnlineAvatar({
-    required String name,
-    required String imageUrl,
-    bool isBot = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: isBot
-                      ? const LinearGradient(
-                          colors: [Color(0xFF00E5FF), Color(0xFFFF69B4)])
-                      : null,
-                  color: isBot ? null : Colors.grey.shade300,
-                ),
-                child: CircleAvatar(
-                  radius: 28,
-                  backgroundImage: AssetImage(imageUrl),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent.shade400,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2.5),
-                  ),
-                ),
-              ),
-              if (isBot)
-                Positioned(
-                  top: -4,
-                  left: -4,
-                  child: CircleAvatar(
-                    radius: 10,
-                    backgroundColor: const Color(0xFF9C27B0),
-                    child:
-                        Icon(Icons.auto_awesome, color: Colors.white, size: 12),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            name,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
   SliverList _buildConversationList() {
+    // Lọc theo search và category filter
+    final bool matchFaye = _searchQuery.isEmpty ||
+        'faye ai'.contains(_searchQuery.toLowerCase()) ||
+        'chào bạn, hôm nay của bạn thế nào?'.contains(_searchQuery.toLowerCase());
+
+    final bool showFaye = matchFaye && (_selectedFilter == 'all' || _selectedFilter == 'ai' || _selectedFilter == 'unread');
+
+    if (!showFaye) {
+      return SliverList(
+        delegate: SliverChildListDelegate([
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.search_off_rounded, size: 36, color: Color(0xFF6366F1)),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Không tìm thấy cuộc trò chuyện nào',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Hãy thử tìm kiếm với từ khóa khác hoặc bấm dấu "+" để tạo kết nối mới.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 12.5,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          // Chỉ hiển thị cuộc trò chuyện với Faye AI
-          return _buildConversationItem(
+          // Cuộc trò chuyện với trợ lý Faye AI
+          return ChatConversationTile(
             name: 'Faye AI',
             imageUrl: 'assets/images/avt_faye_ai.png',
             lastMessage: 'Chào bạn, hôm nay của bạn thế nào?',
@@ -285,112 +537,34 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildConversationItem({
-    required String name,
-    required String imageUrl,
-    required String lastMessage,
-    required String time,
-    int unreadCount = 0,
-    bool isBot = false,
-    required VoidCallback onTap,
-  }) {
-    final bool hasUnread = unreadCount > 0;
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        color: hasUnread ? Colors.cyan.withOpacity(0.05) : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            _buildOnlineAvatar(name: '', imageUrl: imageUrl, isBot: isBot),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    lastMessage,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight:
-                          hasUnread ? FontWeight.bold : FontWeight.normal,
-                      color: hasUnread
-                          ? Colors.grey.shade800
-                          : Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: hasUnread
-                        ? const Color(0xFF00B8D4)
-                        : Colors.grey.shade500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (hasUnread)
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: const Color(0xFFFF3B30),
-                    child: Text(
-                      unreadCount.toString(),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  )
-                else
-                  const SizedBox(height: 24),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- WIDGETS CHO MÀN HÌNH PHÒNG CHAT ---
+  // ==========================================
+  // 2. GIAO DIỆN PHÒNG CHAT VỚI FAYE AI
+  // ==========================================
 
   Widget _buildChatRoomView() {
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
     return Scaffold(
       key: const ValueKey('ChatRoomView'),
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildRoomAppBar(),
+      appBar: ChatRoomAppBar(
+        onBack: _switchToListView,
+      ),
       body: BlocListener<ChatBloc, ChatState>(
         listenWhen: (previous, current) {
-          return previous.messages.length != current.messages.length || previous.isTyping != current.isTyping;
+          return previous.messages.length != current.messages.length ||
+              previous.isTyping != current.isTyping;
         },
         listener: (context, state) {
           if (state.messages.length > _previousMessageCount) {
             final newMessage = state.messages.last;
             final isMe = newMessage.isSentByMe;
 
-            // Tự động cuộn NẾU tin do mình gửi HOẶC đang ở sát đáy
             if (isMe || _isNearBottom) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _scrollToBottom();
               });
             } else {
-              // Không cuộn, chỉ tăng số tin chưa đọc
               setState(() => _unreadCount += (state.messages.length - _previousMessageCount));
             }
 
@@ -408,36 +582,41 @@ class ChatScreenState extends State<ChatScreen> {
           children: [
             BlocBuilder<ChatBloc, ChatState>(
               builder: (context, state) {
-                if (state.status == ChatStatus.loading &&
-                    state.messages.isEmpty) {
+                if (state.status == ChatStatus.loading && state.messages.isEmpty) {
                   return const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFBD114A)));
+                    child: CircularProgressIndicator(color: Color(0xFFFF2A6D)),
+                  );
                 }
+
+                // Chừa bottom padding = 155.0 + bottomSafe để tin nhắn cuối cùng hoàn toàn
+                // nằm TRÊN thanh gợi ý và input bar, triệt tiêu 100% lỗi bị che khuất!
                 return ListView.builder(
                   controller: _scrollController,
-                  reverse: true, // Lật ngược danh sách (rất quan trọng)
-                  padding: const EdgeInsets.only(top: 100.0, bottom: 90.0), // Chừa không gian cho input bar tránh đè UI
+                  reverse: true,
+                  padding: EdgeInsets.only(
+                    top: 24.0,
+                    bottom: bottomSafe + 155.0,
+                  ),
                   itemCount: state.messages.length + (state.isTyping ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (state.isTyping) {
-                      if (index == 0) return _buildRoomTypingIndicator(); // Khi gõ, bong bóng nằm kề đáy
+                      if (index == 0) return const ChatTypingIndicatorBubble();
                       final msgIndex = state.messages.length - index;
-                      return _buildRoomMessageBubble(state.messages[msgIndex]);
+                      return ChatMessageBubble(message: state.messages[msgIndex]);
                     } else {
                       final msgIndex = state.messages.length - 1 - index;
-                      return _buildRoomMessageBubble(state.messages[msgIndex]);
+                      return ChatMessageBubble(message: state.messages[msgIndex]);
                     }
                   },
                 );
               },
             ),
-            // Input bar is now handled by MainScreen
-            
-            // Nút Scroll xuống đáy / Báo tin nhắn chưa đọc
+
+            // Nút cuộn xuống dưới cùng khi có tin nhắn mới
             if (!_isNearBottom)
               Positioned(
                 right: 16,
-                bottom: 80, // Nằm nổi trên Input bar
+                bottom: bottomSafe + 145.0,
                 child: GestureDetector(
                   onTap: () {
                     _scrollToBottom();
@@ -450,16 +629,16 @@ class ChatScreenState extends State<ChatScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
-                        )
+                        ),
                       ],
                     ),
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 28),
+                        Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 26),
                         if (_unreadCount > 0)
                           Positioned(
                             top: -4,
@@ -467,15 +646,19 @@ class ChatScreenState extends State<ChatScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: const BoxDecoration(
-                                color: Color(0xFFFF3B30),
+                                color: Color(0xFFFF2A6D),
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
                                 _unreadCount > 9 ? '9+' : '$_unreadCount',
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          )
+                          ),
                       ],
                     ),
                   ),
@@ -483,182 +666,6 @@ class ChatScreenState extends State<ChatScreen> {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildRoomAppBar() {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(60.0),
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: AppBar(
-            backgroundColor: Colors.white.withOpacity(0.75),
-            elevation: 0,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: CustomBackButton(onPressed: _switchToListView),
-            ),
-            leadingWidth: 60, // Tăng không gian cho nút back
-            title: Row(
-              children: [
-                const CircleAvatar(
-                  backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-                  radius: 18,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Faye AI',
-                              style: TextStyle(
-                                  color: Colors.grey.shade800,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                  colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)]),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('BOT',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold)),
-                          )
-                        ],
-                      ),
-                      Text('Đang hoạt động...',
-                          style: TextStyle(
-                              color: Colors.green.shade600, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade700),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Widget bong bóng chat
-  Widget _buildRoomMessageBubble(ChatMessage message) {
-    final isMe = message.isSentByMe;
-
-    // Định dạng giờ phút (VD: 09:05)
-    final timeString =
-        "${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}";
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe) ...[
-            const CircleAvatar(
-              backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-              radius: 14,
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: isMe
-                        ? Colors.blueGrey.shade700.withOpacity(0.6)
-                        : null,
-                    gradient: isMe
-                        ? null
-                        : const LinearGradient(
-                            colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight),
-                    borderRadius: BorderRadius.circular(20).copyWith(
-                      bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-                      bottomRight:
-                          isMe ? Radius.zero : const Radius.circular(20),
-                    ),
-                    boxShadow: isMe
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: const Color(0xFF1E40AF).withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )
-                          ],
-                  ),
-                  child: Text(
-                    message.text,
-                    style:
-                        const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  timeString,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoomTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const CircleAvatar(
-              backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-              radius: 14),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(20)
-                    .copyWith(bottomLeft: Radius.zero)),
-            child: const TypingIndicator(),
-          ),
-        ],
       ),
     );
   }

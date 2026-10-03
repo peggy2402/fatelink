@@ -275,7 +275,7 @@ class _LoginSocialButtonState extends State<LoginSocialButton> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: Color(0xFF64748B),
                   letterSpacing: -0.1,
                 ),

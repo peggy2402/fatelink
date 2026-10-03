@@ -7,8 +7,6 @@ import '../../logic/blocs/auth/auth_event.dart';
 
 // Import các màn hình của bạn
 import '../screens/splash/splash_screen.dart';
-import '../screens/login/login_screen.dart'; // Đảm bảo bạn có import đúng
-import '../screens/main_screen.dart'; // Đảm bảo bạn có import đúng
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -32,6 +30,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     // 2. Đọc trạng thái xem có phải lần đầu tiên mở app không
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final isFirstTime = prefs.getBool('is_first_time') ?? true;
 
     if (isFirstTime) {

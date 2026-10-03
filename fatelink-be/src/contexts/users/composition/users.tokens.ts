@@ -4,4 +4,5 @@ export const USERS_APPLICATION_TOKENS = {
   updateFcmToken: 'application.users.update-fcm-token',
   updateUserTraits: 'application.users.update-user-traits',
   updateUserFrequency: 'application.users.update-user-frequency',
+  updateUserProfile: 'application.users.update-user-profile',
 } as const;

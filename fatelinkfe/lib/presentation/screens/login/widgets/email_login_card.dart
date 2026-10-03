@@ -72,7 +72,7 @@ class EmailLoginCard extends StatelessWidget {
                       'Đăng nhập bằng email',
                       style: TextStyle(
                         fontSize: isCompact ? 14.5 : 15.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: const Color(0xFF111827),
                       ),
                     ),

@@ -5,6 +5,7 @@ import 'package:fatelinkfe/presentation/screens/login/login_screen.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:fatelinkfe/core/utils/device_id_helper.dart';
 import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
+import 'package:fatelinkfe/core/services/network_connectivity_service.dart';
 
 class ApiService {
   static const _secureStorage = SecureStorageHelper.storage;
@@ -216,6 +217,11 @@ class ApiService {
     BuildContext context, {
     String? token,
   }) async {
+    // Ngắt gọi API khi mất mạng, không hiển thị Toast vì đã có NetworkStatusBanner toàn cục
+    if (!NetworkConnectivityService.instance.isOnline) {
+      throw Exception('NO_INTERNET_CONNECTION');
+    }
+
     var response = await sendRequest(token);
 
     if (response.statusCode != 401 && response.statusCode != 403) {

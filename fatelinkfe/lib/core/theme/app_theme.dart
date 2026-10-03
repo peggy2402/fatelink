@@ -9,6 +9,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: 'BeVietnamPro',
       scaffoldBackgroundColor: AppColors.background,
       
       // Cấu hình bảng màu chuẩn Material 3

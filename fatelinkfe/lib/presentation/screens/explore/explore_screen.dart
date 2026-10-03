@@ -1,504 +1,627 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
-import 'package:fatelinkfe/core/responsive/responsive.dart';
-import 'package:fatelinkfe/logic/blocs/home/home_bloc.dart';
-import 'package:fatelinkfe/logic/blocs/home/home_state.dart';
-import 'package:fatelinkfe/presentation/screens/profile/user_detail_screen.dart';
 
-// Main Screen Widget
-class ExploreScreen extends StatelessWidget {
+import '../../../core/responsive/responsive.dart';
+import '../../../core/utils/secure_storage_helper.dart';
+import '../../../core/utils/toast_utils.dart';
+import '../../../data/models/match_filter_criteria.dart';
+import '../../../data/models/match_user.dart';
+import '../../../logic/blocs/home/home_bloc.dart';
+import '../../../logic/blocs/home/home_event.dart';
+import '../../../logic/blocs/home/home_state.dart';
+import '../home/widgets/soul_filter_modal.dart';
+import '../match/match_chat_screen.dart';
+import '../profile/user_detail_screen.dart';
+
+// Components & Widgets tách rời sạch sẽ
+import 'widgets/cosmic_center_node.dart';
+import 'widgets/cosmic_radar_canvas.dart';
+import 'widgets/explore_background.dart';
+import 'widgets/explore_grid_view.dart';
+import 'widgets/explore_top_header.dart';
+import 'widgets/floating_soul_node.dart';
+import 'widgets/pulse_action_button.dart';
+import 'widgets/radar_controls_cluster.dart';
+import 'widgets/soul_peek_card.dart';
+
+/// Màn hình Khám Phá Vũ Trụ Cảm Xúc (Cosmic Exploration Screen):
+/// - Điều phối luồng dữ liệu & tương tác giữa các thành phần
+/// - Hỗ trợ 2 chế độ: Vòm Radar 360° (Radar View) và Lưới Thẻ (Orbit Cards View)
+/// - Cử chỉ Zoom đa điểm (Pinch-to-Zoom & Pan tự do kiểu Google Maps)
+/// - Thuật toán phân bổ so le chống chồng lấn (Anti-Collision Polar Staggering)
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // 1. Background Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.indigo.shade50,
-                  Colors.white,
-                  Colors.pink.shade50,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-
-          // 2. Radar Background Animation
-          const _RadarBackground(),
-
-          // 3. Header
-          const _Header(),
-
-          // 4. Center Node (Current User)
-          const _CenterNode(),
-          
-          // 5. Orbiting Nodes (Real Matched Profiles from HomeBloc)
-          BlocBuilder<HomeBloc, HomeState>(
-            builder: (context, state) {
-              final users = state.matchedUsers;
-              if (users.isEmpty) {
-                return Positioned(
-                  bottom: 110,
-                  left: 24,
-                  right: 24,
-                  child: ResponsiveCenter(
-                    maxWidth: 460,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 20),
-                          SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Đang phát sóng & quét tìm tâm hồn đồng điệu...',
-                              style: TextStyle(
-                                color: Color(0xFF334155),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              final screenWidth = context.screenWidth;
-              final screenHeight = context.screenHeight;
-              final centerX = screenWidth / 2;
-              final centerY = screenHeight * 0.48;
-              final maxRadius = math.min(screenWidth, screenHeight) * 0.36;
-
-              final angles = [-0.75, 0.65, 2.35, -2.25];
-              final distMultipliers = [0.82, 0.94, 0.76, 0.88];
-
-              return Stack(
-                children: users.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final user = entry.value;
-                  final angle = angles[index % angles.length];
-                  final dist = distMultipliers[index % distMultipliers.length] * maxRadius;
-                  final posX = (centerX + dist * math.cos(angle) - 35).clamp(16.0, screenWidth - 86.0);
-                  final posY = (centerY + dist * math.sin(angle) - 35).clamp(80.0, screenHeight - 160.0);
-
-                  return _FloatingNode(
-                    key: ValueKey(user.id),
-                    initialTop: posY,
-                    initialLeft: posX,
-                    userName: user.name,
-                    compatibility: user.compatibilityScore,
-                    avatarUrl: user.avatar ?? '',
-                    animationDelay: Duration(milliseconds: index * 400),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => UserDetailScreen(user: user),
-                        ),
-                      );
-                    },
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-// Header Widget
-class _Header extends StatelessWidget {
-  const _Header();
+class _ExploreScreenState extends State<ExploreScreen>
+    with TickerProviderStateMixin {
+  // Animation controllers
+  late AnimationController _sweepController;
+  late AnimationController _waveController;
+  late AnimationController _shockwaveController;
+  late AnimationController _pulseFabController;
 
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Colors.pinkAccent, Colors.orangeAccent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds),
-                      child: const Text(
-                        'Khám phá',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white, // This color is masked
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Những tần số đang ở gần bạn',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.filter_list_rounded, color: Colors.black54),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+  // Điều khiển Thu phóng & Kéo rê Radar (Pinch-to-Zoom & Pan như Google Maps)
+  late TransformationController _transformationController;
+  late AnimationController _zoomAnimController;
+  Animation<Matrix4>? _zoomAnimation;
+  double _currentScale = 1.0;
 
-// Radar Background Animation Widget
-class _RadarBackground extends StatefulWidget {
-  const _RadarBackground();
+  // Trạng thái khám phá
+  bool _isRadarView = true;
+  String _selectedVibe = 'all';
+  MatchFilterCriteria _filterCriteria = const MatchFilterCriteria();
+  MatchUser? _selectedUser;
+  String? _myAvatarUrl;
 
-  @override
-  State<_RadarBackground> createState() => _RadarBackgroundState();
-}
-
-class _RadarBackgroundState extends State<_RadarBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  // Danh sách tần số sóng vũ trụ dự phòng (Cosmic Echoes) chuẩn cảm xúc FateLink
+  static final List<MatchUser> _fallbackEchoes = [
+    MatchUser(
+      id: 'echo-9941a',
+      name: 'Khánh Linh',
+      emotion: 'Bình yên',
+      compatibilityScore: 94,
+      distanceKm: 1.2,
+      tags: ['#NhạcIndie', '#ĐêmMuộn', '#TràChiều'],
+      bio: 'Muốn tìm người cùng đi dạo hồ Tây ngắm hoàng hôn...',
+      gender: 'female',
+      age: 22,
+      moodIcon: '☕',
+    ),
+    MatchUser(
+      id: 'nova-7201b',
+      name: 'Minh Quân',
+      emotion: 'Lãng mạn',
+      compatibilityScore: 89,
+      distanceKm: 2.4,
+      tags: ['#Acoustic', '#ĐọcSách', '#CàPhêMộtMình'],
+      bio: 'Yêu những giai điệu Trịnh Công Sơn và ngày mưa rơi...',
+      gender: 'male',
+      age: 24,
+      moodIcon: '💕',
+    ),
+    MatchUser(
+      id: 'luna-8834c',
+      name: 'Thanh Thảo',
+      emotion: 'Bí ẩn',
+      compatibilityScore: 85,
+      distanceKm: 3.8,
+      tags: ['#ThiênVăn', '#PhimArtHouse', '#DeepTalk'],
+      bio: 'Có ai cùng thức đêm ngắm mưa sao băng không?',
+      gender: 'female',
+      age: 21,
+      moodIcon: '✨',
+    ),
+    MatchUser(
+      id: 'aura-1923d',
+      name: 'Gia Huy',
+      emotion: 'Chill',
+      compatibilityScore: 80,
+      distanceKm: 5.6,
+      tags: ['#Podcast', '#LofiChill', '#TâmSự'],
+      bio: 'Lắng nghe những tâm sự chân thành sau ngày dài tất bật...',
+      gender: 'male',
+      age: 25,
+      moodIcon: '🎧',
+    ),
+    MatchUser(
+      id: 'cosmo-3301e',
+      name: 'Phương Anh',
+      emotion: 'Sâu lắng',
+      compatibilityScore: 76,
+      distanceKm: 7.2,
+      tags: ['#DeepTalk', '#ĐêmMuộn', '#TrầmLắng'],
+      bio: 'Lắng nghe những rung cảm tinh tế trong đêm muộn...',
+      gender: 'female',
+      age: 23,
+      moodIcon: '🌙',
+    ),
+    MatchUser(
+      id: 'sunny-5521f',
+      name: 'Quang Đăng',
+      emotion: 'Phấn khích',
+      compatibilityScore: 74,
+      distanceKm: 8.8,
+      tags: ['#DuLịch', '#NhiếpẢnh', '#TựDo'],
+      bio: 'Cuối tuần này có ai muốn đi săn mây Ba Vì cùng mình?',
+      gender: 'male',
+      age: 24,
+      moodIcon: '☀️',
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+
+    // 1. Tia quét Radar 360 độ quay liên tục (chu kỳ 4.5s)
+    _sweepController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(milliseconds: 4500),
     )..repeat();
-  }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+    // 2. Sóng siêu âm lan tỏa liên tục (chu kỳ 2.8s)
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    )..repeat();
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Stack(
-            alignment: Alignment.center,
-            children: List.generate(4, (index) {
-              final double progress = (_controller.value + (index * 0.25)) % 1.0;
-              final double scale = 1.5 * progress;
-              final double opacity = (1.0 - progress) * 0.3;
-
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.indigo.shade100.withOpacity(opacity),
-                      width: 2.0,
-                    ),
-                  ),
-                ),
-              );
-            }),
-          );
-        },
-      ),
+    // 3. Sóng xung kích khi bấm nút "Phát xung sóng" (900ms)
+    _shockwaveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
     );
-  }
-}
 
-// Center Node (Current User) Widget
-class _CenterNode extends StatefulWidget {
-  const _CenterNode();
-
-  @override
-  State<_CenterNode> createState() => _CenterNodeState();
-}
-
-class _CenterNodeState extends State<_CenterNode>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pingController;
-  String? _avatarUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _pingController = AnimationController(
+    // 4. Nhịp đập của nút phát xung
+    _pulseFabController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-    _loadAvatar();
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+
+    // 5. Điều khiển Thu phóng & Kéo rê Radar (InteractiveViewer controller)
+    _transformationController = TransformationController();
+    _transformationController.addListener(_onTransformChanged);
+
+    _zoomAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    )..addListener(() {
+        if (_zoomAnimation != null) {
+          _transformationController.value = _zoomAnimation!.value;
+        }
+      });
+
+    _loadUserAvatar();
   }
 
-  Future<void> _loadAvatar() async {
+  Future<void> _loadUserAvatar() async {
     final avatar = await SecureStorageHelper.read('avatarUrl');
-    if (mounted && avatar != null) {
-      setState(() => _avatarUrl = avatar);
+    if (mounted && avatar != null && avatar.isNotEmpty) {
+      setState(() => _myAvatarUrl = avatar);
     }
   }
 
+  void _onTransformChanged() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    if ((scale - _currentScale).abs() > 0.04) {
+      setState(() {
+        _currentScale = scale;
+      });
+    }
+  }
+
+  void _animateToMatrix(Matrix4 target) {
+    _zoomAnimation = Matrix4Tween(
+      begin: _transformationController.value,
+      end: target,
+    ).animate(CurvedAnimation(
+      parent: _zoomAnimController,
+      curve: Curves.easeOutCubic,
+    ));
+    _zoomAnimController.forward(from: 0.0);
+  }
+
+  void _zoomIn(Offset focalCenter) {
+    HapticFeedback.lightImpact();
+    final current = _transformationController.value;
+    final delta = Matrix4.translationValues(focalCenter.dx, focalCenter.dy, 0.0) *
+        Matrix4.diagonal3Values(1.35, 1.35, 1.0) *
+        Matrix4.translationValues(-focalCenter.dx, -focalCenter.dy, 0.0);
+    final target = delta * current;
+    if (target.getMaxScaleOnAxis() > 3.8) return;
+    _animateToMatrix(target);
+  }
+
+  void _zoomOut(Offset focalCenter) {
+    HapticFeedback.lightImpact();
+    final current = _transformationController.value;
+    final delta = Matrix4.translationValues(focalCenter.dx, focalCenter.dy, 0.0) *
+        Matrix4.diagonal3Values(0.74, 0.74, 1.0) *
+        Matrix4.translationValues(-focalCenter.dx, -focalCenter.dy, 0.0);
+    final target = delta * current;
+    if (target.getMaxScaleOnAxis() < 0.55) return;
+    _animateToMatrix(target);
+  }
+
+  void _recenterRadar() {
+    HapticFeedback.mediumImpact();
+    ToastUtil.showInfo(context, 'Đã đưa Radar về tâm sóng ban đầu 🎯');
+    _animateToMatrix(Matrix4.identity());
+  }
+
   @override
   void dispose() {
-    _pingController.dispose();
+    _sweepController.dispose();
+    _waveController.dispose();
+    _shockwaveController.dispose();
+    _pulseFabController.dispose();
+    _transformationController.removeListener(_onTransformChanged);
+    _transformationController.dispose();
+    _zoomAnimController.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Ping/Ripple Animation
-          AnimatedBuilder(
-            animation: _pingController,
-            builder: (context, child) {
-              final double progress = _pingController.value;
-              final double scale = 1.0 + progress * 1.5;
-              final double opacity = 1.0 - progress;
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(opacity * 0.5),
-                  ),
-                ),
-              );
-            },
-          ),
-          // User Avatar
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.indigo.withOpacity(0.2),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: CircleAvatar(
-              radius: 40,
-              backgroundColor: const Color(0xFFE0E7FF),
-              backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                  ? NetworkImage(_avatarUrl!) as ImageProvider
-                  : const AssetImage('assets/images/default_avatar.png'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+  /// Kích hoạt phát xung sóng quét mới (Sonar Pulse)
+  void _triggerSonarPulse() {
+    HapticFeedback.mediumImpact();
+    _shockwaveController.forward(from: 0.0);
 
-// Floating/Orbiting Node Widget
-class _FloatingNode extends StatefulWidget {
-  final double initialTop;
-  final double initialLeft;
-  final String userName;
-  final int compatibility;
-  final String avatarUrl;
-  final Duration animationDelay;
-  final VoidCallback onTap;
-
-  const _FloatingNode({
-    super.key,
-    required this.initialTop,
-    required this.initialLeft,
-    required this.userName,
-    required this.compatibility,
-    required this.avatarUrl,
-    required this.animationDelay,
-    required this.onTap,
-  });
-
-  @override
-  State<_FloatingNode> createState() => _FloatingNodeState();
-}
-
-class _FloatingNodeState extends State<_FloatingNode>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _floatController;
-  late Animation<double> _floatAnimation;
-  Timer? _delayTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _floatController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    );
-
-    _floatAnimation = Tween<double>(begin: -5, end: 5).animate(
-      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
-    );
-
-    _delayTimer = Timer(widget.animationDelay, () {
-      if (mounted) {
-        _floatController.repeat(reverse: true);
-      }
+    // Tăng tốc quét nhanh trong 1.4s tạo hiệu ứng kích hoạt
+    _sweepController.animateTo(
+      _sweepController.value + 2.0,
+      duration: const Duration(milliseconds: 1400),
+      curve: Curves.fastOutSlowIn,
+    ).then((_) {
+      if (mounted) _sweepController.repeat();
     });
+
+    // Làm mới dữ liệu từ HomeBloc
+    context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
+
+    ToastUtil.showSuccess(
+      context,
+      'Đã phát xung sóng 432Hz trong bán kính 10km quanh bạn!',
+    );
   }
 
-  @override
-  void dispose() {
-    _delayTimer?.cancel();
-    _floatController.dispose();
-    super.dispose();
+  /// Mở modal bộ lọc chuyên sâu
+  void _openFilterModal(List<MatchUser> allUsers) async {
+    final result = await SoulFilterModal.show(
+      context,
+      initialCriteria: _filterCriteria,
+      allUsers: allUsers,
+      onApply: (newCriteria) {
+        setState(() => _filterCriteria = newCriteria);
+      },
+    );
+
+    if (result != null && mounted) {
+      setState(() => _filterCriteria = result);
+    }
+  }
+
+  /// Tổng hợp danh sách người dùng kết hợp giữa API và Cosmic Echoes
+  List<MatchUser> _getConsolidatedUsers(List<MatchUser> apiUsers) {
+    final List<MatchUser> list = [];
+
+    // 1. Đưa các user thật từ API lên đầu
+    list.addAll(apiUsers);
+
+    // 2. Nếu danh sách quá ít (< 5), bổ sung các tần số sóng bí ẩn mô phỏng
+    if (list.length < 5) {
+      final existingIds = list.map((u) => u.id).toSet();
+      for (final echo in _fallbackEchoes) {
+        if (!existingIds.contains(echo.id)) {
+          list.add(echo);
+        }
+        if (list.length >= 6) break;
+      }
+    }
+
+    // 3. Áp dụng bộ lọc chuyên sâu
+    var filtered = _filterCriteria.apply(list);
+
+    // 4. Áp dụng thanh lọc nhanh (Quick Vibe Pills)
+    switch (_selectedVibe) {
+      case 'nearby':
+        filtered = filtered.where((u) => (u.distanceKm ?? 2.0) <= 3.5).toList();
+        break;
+      case 'high_match':
+        filtered = filtered.where((u) => u.compatibilityScore >= 80).toList();
+        break;
+      case 'binh_yen':
+        filtered = filtered
+            .where((u) => u.emotion.toLowerCase().contains('bình yên'))
+            .toList();
+        break;
+      case 'lang_man':
+        filtered = filtered
+            .where((u) => u.emotion.toLowerCase().contains('lãng mạn'))
+            .toList();
+        break;
+      case 'bi_an':
+        filtered = filtered
+            .where((u) => u.emotion.toLowerCase().contains('bí ẩn'))
+            .toList();
+        break;
+      case 'chill':
+        filtered = filtered
+            .where((u) => u.emotion.toLowerCase().contains('chill'))
+            .toList();
+        break;
+      case 'sau_lang':
+        filtered = filtered
+            .where((u) =>
+                u.emotion.toLowerCase().contains('sâu lắng') ||
+                u.tags?.any((t) =>
+                    t.toLowerCase().contains('deeptalk') ||
+                    t.toLowerCase().contains('đêm')) ==
+                    true)
+            .toList();
+        break;
+      case 'phan_khich':
+        filtered = filtered
+            .where((u) => u.emotion.toLowerCase().contains('phấn khích'))
+            .toList();
+        break;
+      case 'all':
+      default:
+        break;
+    }
+
+    return filtered;
+  }
+
+  /// Thuật toán phân bổ tọa độ cực thiên văn theo khoảng cách thực tế (Polar Radar Coordinates)
+  Offset _calculateNodePosition({
+    required int index,
+    required int total,
+    required MatchUser user,
+    required Offset center,
+    required double radius,
+    required double screenWidth,
+    required double screenHeight,
+  }) {
+    final count = math.max(total, 5);
+    final step = (2 * math.pi) / count;
+    final angle = -math.pi / 3 + (index * step);
+
+    // Phân bổ cự ly theo khoảng cách thực tế (0.5km - 10km) tương ứng 4 vòng radar
+    double distRatio;
+    if (user.distanceKm != null && user.distanceKm! > 0) {
+      // 0.5km -> 0.28 (vòng 1); 10km -> 0.95 (vòng 4)
+      distRatio = (user.distanceKm! / 10.0).clamp(0.28, 0.95);
+    } else {
+      // So le 3 tầng quỹ đạo chống chồng lấn
+      final isOuter = (index % 3 == 2);
+      final isMid = (index % 3 == 1);
+      distRatio = isOuter ? 0.90 : (isMid ? 0.65 : 0.40);
+    }
+    final dist = distRatio * radius;
+
+    final x = center.dx + dist * math.cos(angle);
+    final y = center.dy + dist * math.sin(angle);
+
+    return Offset(x, y);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: widget.initialTop,
-      left: widget.initialLeft,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedBuilder(
-          animation: _floatAnimation,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(0, _floatAnimation.value),
-              child: child,
-            );
-          },
-          child: Column(
+    final screenWidth = context.screenWidth;
+    final screenHeight = context.screenHeight;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    // Tọa độ tâm của vòm radar (ở vị trí 39% chiều cao màn hình)
+    final radarCenter = Offset(screenWidth / 2, screenHeight * 0.39);
+    final radarRadius = math.min(screenWidth, screenHeight) * 0.36;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: BlocBuilder<HomeBloc, HomeState>(
+        builder: (context, state) {
+          final users = _getConsolidatedUsers(state.matchedUsers);
+
+          // Tự động chọn người đầu tiên nếu chưa chọn hoặc người được chọn không còn trong danh sách
+          if (users.isNotEmpty) {
+            if (_selectedUser == null || !users.any((u) => u.id == _selectedUser!.id)) {
+              _selectedUser = users.first;
+            }
+          } else {
+            _selectedUser = null;
+          }
+
+          // Tính toán tọa độ vị trí của selected user trên radar để vẽ tia laser
+          Offset? selectedOffset;
+          if (_selectedUser != null) {
+            final idx = users.indexWhere((u) => u.id == _selectedUser!.id);
+            if (idx != -1) {
+              selectedOffset = _calculateNodePosition(
+                index: idx,
+                total: users.length,
+                user: _selectedUser!,
+                center: radarCenter,
+                radius: radarRadius,
+                screenWidth: screenWidth,
+                screenHeight: screenHeight,
+              );
+            }
+          }
+
+          return Stack(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Colors.pinkAccent, Colors.cyanAccent],
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: 30,
-                      backgroundColor: const Color(0xFFE0E7FF),
-                      backgroundImage: (widget.avatarUrl.isNotEmpty && widget.avatarUrl.startsWith('http'))
-                          ? NetworkImage(widget.avatarUrl) as ImageProvider
-                          : AssetImage(widget.avatarUrl.isNotEmpty ? widget.avatarUrl : 'assets/images/default_avatar.png'),
-                      onBackgroundImageError: (_, __) {}, // Handle error
+              // 1. Nền tinh vân cực quang phát sáng (Cosmic Ambient Glow)
+              ExploreBackground(width: screenWidth, height: screenHeight),
+
+              // 2. Chế độ hiển thị: Vòm Radar hoặc Lưới thẻ
+              if (_isRadarView) ...[
+                // Không gian Vòm Radar đa điểm cảm ứng (Pinch-to-Zoom & Pan như Google Maps)
+                InteractiveViewer(
+                  transformationController: _transformationController,
+                  minScale: 0.55,
+                  maxScale: 3.8,
+                  boundaryMargin: EdgeInsets.all(screenWidth * 0.8),
+                  clipBehavior: Clip.none,
+                  child: SizedBox(
+                    width: screenWidth,
+                    height: screenHeight,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Canvas vẽ Vòm Radar thiên văn 360 độ (Animated)
+                        AnimatedBuilder(
+                          animation: Listenable.merge([
+                            _sweepController,
+                            _waveController,
+                            _shockwaveController,
+                          ]),
+                          builder: (context, child) {
+                            final sweepRad = _sweepController.value * 2 * math.pi;
+                            return CosmicRadarCanvas(
+                              sweepAngle: sweepRad,
+                              waveProgress: _waveController.value,
+                              shockwaveProgress: _shockwaveController.value,
+                              selectedTarget: selectedOffset,
+                              center: radarCenter,
+                              radius: radarRadius,
+                            );
+                          },
+                        ),
+
+                        // Nút Tâm Radar: Bạn (Current User Core)
+                        CosmicCenterNode(
+                          center: radarCenter,
+                          avatarUrl: _myAvatarUrl,
+                        ),
+
+                        // Các điểm tần số bay lơ lửng quanh quỹ đạo (Orbiting Soul Nodes)
+                        ...users.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final user = entry.value;
+                          final isSelected = _selectedUser?.id == user.id;
+
+                          final nodePos = _calculateNodePosition(
+                            index: index,
+                            total: users.length,
+                            user: user,
+                            center: radarCenter,
+                            radius: radarRadius,
+                            screenWidth: screenWidth,
+                            screenHeight: screenHeight,
+                          );
+
+                          return FloatingSoulNode(
+                            key: ValueKey(user.id),
+                            user: user,
+                            position: nodePos,
+                            isSelected: isSelected,
+                            index: index,
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _selectedUser = user);
+                            },
+                            onDoubleTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => UserDetailScreen(user: user),
+                                ),
+                              );
+                            },
+                          );
+                        }),
+                      ],
                     ),
                   ),
+                ),
+
+                // Nút nổi "Quét 432Hz" (FAB Pulse)
+                Positioned(
+                  top: screenHeight * 0.165,
+                  right: 16,
+                  child: PulseActionButton(
+                    animation: _pulseFabController,
+                    onTap: _triggerSonarPulse,
+                  ),
+                ),
+
+                // Cụm phím điều khiển Zoom kính mờ (+, -, Tỷ lệ Zoom, Tâm sóng)
+                Positioned(
+                  top: screenHeight * 0.235,
+                  right: 16,
+                  child: RadarControlsCluster(
+                    currentScale: _currentScale,
+                    onZoomIn: () => _zoomIn(radarCenter),
+                    onZoomOut: () => _zoomOut(radarCenter),
+                    onRecenter: _recenterRadar,
+                  ),
+                ),
+
+                // Thẻ Kính Mờ "Soul Peek Sheet" hiển thị thông tin ở đáy màn hình
+                // Đặt cao hơn thanh Bottom Navigation Bar để không bị nút Trái tim hồng che khuất
+                if (_selectedUser != null)
                   Positioned(
-                    right: -5,
-                    bottom: -5,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 5,
-                          )
-                        ],
-                      ),
-                      child: Text(
-                        '${widget.compatibility}%',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                    bottom: 110.0 + bottomPadding,
+                    left: 0,
+                    right: 0,
+                    child: ResponsiveCenter(
+                      maxWidth: 480,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        transitionBuilder: (child, animation) => SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.0, 0.25),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: FadeTransition(opacity: animation, child: child),
+                        ),
+                        child: SoulPeekCard(
+                          key: ValueKey(_selectedUser!.id),
+                          user: _selectedUser!,
+                          currentIndex: users.indexOf(_selectedUser!) + 1,
+                          totalCount: users.length,
+                          onChat: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => MatchChatScreen(
+                                  partnerName: _selectedUser!.displayName,
+                                  partnerId: _selectedUser!.id,
+                                ),
+                              ),
+                            );
+                          },
+                          onViewProfile: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => UserDetailScreen(
+                                  user: _selectedUser!,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
-                  )
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: 80,
-                child: Text(
-                  widget.userName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                  ),
+              ] else ...[
+                // Chế độ Lưới Tần Số (Orbit Cards View)
+                Padding(
+                  padding: EdgeInsets.only(top: screenHeight * 0.17),
+                  child: ExploreGridView(
+                    users: users,
+                    onRefresh: () async {
+                      context.read<HomeBloc>().add(
+                            RefreshRecommendationsEvent(context),
+                          );
+                    },
                   ),
                 ),
+              ],
+
+              // 3. Header Cực Quang & Bộ lọc (Fixed Top)
+              ExploreTopHeader(
+                isRadarView: _isRadarView,
+                selectedVibe: _selectedVibe,
+                filterCriteria: _filterCriteria,
+                currentScale: _currentScale,
+                onModeChanged: (isRadar) {
+                  setState(() => _isRadarView = isRadar);
+                },
+                onVibeChanged: (vibe) {
+                  setState(() => _selectedVibe = vibe);
+                },
+                onFilterTap: () => _openFilterModal(state.matchedUsers),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
