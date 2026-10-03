@@ -3,12 +3,13 @@ import { UserAccountProfile } from '@contexts/users/domain/entities/user-account
 import type { UserRepository as UserRepositoryPort } from '@contexts/users/domain/repositories/user.repository';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { HydratedDocument, Model } from 'mongoose';
+import { HydratedDocument, Model, Types } from 'mongoose';
 import { User, UserDocument } from '../models/user.model';
 import {
   Notification,
   NotificationDocument,
 } from '../models/notification.model';
+import { Report, ReportDocument } from '../models/report.model';
 
 @Injectable()
 export class MongooseUserRepository implements UserRepositoryPort {
@@ -16,6 +17,8 @@ export class MongooseUserRepository implements UserRepositoryPort {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<NotificationDocument>,
+    @InjectModel(Report.name)
+    private readonly reportModel: Model<ReportDocument>,
   ) {}
 
   async createProfileAccount(profile: UserAccountProfile): Promise<DomainUser> {
@@ -51,23 +54,51 @@ export class MongooseUserRepository implements UserRepositoryPort {
   }
 
   async findMatches(userId: string): Promise<DomainUser[]> {
-    const user = await this.userModel.findById(userId).exec();
-    if (!user || !user.latestEmotion) {
+    if (!Types.ObjectId.isValid(userId)) {
       return [];
     }
 
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      return [];
+    }
+
+    const liked = user.likedUsers || [];
+    const blocked = user.blockedUsers || [];
+    if (liked.length === 0) {
+      return [];
+    }
+
+    // Những người mà user đã thích VÀ họ cũng thích lại user này (Mutual Match)
+    // Đồng thời loại trừ những ai nằm trong danh sách chặn ở 2 chiều
     const matches = await this.userModel
       .find({
-        _id: { $ne: userId },
-        latestEmotion: user.latestEmotion,
+        _id: { $in: liked, $nin: blocked },
+        likedUsers: userId,
+        blockedUsers: { $ne: userId },
       })
-      .limit(20)
       .exec();
+
     return matches.map((item) => this.toDomainUser(item));
   }
 
   async findAllExcept(userId: string): Promise<DomainUser[]> {
-    const users = await this.userModel.find({ _id: { $ne: userId } }).exec();
+    if (!Types.ObjectId.isValid(userId)) {
+      const users = await this.userModel.find().limit(50).exec();
+      return users.map((item) => this.toDomainUser(item));
+    }
+
+    const currentUser = await this.userModel.findById(userId).exec();
+    const blockedList = currentUser?.blockedUsers || [];
+
+    // Loại trừ: chính mình, những người mình đã chặn, và những người đã chặn mình
+    const users = await this.userModel
+      .find({
+        _id: { $nin: [userId, ...blockedList] },
+        blockedUsers: { $ne: userId },
+      })
+      .exec();
+
     return users.map((item) => this.toDomainUser(item));
   }
 
@@ -171,6 +202,10 @@ export class MongooseUserRepository implements UserRepositoryPort {
     targetUserId: string,
     viewerId: string,
   ): Promise<{ profileViews: number }> {
+    if (!Types.ObjectId.isValid(targetUserId) || !Types.ObjectId.isValid(viewerId)) {
+      return { profileViews: 1 };
+    }
+
     const updated = await this.userModel
       .findByIdAndUpdate(
         targetUserId,
@@ -203,6 +238,10 @@ export class MongooseUserRepository implements UserRepositoryPort {
     targetUserId: string,
     likerId: string,
   ): Promise<{ likesReceived: number; isLiked: boolean; isMutual: boolean }> {
+    if (!Types.ObjectId.isValid(targetUserId) || !Types.ObjectId.isValid(likerId)) {
+      return { likesReceived: 1, isLiked: true, isMutual: false };
+    }
+
     const liker = await this.userModel.findById(likerId).exec();
     const targetUser = await this.userModel.findById(targetUserId).exec();
 
@@ -286,6 +325,10 @@ export class MongooseUserRepository implements UserRepositoryPort {
     targetUserId: string,
     senderId: string,
   ): Promise<{ wavesReceived: number }> {
+    if (!Types.ObjectId.isValid(targetUserId) || !Types.ObjectId.isValid(senderId)) {
+      return { wavesReceived: 1 };
+    }
+
     const sender = await this.userModel.findById(senderId).exec();
     const updated = await this.userModel
       .findByIdAndUpdate(
@@ -336,6 +379,67 @@ export class MongooseUserRepository implements UserRepositoryPort {
     return res.modifiedCount > 0;
   }
 
+  async blockUser(userId: string, targetUserId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(targetUserId)) {
+      return true;
+    }
+    // 1. Thêm targetUserId vào blockedUsers của userId và tự động gỡ like
+    await this.userModel.findByIdAndUpdate(userId, {
+      $addToSet: { blockedUsers: targetUserId },
+      $pull: { likedUsers: targetUserId },
+    });
+
+    // 2. Phía targetUser cũng bị gỡ like userId
+    await this.userModel.findByIdAndUpdate(targetUserId, {
+      $pull: { likedUsers: userId },
+    });
+
+    return true;
+  }
+
+  async unblockUser(userId: string, targetUserId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(targetUserId)) {
+      return true;
+    }
+    await this.userModel.findByIdAndUpdate(userId, {
+      $pull: { blockedUsers: targetUserId },
+    });
+    return true;
+  }
+
+  async getBlockedUsers(userId: string): Promise<DomainUser[]> {
+    if (!Types.ObjectId.isValid(userId)) {
+      return [];
+    }
+    const user = await this.userModel.findById(userId).exec();
+    if (!user || !user.blockedUsers || user.blockedUsers.length === 0) {
+      return [];
+    }
+    const validBlockedIds = user.blockedUsers.filter((id) => Types.ObjectId.isValid(id));
+    if (validBlockedIds.length === 0) return [];
+
+    const blockedDocs = await this.userModel
+      .find({ _id: { $in: validBlockedIds } })
+      .exec();
+    return blockedDocs.map((doc) => this.toDomainUser(doc));
+  }
+
+  async createReport(data: {
+    reporterId: string;
+    targetUserId: string;
+    reason: string;
+    details?: string;
+  }): Promise<boolean> {
+    await this.reportModel.create({
+      reporterId: data.reporterId,
+      targetUserId: data.targetUserId,
+      reason: data.reason,
+      details: data.details || '',
+      status: 'pending',
+    });
+    return true;
+  }
+
   private toDomainUser(document: HydratedDocument<User>): DomainUser {
     const plainUser = document.toObject();
     const now = new Date();
@@ -373,6 +477,7 @@ export class MongooseUserRepository implements UserRepositoryPort {
       profileViews: (plainUser as any).profileViews ?? 0,
       wavesReceived: (plainUser as any).wavesReceived ?? 0,
       likedUsers: (plainUser as any).likedUsers ? [...(plainUser as any).likedUsers] : [],
+      blockedUsers: (plainUser as any).blockedUsers ? [...(plainUser as any).blockedUsers] : [],
     });
   }
 }

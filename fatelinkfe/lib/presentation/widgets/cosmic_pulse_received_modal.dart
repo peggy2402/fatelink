@@ -1,7 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/api_service.dart';
+import '../../core/services/image_picker_service.dart';
 import '../../core/utils/anonymous_avatar_helper.dart';
+import '../../core/utils/constants.dart';
+import '../../core/utils/secure_storage_helper.dart';
 import '../../core/utils/toast_utils.dart';
 import '../../data/models/match_user.dart';
 import '../screens/match/match_chat_screen.dart';
@@ -10,7 +14,9 @@ import '../screens/match/match_chat_screen.dart';
 /// - Làm mờ toàn bộ màn hình phía sau (BackdropFilter Blur)
 /// - Hiển thị thẻ người vừa gửi sóng với hiệu ứng hào quang phát sáng
 /// - Bộ mô phỏng sóng âm thanh 432Hz chuyển động sống động
-/// - 2 Nút hành động: "Phát sóng đáp lại ⚡" và "Trò chuyện ngay 💬"
+/// - 2 Nút hành động chuẩn nghiệp vụ:
+///   + "Phát sóng đáp lại ⚡" (gọi API sóng thật)
+///   + "Thả tim kết nối 💕" (mở khóa trò chuyện chỉ khi cả hai cùng thả tim)
 class CosmicPulseReceivedModal extends StatefulWidget {
   final MatchUser sender;
   final VoidCallback? onResonated;
@@ -58,6 +64,7 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
   late AnimationController _rippleController;
   late AnimationController _soundWaveController;
   bool _hasResonatedBack = false;
+  bool _isLiking = false;
 
   @override
   void initState() {
@@ -83,47 +90,113 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
     super.dispose();
   }
 
-  void _handleResonateBack() {
+  /// Gửi sóng 432Hz đáp lại người gửi
+  Future<void> _handleResonateBack() async {
     if (_hasResonatedBack) return;
     HapticFeedback.heavyImpact();
     setState(() => _hasResonatedBack = true);
 
-    ToastUtil.showSuccess(
-      context,
-      'Đã phát sóng 432Hz đáp lại! Hai bạn đã tạo nên sự cộng hưởng định mệnh ✨',
-    );
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && mounted) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userRecordWave(widget.sender.id)}';
+        await ApiService.post(url, context, token: token);
+      }
+    } catch (e) {
+      debugPrint('Lỗi gửi sóng đáp lại: $e');
+    }
+
+    if (mounted) {
+      ToastUtil.showSuccess(
+        context,
+        'Đã phát sóng 432Hz đáp lại! Hai bạn đã tạo nên sự cộng hưởng định mệnh ✨',
+      );
+    }
 
     widget.onResonated?.call();
 
-    // Đóng sau 1 giây để người dùng cảm nhận hiệu ứng thành công
+    // Đóng sau 1.2 giây để người dùng cảm nhận hiệu ứng thành công
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) Navigator.of(context).pop();
     });
   }
 
-  void _handleOpenChat() {
-    HapticFeedback.mediumImpact();
-    Navigator.of(context).pop(); // Đóng modal trước
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => MatchChatScreen(
-          partnerName: widget.sender.displayName,
-          partnerId: widget.sender.id,
+  /// Xử lý Thả tim hoặc Mở chat (Nếu đã mutual match)
+  Future<void> _handleHeartOrChat() async {
+    // Nếu cả hai đã cùng thả tim từ trước -> Mở thẳng phòng trò chuyện
+    if (widget.sender.isMutualFollow) {
+      HapticFeedback.mediumImpact();
+      Navigator.of(context).pop();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => MatchChatScreen(
+            partnerName: widget.sender.displayName,
+            partnerId: widget.sender.id,
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+
+    // Nếu chưa cùng thả tim -> Thực hiện hành động thả tim
+    if (_isLiking) return;
+    HapticFeedback.heavyImpact();
+    setState(() => _isLiking = true);
+
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && mounted) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userToggleLike(widget.sender.id)}';
+        final res = await ApiService.post(url, context, token: token);
+
+        if (res != null && mounted) {
+          final isMutual = res['isMutual'] == true;
+          Navigator.of(context).pop();
+
+          if (isMutual) {
+            ToastUtil.showSuccess(
+              context,
+              '✨ Siêu tân tinh bùng nổ! Cả hai đã cùng thả tim! Trò chuyện đã được mở khóa.',
+            );
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => MatchChatScreen(
+                  partnerName: widget.sender.name.isNotEmpty
+                      ? widget.sender.name
+                      : widget.sender.displayName,
+                  partnerId: widget.sender.id,
+                ),
+              ),
+            );
+          } else {
+            ToastUtil.showSuccess(
+              context,
+              'Đã gửi rung động tim! Khi đối phương thả tim lại, diện mạo và trò chuyện sẽ mở khóa 💕',
+            );
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi thả tim kết nối: $e');
+    } finally {
+      if (mounted) setState(() => _isLiking = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final sender = widget.sender;
-    final distanceText = sender.distanceKm != null
+    final canView = sender.canViewIdentity;
+    final distanceText = sender.distanceKm != null && sender.distanceKm! > 0
         ? '${sender.distanceKm!.toStringAsFixed(1)} km'
         : 'Gần bạn';
 
     final bioText = (sender.bio != null && sender.bio!.trim().isNotEmpty)
         ? sender.bio!.trim()
-        : 'Muốn tìm người cùng đi dạo chuyện trò những đêm muộn...';
+        : 'Đang phát sóng cảm xúc 432Hz tìm kiếm tâm hồn đồng điệu...';
 
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
@@ -135,7 +208,7 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: Colors.white.withValues(alpha: 0.96),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
                   color: Colors.white,
@@ -143,12 +216,12 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFEC4899).withValues(alpha: 0.25),
+                    color: const Color(0xFFEC4899).withValues(alpha: 0.22),
                     blurRadius: 36,
                     offset: const Offset(0, 12),
                   ),
                   BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.20),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.18),
                     blurRadius: 24,
                     offset: const Offset(0, -4),
                   ),
@@ -191,8 +264,8 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                         // 1. Huy hiệu sóng âm thanh 432Hz đang phát
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 5,
+                            horizontal: 13,
+                            vertical: 5.5,
                           ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
@@ -226,85 +299,10 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                           ),
                         ),
 
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 20),
 
-                        // 2. Avatar trung tâm với vòng hào quang phát sóng lan tỏa
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Vòng sóng siêu âm tỏa rộng
-                            AnimatedBuilder(
-                              animation: _rippleController,
-                              builder: (context, child) {
-                                final progress = _rippleController.value;
-                                final scale = 1.0 + progress * 0.45;
-                                final opacity = (1.0 - progress) * 0.4;
-                                return Transform.scale(
-                                  scale: scale,
-                                  child: Container(
-                                    width: 86,
-                                    height: 86,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0xFFEC4899)
-                                            .withValues(alpha: opacity),
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            // Avatar chính
-                            Container(
-                              padding: const EdgeInsets.all(3.5),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFEC4899).withValues(alpha: 0.4),
-                                    blurRadius: 18,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: AnonymousAvatarHelper.buildAvatar(
-                                user: sender,
-                                size: 68,
-                                showLockBadge: true,
-                              ),
-                            ),
-
-                            // Huy hiệu cảm xúc (☕, 💕, ✨, etc.)
-                            if (sender.moodIcon != null && sender.moodIcon!.isNotEmpty)
-                              Positioned(
-                                top: -2,
-                                right: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 6,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    sender.moodIcon!,
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                        // 2. Avatar trung tâm với vòng hào quang phát sóng lan tỏa (Được thiết kế hoàn hảo không đè viền)
+                        _buildCosmicAvatar(sender, canView),
 
                         const SizedBox(height: 14),
 
@@ -314,7 +312,7 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                           children: [
                             Flexible(
                               child: Text(
-                                sender.displayName,
+                                canView ? sender.name : sender.anonymousName,
                                 style: const TextStyle(
                                   fontFamily: 'BeVietnamPro',
                                   fontSize: 19,
@@ -469,7 +467,7 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
 
                         const SizedBox(height: 20),
 
-                        // 5. Hai nút hành động: "Phát sóng đáp lại" & "Trò chuyện ngay"
+                        // 5. Hai nút hành động chuẩn nghiệp vụ: "Phát sóng đáp lại" & "Thả tim kết nối"
                         Row(
                           children: [
                             // Nút Phát sóng đáp lại
@@ -528,37 +526,49 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                             ),
                             const SizedBox(width: 10),
 
-                            // Nút Trò chuyện ngay
+                            // Nút Thả tim kết nối (hoặc Trò chuyện nếu đã là bạn bè mutual match)
                             Expanded(
-                              flex: 4,
+                              flex: 5,
                               child: GestureDetector(
-                                onTap: _handleOpenChat,
+                                onTap: _handleHeartOrChat,
                                 child: Container(
                                   height: 46,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEEF2FF),
+                                    color: sender.isMutualFollow
+                                        ? const Color(0xFFEEF2FF)
+                                        : const Color(0xFFFDF2F8),
                                     borderRadius: BorderRadius.circular(23),
                                     border: Border.all(
-                                      color: const Color(0xFFC7D2FE),
+                                      color: sender.isMutualFollow
+                                          ? const Color(0xFFC7D2FE)
+                                          : const Color(0xFFFBCFE8),
                                       width: 1.2,
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
-                                        Icons.chat_bubble_outline_rounded,
-                                        color: Color(0xFF4F46E5),
-                                        size: 16,
+                                        sender.isMutualFollow
+                                            ? Icons.chat_bubble_outline_rounded
+                                            : Icons.favorite_rounded,
+                                        color: sender.isMutualFollow
+                                            ? const Color(0xFF4F46E5)
+                                            : const Color(0xFFEC4899),
+                                        size: 17,
                                       ),
-                                      SizedBox(width: 5),
+                                      const SizedBox(width: 5),
                                       Text(
-                                        'Trò chuyện',
+                                        sender.isMutualFollow
+                                            ? 'Trò chuyện'
+                                            : 'Thả tim kết nối',
                                         style: TextStyle(
                                           fontFamily: 'BeVietnamPro',
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w700,
-                                          color: Color(0xFF4F46E5),
+                                          color: sender.isMutualFollow
+                                            ? const Color(0xFF4F46E5)
+                                            : const Color(0xFFEC4899),
                                         ),
                                       ),
                                     ],
@@ -576,6 +586,152 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Khung hiển thị Avatar Cosmic: Đồng tâm, không đè viền, tinh xảo tuyệt đối
+  Widget _buildCosmicAvatar(MatchUser sender, bool canView) {
+    const double avatarSize = 78.0;
+
+    return SizedBox(
+      width: 104,
+      height: 104,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // 1. Vòng sóng siêu âm 432Hz lan tỏa đồng tâm
+          AnimatedBuilder(
+            animation: _rippleController,
+            builder: (context, child) {
+              final progress = _rippleController.value;
+              final scale = 1.0 + progress * 0.35;
+              final opacity = (1.0 - progress) * 0.45;
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: avatarSize + 6,
+                  height: avatarSize + 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFEC4899).withValues(alpha: opacity),
+                      width: 1.8,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 2. Avatar tròn đơn nhất với 1 viền Gradient duy nhất
+          Container(
+            width: avatarSize,
+            height: avatarSize,
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFEC4899).withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: canView
+                  ? (sender.avatar != null && sender.avatar!.isNotEmpty
+                      ? Image(
+                          image: ImagePickerService.getImageProvider(sender.avatar!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildFallbackAvatar(avatarSize),
+                        )
+                      : _buildFallbackAvatar(avatarSize))
+                  : Image.asset(
+                      AnonymousAvatarHelper.getAnonymousAvatarAsset(sender.id),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildFallbackAvatar(avatarSize),
+                    ),
+            ),
+          ),
+
+          // 3. Huy hiệu Mood (nếu có): Đặt gọn gàng góc trên phải
+          if (sender.moodIcon != null && sender.moodIcon!.isNotEmpty)
+            Positioned(
+              top: 4,
+              right: 6,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  sender.moodIcon!,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+
+          // 4. Huy hiệu Ổ Khóa (nếu đang ở chế độ ẩn danh): Đặt gọn gàng góc dưới phải
+          if (!canView)
+            Positioned(
+              bottom: 4,
+              right: 6,
+              child: Container(
+                padding: const EdgeInsets.all(4.5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: Colors.white,
+                  size: 11,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackAvatar(double size) {
+    return Container(
+      width: size,
+      height: size,
+      color: const Color(0xFFEDE9FE),
+      child: const Icon(
+        Icons.auto_awesome_rounded,
+        color: Color(0xFF8B5CF6),
+        size: 32,
       ),
     );
   }

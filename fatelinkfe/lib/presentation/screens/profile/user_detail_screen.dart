@@ -12,6 +12,7 @@ import '../../../data/models/vibe_photo_item.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/secure_storage_helper.dart';
 import '../../../services/api_service.dart';
+import '../../widgets/cosmic_report_modal.dart';
 
 class UserDetailScreen extends StatefulWidget {
   final MatchUser user;
@@ -132,6 +133,179 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     });
   }
 
+  Future<void> _handleBlockUser() async {
+    final displayName = canViewIdentity ? widget.user.name : widget.user.anonymousName;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Chặn người dùng?',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn chặn $displayName? Hai bạn sẽ không thể tìm thấy, gửi sóng hoặc xem hồ sơ của nhau nữa.',
+          style: const TextStyle(
+            fontFamily: 'BeVietnamPro',
+            fontSize: 13.5,
+            color: Color(0xFF475569),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Chặn vĩnh viễn',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && mounted) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userBlock(widget.user.id)}';
+        await ApiService.post(url, context, token: token, showLoading: true);
+      }
+      if (mounted) {
+        ToastUtil.showSuccess(context, 'Đã chặn $displayName thành công');
+        Navigator.pop(context, true);
+      }
+    } catch (_) {
+      if (mounted) {
+        ToastUtil.showError(context, 'Lỗi thao tác chặn. Vui lòng thử lại!');
+      }
+    }
+  }
+
+  void _showUserOptionsModal() {
+    final displayName = canViewIdentity ? widget.user.name : widget.user.anonymousName;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF131526),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading:
+                  const Icon(Icons.flag_outlined, color: Color(0xFFF59E0B)),
+              title: const Text(
+                'Báo cáo hồ sơ này',
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              subtitle: const Text(
+                'Gửi phản ánh nếu hồ sơ này vi phạm tiêu chuẩn',
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontSize: 11.5,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                CosmicReportModal.show(
+                  context,
+                  targetUserId: widget.user.id,
+                  targetUserName: displayName,
+                  onReported: (blocked) {
+                    if (blocked && mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  },
+                );
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.block_rounded, color: Color(0xFFEF4444)),
+              title: const Text(
+                'Chặn người dùng này',
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              subtitle: const Text(
+                'Cả hai sẽ không thể tương tác hoặc nhìn thấy nhau',
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontSize: 11.5,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleBlockUser();
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF6366F1);
@@ -250,6 +424,11 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF0F172A), size: 22),
+                        onPressed: _showUserOptionsModal,
+                        tooltip: 'Tùy chọn',
                       ),
                     ],
                   ),

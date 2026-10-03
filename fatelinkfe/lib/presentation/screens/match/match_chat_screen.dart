@@ -10,6 +10,7 @@ import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
 
 // Components tách rời sạch sẽ
+import '../../widgets/cosmic_report_modal.dart';
 import 'widgets/match_ai_suggestion_sheet.dart';
 import 'widgets/match_options_bottom_sheet.dart';
 
@@ -104,16 +105,111 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
+  Future<void> _handleBlockUser() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Chặn người dùng?',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn chặn ${widget.partnerName}? Người này sẽ bị xóa khỏi danh sách bạn bè và không thể tìm thấy, gửi sóng hay trò chuyện với bạn nữa.',
+          style: const TextStyle(
+            fontFamily: 'BeVietnamPro',
+            fontSize: 13.5,
+            color: Color(0xFF475569),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Chặn vĩnh viễn',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final token = await _secureStorage.read(key: 'accessToken');
+      if (!mounted) return;
+      final url =
+          '${AppConstants.baseUrl}/${AppConstants.userBlock(widget.partnerId)}';
+      await ApiService.post(url, context, token: token, showLoading: true);
+
+      if (!mounted) return;
+      ToastUtil.showSuccess(
+          context, 'Đã chặn ${widget.partnerName} thành công');
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ToastUtil.showError(context, 'Lỗi thao tác chặn. Vui lòng thử lại!');
+    }
+  }
+
   void _showOptionsModal() {
     MatchOptionsBottomSheet.show(
       context,
       onReport: () {
         Navigator.pop(context);
-        ToastUtil.showSuccess(context, 'Đã gửi báo cáo thành công ✨');
+        CosmicReportModal.show(
+          context,
+          targetUserId: widget.partnerId,
+          targetUserName: widget.partnerName,
+          onReported: (blocked) {
+            if (blocked && mounted) {
+              Navigator.pop(context, true);
+            }
+          },
+        );
       },
       onUnmatch: () {
         Navigator.pop(context);
         _handleUnmatch();
+      },
+      onBlock: () {
+        Navigator.pop(context);
+        _handleBlockUser();
       },
     );
   }

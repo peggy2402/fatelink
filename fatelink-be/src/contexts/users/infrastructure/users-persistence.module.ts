@@ -6,6 +6,7 @@ import {
   Notification,
   NotificationSchema,
 } from './models/notification.model';
+import { Report, ReportSchema } from './models/report.model';
 import { MongooseUserRepository } from './repositories/mongoose-user.repository';
 
 @Module({
@@ -13,6 +14,7 @@ import { MongooseUserRepository } from './repositories/mongoose-user.repository'
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Notification.name, schema: NotificationSchema },
+      { name: Report.name, schema: ReportSchema },
     ]),
   ],
   providers: [

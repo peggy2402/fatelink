@@ -65,4 +65,13 @@ export interface UserRepository {
     notificationId: string,
   ): Promise<boolean>;
   markAllNotificationsAsRead(userId: string): Promise<boolean>;
+  blockUser(userId: string, targetUserId: string): Promise<boolean>;
+  unblockUser(userId: string, targetUserId: string): Promise<boolean>;
+  getBlockedUsers(userId: string): Promise<User[]>;
+  createReport(data: {
+    reporterId: string;
+    targetUserId: string;
+    reason: string;
+    details?: string;
+  }): Promise<boolean>;
 }

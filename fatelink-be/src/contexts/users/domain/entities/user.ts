@@ -33,6 +33,7 @@ export class User {
   profileViews?: number;
   wavesReceived?: number;
   likedUsers?: string[];
+  blockedUsers?: string[];
 
   static rehydrate(props: {
     id?: string;
@@ -59,6 +60,7 @@ export class User {
     profileViews?: number;
     wavesReceived?: number;
     likedUsers?: string[];
+    blockedUsers?: string[];
   }): User {
     const user = new User();
     Object.assign(user, props);

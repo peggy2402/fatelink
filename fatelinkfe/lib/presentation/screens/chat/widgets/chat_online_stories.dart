@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/image_picker_service.dart';
+import '../../../../core/utils/anonymous_avatar_helper.dart';
 import '../../../../data/models/match_user.dart';
 
 /// Danh sách Avatar trực tuyến (ChatOnlineStories):
@@ -134,9 +136,10 @@ class ChatOnlineStories extends StatelessWidget {
   }
 
   Widget _buildRealUserItem(MatchUser user) {
+    final canView = user.canViewIdentity;
+    final displayName = canView ? user.name : user.anonymousName;
     final avatar = user.avatar;
-    final hasValidAvatar = avatar != null &&
-        (avatar.startsWith('http://') || avatar.startsWith('https://'));
+    final hasValidAvatar = canView && avatar != null && avatar.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(right: 14.0),
@@ -152,28 +155,29 @@ class ChatOnlineStories extends StatelessWidget {
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
+                    gradient: canView
+                        ? const LinearGradient(
+                            colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    border: canView
+                        ? null
+                        : Border.all(
+                            color: const Color(0xFF818CF8).withValues(alpha: 0.6),
+                            width: 1.5,
+                          ),
                   ),
                   child: CircleAvatar(
                     radius: 26,
                     backgroundColor: const Color(0xFFEEF2FF),
-                    backgroundImage: hasValidAvatar ? NetworkImage(avatar) : null,
-                    child: !hasValidAvatar
-                        ? Text(
-                            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontFamily: 'BeVietnamPro',
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF4F46E5),
-                              fontSize: 18,
-                            ),
-                          )
-                        : null,
+                    backgroundImage: hasValidAvatar
+                        ? ImagePickerService.getImageProvider(avatar)
+                        : AssetImage(AnonymousAvatarHelper.getAnonymousAvatarAsset(user.id)),
                   ),
                 ),
+                // Chấm xanh Online góc dưới phải
                 Positioned(
                   right: 0,
                   bottom: 0,
@@ -187,6 +191,26 @@ class ChatOnlineStories extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Huy hiệu Khóa Diện Mạo góc dưới trái nếu chưa kết đôi
+                if (!canView)
+                  Positioned(
+                    left: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEC4899),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: const Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 8,
+                      ),
+                    ),
+                  ),
+                // Icon Cảm Xúc (Mood) góc trên phải
                 if (user.moodIcon != null && user.moodIcon!.isNotEmpty)
                   Positioned(
                     top: -2,
@@ -204,9 +228,9 @@ class ChatOnlineStories extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             SizedBox(
-              width: 60,
+              width: 66,
               child: Text(
-                user.name,
+                displayName,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontFamily: 'BeVietnamPro',

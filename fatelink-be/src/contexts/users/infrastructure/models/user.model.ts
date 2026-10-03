@@ -98,6 +98,9 @@ export class User {
 
   @Prop({ type: [String], default: () => [] })
   likedUsers!: string[];
+
+  @Prop({ type: [String], default: () => [] })
+  blockedUsers!: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

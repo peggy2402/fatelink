@@ -5,12 +5,15 @@ import {
   Param,
   Post,
   Patch,
+  Delete,
   UseGuards,
   Request,
   Body,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@contexts/auth/presentation/http/guards/jwt-auth.guard';
 import type { AuthenticatedRequest } from '@shared/presentation/types/authenticated-request';
+import { USER_REPOSITORY } from '@shared/kernel/injection-tokens';
+import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
 import type { FindEmotionMatchesUseCase } from '@contexts/users/application/usecases/find-emotion-matches.usecase';
 import type { GetUserProfileUseCase } from '@contexts/users/application/usecases/get-user-profile.usecase';
 import type { UpdateFcmTokenUseCase } from '@contexts/users/application/usecases/update-fcm-token.usecase';
@@ -51,6 +54,8 @@ export class UsersController {
     private readonly getNotificationsUseCase: GetNotificationsUseCase,
     @Inject(USERS_APPLICATION_TOKENS.markNotificationRead)
     private readonly markNotificationReadUseCase: MarkNotificationReadUseCase,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: UserRepository,
   ) {}
 
   @Get('me')
@@ -201,5 +206,52 @@ export class UsersController {
       userId: req.user.sub,
       ...dto,
     });
+  }
+
+  @Get('blocked')
+  @UseGuards(JwtAuthGuard)
+  async getBlockedUsers(@Request() req: AuthenticatedRequest) {
+    return this.userRepository.getBlockedUsers(req.user.sub);
+  }
+
+  @Post(':id/block')
+  @UseGuards(JwtAuthGuard)
+  async blockUser(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') targetUserId: string,
+  ) {
+    const success = await this.userRepository.blockUser(req.user.sub, targetUserId);
+    return { success, message: 'Đã chặn người dùng thành công' };
+  }
+
+  @Delete(':id/unblock')
+  @UseGuards(JwtAuthGuard)
+  async unblockUser(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') targetUserId: string,
+  ) {
+    const success = await this.userRepository.unblockUser(req.user.sub, targetUserId);
+    return { success, message: 'Đã bỏ chặn người dùng thành công' };
+  }
+
+  @Post(':id/report')
+  @UseGuards(JwtAuthGuard)
+  async reportUser(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') targetUserId: string,
+    @Body() body: { reason: string; details?: string; blockAlso?: boolean },
+  ) {
+    await this.userRepository.createReport({
+      reporterId: req.user.sub,
+      targetUserId,
+      reason: body.reason,
+      details: body.details,
+    });
+
+    if (body.blockAlso) {
+      await this.userRepository.blockUser(req.user.sub, targetUserId);
+    }
+
+    return { success: true, message: 'Đã gửi báo cáo vi phạm thành công' };
   }
 }

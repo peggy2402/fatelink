@@ -17,6 +17,9 @@ import '../match/cosmic_broadcast_screen.dart';
 import '../match/match_chat_screen.dart';
 import '../home/widgets/radar_scanner_modal.dart';
 import '../home/widgets/notifications_modal.dart';
+import '../profile/user_detail_screen.dart';
+import '../../widgets/cosmic_pulse_received_modal.dart';
+import '../../../core/utils/anonymous_avatar_helper.dart';
 
 // Enum để quản lý 2 chế độ xem: Danh sách hoặc Phòng trò chuyện
 enum ChatView { list, room }
@@ -152,7 +155,11 @@ class ChatScreenState extends State<ChatScreen> {
               ),
               const Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, color: Color(0xFF6366F1), size: 20),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Khởi tạo kết nối mới',
@@ -194,7 +201,9 @@ class ChatScreenState extends State<ChatScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CosmicBroadcastScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const CosmicBroadcastScreen(),
+                    ),
                   );
                 },
               ),
@@ -210,7 +219,8 @@ class ChatScreenState extends State<ChatScreen> {
                   Navigator.pop(ctx);
                   RadarScannerModal.show(
                     context,
-                    onConnectMatch: () => Navigator.of(context).pushNamed('/matches'),
+                    onConnectMatch: () =>
+                        Navigator.of(context).pushNamed('/matches'),
                   );
                 },
               ),
@@ -242,10 +252,7 @@ class ChatScreenState extends State<ChatScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               child: Icon(icon, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 14),
@@ -274,7 +281,11 @@ class ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Color(0xFF94A3B8),
+            ),
           ],
         ),
       ),
@@ -305,15 +316,20 @@ class ChatScreenState extends State<ChatScreen> {
       body: CustomScrollView(
         slivers: [
           _buildListAppBar(),
-          if (_isSearchOpen)
-            SliverToBoxAdapter(child: _buildSearchBar()),
+          if (_isSearchOpen) SliverToBoxAdapter(child: _buildSearchBar()),
           SliverToBoxAdapter(
             child: Builder(
               builder: (ctx) {
-                final homeUsers = ctx.watch<HomeBloc>().state.matchedUsers;
+                final allUsers = ctx.watch<HomeBloc>().state.matchedUsers;
+                // QUY TẮC BẢO MẬT SOULMATE:
+                // CHỈ những người ĐÃ CÙNG THẢ TIM NHAU (Mutual Follow) mới được hiển thị trên Stories bạn bè!
+                // Người chưa thả tim hoặc người chỉ mới gửi sóng sẽ được đưa vào "Tín hiệu sóng chờ kết nối".
+                final mutualUsers = allUsers
+                    .where((u) => u.isMutualFollow)
+                    .toList();
                 return ChatOnlineStories(
                   onFayeTap: _switchToRoomView,
-                  onlineUsers: homeUsers,
+                  onlineUsers: mutualUsers,
                   onUserTap: (user) {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -330,14 +346,22 @@ class ChatScreenState extends State<ChatScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: _buildFilterChips(),
+            child: Builder(
+              builder: (ctx) {
+                final allUsers = ctx.watch<HomeBloc>().state.matchedUsers;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: _buildFilterChips(allUsers),
+                );
+              },
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 4.0,
+              ),
               child: Divider(color: Colors.grey.shade200, height: 1),
             ),
           ),
@@ -381,7 +405,9 @@ class ChatScreenState extends State<ChatScreen> {
             ),
             child: Icon(
               _isSearchOpen ? Icons.close_rounded : Icons.search_rounded,
-              color: _isSearchOpen ? const Color(0xFF6366F1) : const Color(0xFF475569),
+              color: _isSearchOpen
+                  ? const Color(0xFF6366F1)
+                  : const Color(0xFF475569),
               size: 19,
             ),
           ),
@@ -403,15 +429,28 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildFilterChips() {
-    return Row(
-      children: [
-        _buildChip('all', 'Tất cả'),
-        const SizedBox(width: 8),
-        _buildChip('ai', 'Trợ lý AI Faye 🤖'),
-        const SizedBox(width: 8),
-        _buildChip('unread', 'Chưa đọc 💬'),
-      ],
+  Widget _buildFilterChips(List<MatchUser> allUsers) {
+    final pendingCount = allUsers.where((u) => !u.isMutualFollow).length;
+    final matchCount = allUsers.where((u) => u.isMutualFollow).length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _buildChip('all', 'Tất cả'),
+          const SizedBox(width: 8),
+          _buildChip('matches', 'Bạn bè kết đôi 💕 ($matchCount)'),
+          const SizedBox(width: 8),
+          if (pendingCount > 0) ...[
+            _buildChip('pending', 'Sóng chờ ⚡ ($pendingCount)'),
+            const SizedBox(width: 8),
+          ],
+          _buildChip('ai', 'Trợ lý AI Faye'),
+          const SizedBox(width: 8),
+          _buildChip('unread', 'Chưa đọc'),
+        ],
+      ),
     );
   }
 
@@ -426,7 +465,9 @@ class ChatScreenState extends State<ChatScreen> {
           color: isSelected ? const Color(0xFF6366F1) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            color: isSelected
+                ? const Color(0xFF6366F1)
+                : const Color(0xFFE2E8F0),
           ),
           boxShadow: [
             BoxShadow(
@@ -464,10 +505,18 @@ class ChatScreenState extends State<ChatScreen> {
         decoration: InputDecoration(
           hintText: 'Tìm cuộc trò chuyện hoặc người đồng điệu...',
           hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6366F1), size: 20),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF6366F1),
+            size: 20,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 16, color: Color(0xFF94A3B8)),
+                  icon: const Icon(
+                    Icons.clear_rounded,
+                    size: 16,
+                    color: Color(0xFF94A3B8),
+                  ),
                   onPressed: () => _searchController.clear(),
                 )
               : null,
@@ -485,7 +534,10 @@ class ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(20.0),
             borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: 16,
+          ),
         ),
       ),
     );
@@ -493,7 +545,13 @@ class ChatScreenState extends State<ChatScreen> {
 
   Widget _buildConversationList() {
     final chatState = context.watch<ChatBloc>().state;
-    final homeUsers = context.watch<HomeBloc>().state.matchedUsers;
+    final allUsers = context.watch<HomeBloc>().state.matchedUsers;
+
+    // QUY TẮC BẢO MẬT & HÒA ÂM TẦM HỒN:
+    // 1. Bạn bè đã kết đôi (Mutual Matches - cả 2 đã cùng thả tim nhau)
+    final mutualMatches = allUsers.where((u) => u.isMutualFollow).toList();
+    // 2. Những người phát sóng rung cảm đến bạn hoặc bạn chưa thả tim đáp lại
+    final pendingWaves = allUsers.where((u) => !u.isMutualFollow).toList();
 
     // 1. Phân tích tin nhắn cuối cùng của Faye AI
     final hasAiMessages = chatState.messages.isNotEmpty;
@@ -509,11 +567,15 @@ class ChatScreenState extends State<ChatScreen> {
     final List<Widget> conversationTiles = [];
 
     // Item 1: Faye AI
-    final bool matchFaye = _searchQuery.isEmpty ||
+    final bool matchFaye =
+        _searchQuery.isEmpty ||
         'faye ai'.contains(_searchQuery.toLowerCase()) ||
         lastAiText.toLowerCase().contains(_searchQuery.toLowerCase());
-    final bool showFaye = matchFaye &&
-        (_selectedFilter == 'all' || _selectedFilter == 'ai' || _selectedFilter == 'unread');
+    final bool showFaye =
+        matchFaye &&
+        (_selectedFilter == 'all' ||
+            _selectedFilter == 'ai' ||
+            _selectedFilter == 'unread');
 
     if (showFaye) {
       conversationTiles.add(
@@ -530,7 +592,8 @@ class ChatScreenState extends State<ChatScreen> {
     }
 
     // Item 2: Tin nhắn hệ thống FateLink
-    final bool matchSystem = _searchQuery.isEmpty ||
+    final bool matchSystem =
+        _searchQuery.isEmpty ||
         'hệ thống fatelink'.contains(_searchQuery.toLowerCase()) ||
         'thông báo'.contains(_searchQuery.toLowerCase());
     final bool showSystem = matchSystem && (_selectedFilter == 'all');
@@ -540,7 +603,8 @@ class ChatScreenState extends State<ChatScreen> {
         ChatConversationTile(
           name: 'Hệ thống FateLink',
           systemIcon: Icons.all_inclusive_rounded,
-          lastMessage: 'Chào mừng bạn đến với FateLink! Khám phá tần số tâm hồn ngay ✨',
+          lastMessage:
+              'Chào mừng bạn đến với FateLink! Khám phá tần số tâm hồn ngay ✨',
           time: 'Hôm nay',
           unreadCount: 0,
           isSystem: true,
@@ -549,19 +613,60 @@ class ChatScreenState extends State<ChatScreen> {
       );
     }
 
-    // Item 3+: Các người dùng thật (User-to-User)
-    if (_selectedFilter == 'all') {
-      for (final user in homeUsers) {
-        final bool matchUser = _searchQuery.isEmpty ||
-            user.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    // Item 3: TÍN HIỆU SÓNG CHỜ KẾT NỐI (Tin nhắn chờ)
+    // Người chưa thả tim nhau TUYỆT ĐỐI KHÔNG xuất hiện lẻ tẻ lẫn lộn vào danh sách trò chuyện chính,
+    // mà được gom lại thành mục chờ đặc biệt để người dùng hòa âm hoặc mở khóa!
+    final bool showPendingWaves =
+        pendingWaves.isNotEmpty &&
+        (_selectedFilter == 'all' || _selectedFilter == 'pending') &&
+        (_searchQuery.isEmpty ||
+            'tín hiệu sóng chờ kết nối tin nhắn'.contains(
+              _searchQuery.toLowerCase(),
+            ));
+
+    if (showPendingWaves) {
+      conversationTiles.add(
+        ChatConversationTile(
+          name: 'Tín hiệu sóng chờ kết nối',
+          systemIcon: Icons.sensors_rounded,
+          lastMessage: pendingWaves.length == 1
+              ? '${pendingWaves.first.anonymousName} vừa phát sóng 432Hz rung cảm • Chạm để hòa âm & kết nối'
+              : 'Có ${pendingWaves.length} người đang phát sóng 432Hz đến bạn • Chạm để hòa âm & kết nối',
+          time: 'Mới nhận',
+          unreadCount: pendingWaves.length,
+          isWaveRequest: true,
+          onTap: () {
+            if (pendingWaves.length == 1) {
+              CosmicPulseReceivedModal.show(
+                context,
+                sender: pendingWaves.first,
+              );
+            } else {
+              _showPendingWavesBottomSheet(context, pendingWaves);
+            }
+          },
+        ),
+      );
+    }
+
+    // Item 4+: CÁC BẠN BÈ ĐÃ KẾT ĐÔI CHÍNH THỨC (Mutual Matches)
+    // CHỈ hiển thị những người CẢ HAI ĐÃ CÙNG THẢ TIM NHAU!
+    if (_selectedFilter == 'all' || _selectedFilter == 'matches') {
+      for (final user in mutualMatches) {
+        final String displayName = user.name;
+        final String avatarUrl = user.avatar ?? '';
+
+        final bool matchUser =
+            _searchQuery.isEmpty ||
+            displayName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             user.emotion.toLowerCase().contains(_searchQuery.toLowerCase());
 
         if (matchUser) {
           conversationTiles.add(
             ChatConversationTile(
-              name: user.name,
-              imageUrl: user.avatar,
-              lastMessage: 'Tần số tương hợp ${user.compatibilityScore}% • ${user.emotion}',
+              name: displayName,
+              imageUrl: avatarUrl,
+              lastMessage: 'Đã kết đôi • Mở khóa trò chuyện vĩnh viễn 💕',
               time: 'Vừa xong',
               unreadCount: 0,
               onTap: () {
@@ -594,7 +699,11 @@ class ChatScreenState extends State<ChatScreen> {
                     color: const Color(0xFF6366F1).withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.search_off_rounded, size: 36, color: Color(0xFF6366F1)),
+                  child: const Icon(
+                    Icons.search_off_rounded,
+                    size: 36,
+                    color: Color(0xFF6366F1),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
@@ -631,6 +740,263 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Hiển thị danh sách các sóng rung cảm 432Hz đang chờ kết nối (Tin nhắn chờ)
+  void _showPendingWavesBottomSheet(
+    BuildContext context,
+    List<MatchUser> waves,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetCtx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(bottomSheetCtx).size.height * 0.75,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 20,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 44,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFFEC4899,
+                            ).withValues(alpha: 0.35),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.sensors_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tín hiệu sóng chờ kết nối (${waves.length})',
+                            style: const TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Các tâm hồn đang phát sóng 432Hz rung cảm đến bạn',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      onPressed: () => Navigator.pop(bottomSheetCtx),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: Colors.grey.shade200, height: 1),
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: waves.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (ctx, index) {
+                    final waveUser = waves[index];
+                    final avatarAsset =
+                        AnonymousAvatarHelper.getAnonymousAvatarAsset(
+                          waveUser.id,
+                        );
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(
+                            0xFF8B5CF6,
+                          ).withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: const Color(0xFFEEF2FF),
+                                backgroundImage: AssetImage(avatarAsset),
+                              ),
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2.5),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF64748B),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock_rounded,
+                                    size: 9,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      waveUser.anonymousName,
+                                      style: const TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFFEC4899,
+                                        ).withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '${waveUser.compatibilityScore}% Tương hợp',
+                                        style: const TextStyle(
+                                          fontFamily: 'BeVietnamPro',
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFFDB2777),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  waveUser.emotion.isNotEmpty
+                                      ? waveUser.emotion
+                                      : 'Đang tìm kiếm tần số đồng điệu...',
+                                  style: const TextStyle(
+                                    fontFamily: 'BeVietnamPro',
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(bottomSheetCtx);
+                              CosmicPulseReceivedModal.show(
+                                context,
+                                sender: waveUser,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Đón sóng ⚡',
+                              style: TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // ==========================================
   // 2. GIAO DIỆN PHÒNG CHAT VỚI FAYE AI
   // ==========================================
@@ -641,9 +1007,7 @@ class ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       key: const ValueKey('ChatRoomView'),
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: ChatRoomAppBar(
-        onBack: _switchToListView,
-      ),
+      appBar: ChatRoomAppBar(onBack: _switchToListView),
       body: BlocListener<ChatBloc, ChatState>(
         listenWhen: (previous, current) {
           return previous.messages.length != current.messages.length ||
@@ -659,7 +1023,10 @@ class ChatScreenState extends State<ChatScreen> {
                 _scrollToBottom();
               });
             } else {
-              setState(() => _unreadCount += (state.messages.length - _previousMessageCount));
+              setState(
+                () => _unreadCount +=
+                    (state.messages.length - _previousMessageCount),
+              );
             }
 
             if (!isMe) {
@@ -676,7 +1043,8 @@ class ChatScreenState extends State<ChatScreen> {
           children: [
             BlocBuilder<ChatBloc, ChatState>(
               builder: (context, state) {
-                if (state.status == ChatStatus.loading && state.messages.isEmpty) {
+                if (state.status == ChatStatus.loading &&
+                    state.messages.isEmpty) {
                   return const Center(
                     child: CircularProgressIndicator(color: Color(0xFFFF2A6D)),
                   );
@@ -696,10 +1064,14 @@ class ChatScreenState extends State<ChatScreen> {
                     if (state.isTyping) {
                       if (index == 0) return const ChatTypingIndicatorBubble();
                       final msgIndex = state.messages.length - index;
-                      return ChatMessageBubble(message: state.messages[msgIndex]);
+                      return ChatMessageBubble(
+                        message: state.messages[msgIndex],
+                      );
                     } else {
                       final msgIndex = state.messages.length - 1 - index;
-                      return ChatMessageBubble(message: state.messages[msgIndex]);
+                      return ChatMessageBubble(
+                        message: state.messages[msgIndex],
+                      );
                     }
                   },
                 );
@@ -732,7 +1104,11 @@ class ChatScreenState extends State<ChatScreen> {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700, size: 26),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.grey.shade700,
+                          size: 26,
+                        ),
                         if (_unreadCount > 0)
                           Positioned(
                             top: -4,
