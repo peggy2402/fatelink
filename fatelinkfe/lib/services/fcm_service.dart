@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:fatelinkfe/core/utils/constants.dart';
 import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
+import 'package:fatelinkfe/services/api_service.dart';
 
 class FcmService {
   static final FirebaseMessaging _firebaseMessaging =
@@ -78,14 +79,22 @@ class FcmService {
       final accessToken = await _secureStorage.read(key: 'accessToken');
       if (accessToken == null) return; // Chưa đăng nhập thì không gửi
       final urlEndpoints = '${AppConstants.baseUrl}/${AppConstants.updateFcmToken}';
-      print('urlEndpoints fcm Token: $urlEndpoints');
-      final response = await http.post(
-        Uri.parse(urlEndpoints),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'fcmToken': fcmToken}),
+      final uri = Uri.parse(urlEndpoints);
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      };
+      final body = {'fcmToken': fcmToken};
+      await ApiService.executeWithLogging(
+        method: 'POST',
+        uri: uri,
+        headers: headers,
+        body: body,
+        requestFn: () => http.post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        ),
       );
     } catch (e) {
       debugPrint('❌ Lỗi gửi FCM Token: $e');

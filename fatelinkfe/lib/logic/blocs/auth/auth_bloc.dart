@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/device_id_helper.dart';
+import '../../../core/utils/error_formatter.dart';
 import '../../../core/utils/secure_storage_helper.dart';
 import '../../../services/api_service.dart';
 import 'auth_event.dart';
@@ -68,7 +69,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -93,7 +94,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -120,7 +121,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -131,29 +132,44 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await http
-          .post(
-            Uri.parse('${AppConstants.baseUrl}/auth/phone/request-otp'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'phoneNumber': event.phoneNumber.trim(),
-              if (event.name != null && event.name!.trim().isNotEmpty)
-                'name': event.name!.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
+      final uri = Uri.parse('${AppConstants.baseUrl}/auth/phone/request-otp');
+      final headers = {'Content-Type': 'application/json'};
+      final body = {
+        'phoneNumber': event.phoneNumber.trim(),
+        if (event.name != null && event.name!.trim().isNotEmpty)
+          'name': event.name!.trim(),
+      };
+
+      final response = await ApiService.executeWithLogging(
+        method: 'POST',
+        uri: uri,
+        headers: headers,
+        body: body,
+        requestFn: () => http.post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15)),
+      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        emit(AuthActionSuccess(data['message']?.toString() ?? 'Đã gửi OTP.'));
+        emit(AuthActionSuccess(data['message']?.toString() ?? 'Đã gửi mã OTP.'));
         emit(AuthUnauthenticated());
       } else {
-        throw Exception(
-          'Gửi OTP thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
-        );
+        String msg = 'Gửi OTP không thành công.';
+        if (response.body.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+              msg = decoded['message'].toString();
+            }
+          } catch (_) {}
+        }
+        throw Exception(ErrorFormatter.format(msg));
       }
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -178,7 +194,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -189,17 +205,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await http
-          .post(
-            Uri.parse('${AppConstants.baseUrl}/auth/magic-link/request'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'email': event.email.trim(),
-              if (event.name != null && event.name!.trim().isNotEmpty)
-                'name': event.name!.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
+      final uri = Uri.parse('${AppConstants.baseUrl}/auth/magic-link/request');
+      final headers = {'Content-Type': 'application/json'};
+      final body = {
+        'email': event.email.trim(),
+        if (event.name != null && event.name!.trim().isNotEmpty)
+          'name': event.name!.trim(),
+      };
+
+      final response = await ApiService.executeWithLogging(
+        method: 'POST',
+        uri: uri,
+        headers: headers,
+        body: body,
+        requestFn: () => http.post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15)),
+      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -211,12 +235,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
         emit(AuthUnauthenticated());
       } else {
-        throw Exception(
-          'Gửi magic link thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
-        );
+        String msg = 'Gửi magic link không thành công.';
+        if (response.body.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map<String, dynamic> && decoded['message'] != null) {
+              msg = decoded['message'].toString();
+            }
+          } catch (_) {}
+        }
+        throw Exception(ErrorFormatter.format(msg));
       }
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(ErrorFormatter.format(e)));
       emit(AuthUnauthenticated());
     }
   }
@@ -228,13 +259,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final token = await _secureStorage.read(key: 'accessToken');
-      final urlEnpoints = '${AppConstants.baseUrl}/${AppConstants.logout}';
-      debugPrint('Gọi API logout tại: $urlEnpoints với token: $token');
+      final uri = Uri.parse('${AppConstants.baseUrl}/${AppConstants.logout}');
       if (token != null) {
-        await http.post(
-          Uri.parse(urlEnpoints),
-          headers: {'Authorization': 'Bearer $token'},
-        ).timeout(const Duration(seconds: 10));
+        final headers = {'Authorization': 'Bearer $token'};
+        await ApiService.executeWithLogging(
+          method: 'POST',
+          uri: uri,
+          headers: headers,
+          requestFn: () => http.post(
+            uri,
+            headers: headers,
+          ).timeout(const Duration(seconds: 10)),
+        );
       }
     } catch (e) {
       debugPrint('Lỗi khi đăng xuất: $e');
@@ -290,22 +326,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     bool fallbackPendingTermsConsent = false,
   }) async {
     final deviceId = await DeviceIdHelper.getOrCreateDeviceId();
-    final response = await http
-        .post(
-          Uri.parse('${AppConstants.baseUrl}/$endpoint'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            ...body,
-            'deviceType': _getDeviceType(),
-            'deviceId': deviceId,
-          }),
-        )
-        .timeout(const Duration(seconds: 15));
+    final uri = Uri.parse('${AppConstants.baseUrl}/$endpoint');
+    final headers = {'Content-Type': 'application/json'};
+    final fullBody = {
+      ...body,
+      'deviceType': _getDeviceType(),
+      'deviceId': deviceId,
+    };
+
+    final response = await ApiService.executeWithLogging(
+      method: 'POST',
+      uri: uri,
+      headers: headers,
+      body: fullBody,
+      requestFn: () => http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(fullBody),
+      ).timeout(const Duration(seconds: 15)),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        'Xác thực thất bại: Mã lỗi ${response.statusCode} - ${response.body}',
-      );
+      String errorMsg = 'Đăng nhập không thành công. Vui lòng thử lại!';
+      if (response.body.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map<String, dynamic>) {
+            final serverMsg = decoded['message'];
+            if (serverMsg is List && serverMsg.isNotEmpty) {
+              errorMsg = serverMsg.first.toString();
+            } else if (serverMsg != null && serverMsg.toString().isNotEmpty) {
+              errorMsg = serverMsg.toString();
+            }
+          }
+        } catch (_) {}
+      }
+      throw Exception(ErrorFormatter.format(errorMsg));
     }
 
     return _persistAuthPayload(

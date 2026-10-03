@@ -1,8 +1,8 @@
 class AppConstants {
   // Thay đổi URL tại ĐÂY để áp dụng cho toàn bộ dự án
-  // static const String serverUrl = 'https://fatelink-be.fly.dev';
-  static const String serverUrl =
-      'http://127.0.0.1:3000'; // iOS Simulator / Web / Desktop
+  static const String serverUrl = 'https://fatelink-be.fly.dev';
+  // static const String serverUrl =
+  //     'http://127.0.0.1:3000'; // iOS Simulator / Web / Desktop
   // static const String serverUrl = 'http://192.168.0.213:3000'; // Dành cho iPhone thật trong cùng mạng WiFi
 
   // Nối sẵn /api để dùng cho các request HTTP thông thường

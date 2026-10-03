@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/utils/constants.dart';
 import '../../core/utils/secure_storage_helper.dart';
+import '../../services/api_service.dart';
 import '../../presentation/screens/match/matches_screen.dart'; // Nơi chứa model MatchedUser
 
 class MatchesRepository {
@@ -16,8 +17,13 @@ class MatchesRepository {
     final userId = jsonDecode(payload)['sub'] ?? jsonDecode(payload)['id'];
 
     final url = Uri.parse('${AppConstants.baseUrl}/${AppConstants.userMatches(userId)}?page=$page&limit=10');
-    print('CHECK URL MATCHES: $url');
-    final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+    final headers = {'Authorization': 'Bearer $token'};
+    final response = await ApiService.executeWithLogging(
+      method: 'GET',
+      uri: url,
+      headers: headers,
+      requestFn: () => http.get(url, headers: headers),
+    );
 
     if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
       final decoded = jsonDecode(response.body);

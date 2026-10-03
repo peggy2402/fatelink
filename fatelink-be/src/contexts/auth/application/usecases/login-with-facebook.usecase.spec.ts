@@ -152,35 +152,58 @@ describe('LoginWithFacebookUseCase', () => {
     });
   });
 
-  it('fails when a linked facebook identity points to a missing user', async () => {
+  it('recovers and relinks when a linked facebook identity points to a missing user', async () => {
     const facebookAuthService: FacebookAuthService = {
       authenticate: jest.fn().mockResolvedValue({
         email: 'user@example.com',
         facebookId: 'facebook-123',
+        name: 'Recovered User',
+        avatar: 'avatar.png',
       }),
     };
     const userRepository = {
       findById: jest.fn().mockResolvedValue(null),
+      findByEmail: jest.fn().mockResolvedValue(null),
+      createProfileAccount: jest.fn().mockResolvedValue({
+        id: 'user-recovered',
+        email: 'user@example.com',
+      }),
     };
     const authIdentityRepository = {
       findByProvider: jest.fn().mockResolvedValue({ userId: 'missing-user' }),
+      linkFacebookIdentity: jest.fn().mockResolvedValue({}),
+    };
+    const issueAuthSessionService = {
+      issue: jest.fn().mockResolvedValue({
+        user: { id: 'user-recovered' },
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      }),
     };
 
     const useCase = new LoginWithFacebookUseCase(
       facebookAuthService,
       userRepository as never,
       authIdentityRepository as never,
-      {} as never,
+      issueAuthSessionService as never,
     );
 
-    await expect(
-      useCase.execute({
-        accessToken: 'fb-token',
-        deviceType: 'mobile',
-        deviceId: 'device-1',
-      }),
-    ).rejects.toMatchObject<Partial<InternalApplicationError>>({
-      errorCode: ERROR_CODES.AUTH_FACEBOOK_PROFILE_ORPHANED,
+    const result = await useCase.execute({
+      accessToken: 'fb-token',
+      deviceType: 'mobile',
+      deviceId: 'device-1',
     });
+
+    expect(userRepository.createProfileAccount).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      name: 'Recovered User',
+      avatar: 'avatar.png',
+    });
+    expect(authIdentityRepository.linkFacebookIdentity).toHaveBeenCalledWith({
+      userId: 'user-recovered',
+      facebookId: 'facebook-123',
+      email: 'user@example.com',
+    });
+    expect(result.accessToken).toBe('access-token');
   });
 });

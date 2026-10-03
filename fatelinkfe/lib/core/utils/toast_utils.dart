@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'error_formatter.dart';
 
 class ToastUtil {
   static OverlayEntry? _currentEntry;
@@ -14,9 +14,10 @@ class ToastUtil {
   }
 
   static void showError(BuildContext context, String message) {
+    final cleanMessage = ErrorFormatter.format(message);
     _showToast(
       context,
-      message,
+      cleanMessage,
       const Color(0xFFF43F5E), // Rose
       Icons.error_rounded,
     );

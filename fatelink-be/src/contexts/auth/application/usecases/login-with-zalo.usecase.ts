@@ -3,8 +3,6 @@ import type { ZaloAuthService } from '@shared/contracts/zalo-auth.service';
 import type { AuthIdentityRepository } from '@contexts/auth/domain/repositories/auth-identity.repository';
 import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
 import type { AuthSessionIssuer } from '@contexts/auth/application/services/auth-session-issuer.service';
-import { InternalApplicationError } from '@shared/errors/application-error';
-import { ERROR_CODES } from '@shared/errors/error-codes';
 
 export class LoginWithZaloUseCase {
   constructor(
@@ -27,14 +25,26 @@ export class LoginWithZaloUseCase {
     );
 
     if (existingIdentity) {
-      const linkedUser = await this.userRepository.findById(
+      let linkedUser = await this.userRepository.findById(
         existingIdentity.userId,
       );
       if (!linkedUser) {
-        throw new InternalApplicationError(
-          'Linked Zalo identity points to a missing user.',
-          ERROR_CODES.AUTH_ZALO_PROFILE_ORPHANED,
-        );
+        const existingUser = profile.email
+          ? await this.userRepository.findByEmail(profile.email)
+          : null;
+        linkedUser =
+          existingUser ||
+          (await this.userRepository.createProfileAccount({
+            email: profile.email,
+            name: profile.name,
+            avatar: profile.avatar,
+          }));
+
+        await this.authIdentityRepository.linkZaloIdentity({
+          userId: linkedUser.id || '',
+          zaloId: profile.zaloId,
+          email: profile.email,
+        });
       }
       return this.authSessionIssuer.issue({
         userId: linkedUser.id || '',

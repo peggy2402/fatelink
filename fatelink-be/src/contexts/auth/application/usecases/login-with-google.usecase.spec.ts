@@ -186,35 +186,58 @@ describe('LoginWithGoogleUseCase', () => {
     });
   });
 
-  it('fails when a linked google identity points to a missing user', async () => {
+  it('recovers and relinks when a linked google identity points to a missing user', async () => {
     const googleAuthService: GoogleAuthService = {
       verifyIdToken: jest.fn().mockResolvedValue({
         email: 'user@example.com',
         googleId: 'google-123',
+        name: 'Recovered User',
+        avatar: 'avatar.png',
       }),
     };
     const userRepository = {
       findById: jest.fn().mockResolvedValue(null),
+      findByEmail: jest.fn().mockResolvedValue(null),
+      createProfileAccount: jest.fn().mockResolvedValue({
+        id: 'user-recovered',
+        email: 'user@example.com',
+      }),
     };
     const authIdentityRepository = {
       findByProvider: jest.fn().mockResolvedValue({ userId: 'missing-user' }),
+      linkGoogleIdentity: jest.fn().mockResolvedValue({}),
+    };
+    const issueAuthSessionService = {
+      issue: jest.fn().mockResolvedValue({
+        user: { id: 'user-recovered' },
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      }),
     };
 
     const useCase = new LoginWithGoogleUseCase(
       googleAuthService,
       userRepository as never,
       authIdentityRepository as never,
-      {} as never,
+      issueAuthSessionService as never,
     );
 
-    await expect(
-      useCase.execute({
-        token: 'google-token',
-        deviceType: 'mobile',
-        deviceId: 'device-1',
-      }),
-    ).rejects.toMatchObject<Partial<InternalApplicationError>>({
-      errorCode: ERROR_CODES.AUTH_GOOGLE_PROFILE_ORPHANED,
+    const result = await useCase.execute({
+      token: 'google-token',
+      deviceType: 'mobile',
+      deviceId: 'device-1',
     });
+
+    expect(userRepository.createProfileAccount).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      name: 'Recovered User',
+      avatar: 'avatar.png',
+    });
+    expect(authIdentityRepository.linkGoogleIdentity).toHaveBeenCalledWith({
+      userId: 'user-recovered',
+      googleId: 'google-123',
+      email: 'user@example.com',
+    });
+    expect(result.accessToken).toBe('access-token');
   });
 });
