@@ -11,6 +11,7 @@ class MatchUser {
   final String? moodIcon;
   final bool isFaceLocked;
   final bool isMutualFollow;
+  final bool isLiked;
   final List<String>? vibePhotos;
   final String? bio;
   final String? gender;
@@ -28,12 +29,51 @@ class MatchUser {
     this.moodIcon,
     this.isFaceLocked = false,
     this.isMutualFollow = false,
+    this.isLiked = false,
     this.vibePhotos,
     this.bio,
     this.gender,
     this.age,
     this.likesCount,
   });
+
+  MatchUser copyWith({
+    String? id,
+    String? name,
+    String? emotion,
+    int? compatibilityScore,
+    double? distanceKm,
+    List<String>? tags,
+    String? avatar,
+    String? moodIcon,
+    bool? isFaceLocked,
+    bool? isMutualFollow,
+    bool? isLiked,
+    List<String>? vibePhotos,
+    String? bio,
+    String? gender,
+    int? age,
+    int? likesCount,
+  }) {
+    return MatchUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      emotion: emotion ?? this.emotion,
+      compatibilityScore: compatibilityScore ?? this.compatibilityScore,
+      distanceKm: distanceKm ?? this.distanceKm,
+      tags: tags ?? this.tags,
+      avatar: avatar ?? this.avatar,
+      moodIcon: moodIcon ?? this.moodIcon,
+      isFaceLocked: isFaceLocked ?? this.isFaceLocked,
+      isMutualFollow: isMutualFollow ?? this.isMutualFollow,
+      isLiked: isLiked ?? this.isLiked,
+      vibePhotos: vibePhotos ?? this.vibePhotos,
+      bio: bio ?? this.bio,
+      gender: gender ?? this.gender,
+      age: age ?? this.age,
+      likesCount: likesCount ?? this.likesCount,
+    );
+  }
 
   /// Điều kiện mở diện mạo thật: cả hai cùng thả tim (mutual follow) VÀ đối phương không bật khóa diện mạo
   bool get canViewIdentity => isMutualFollow && !isFaceLocked;
@@ -105,12 +145,8 @@ class MatchUser {
     }
   }
 
-  /// Số lượt tim / yêu thích nhận được (từ API hoặc cố định theo seed để không nhảy số loạn xạ)
-  int get resolvedLikesCount {
-    if (likesCount != null && likesCount! > 0) return likesCount!;
-    final seed = id.isNotEmpty ? id.hashCode : 42;
-    return 18 + (seed.abs() % 172); // 18 - 189 lượt tim
-  }
+  /// Số lượt tim nhận được từ dữ liệu thực tế Database (loại bỏ hoàn toàn mock random)
+  int get resolvedLikesCount => likesCount ?? 0;
 
   factory MatchUser.fromJson(Map<String, dynamic> json) {
     return MatchUser(
@@ -129,6 +165,7 @@ class MatchUser {
       moodIcon: json['moodIcon'] as String?,
       isFaceLocked: json['isFaceLocked'] == true,
       isMutualFollow: json['isMutualFollow'] == true || json['isMatched'] == true,
+      isLiked: json['isLiked'] == true,
       vibePhotos: (json['vibePhotos'] as List<dynamic>?)
           ?.map((e) => e.toString())
           .toList(),
@@ -139,9 +176,13 @@ class MatchUser {
           : (json['birthYear'] != null
               ? (DateTime.now().year - (json['birthYear'] as num).toInt())
               : null),
-      likesCount: json['likesCount'] != null
-          ? (json['likesCount'] as num).toInt()
-          : (json['heartCount'] != null ? (json['heartCount'] as num).toInt() : null),
+      likesCount: json['likesReceived'] != null
+          ? (json['likesReceived'] as num).toInt()
+          : (json['likesCount'] != null
+              ? (json['likesCount'] as num).toInt()
+              : (json['heartCount'] != null
+                  ? (json['heartCount'] as num).toInt()
+                  : 0)),
     );
   }
 }

@@ -27,8 +27,28 @@ class SoulMatchCard extends StatefulWidget {
 }
 
 class _SoulMatchCardState extends State<SoulMatchCard> {
-  bool _isLiked = false;
+  late bool _isLiked;
   bool _isWaveSent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.user.isLiked;
+  }
+
+  @override
+  void didUpdateWidget(SoulMatchCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.isLiked != widget.user.isLiked) {
+      _isLiked = widget.user.isLiked;
+    }
+  }
+
+  void _handleLike() {
+    HapticFeedback.lightImpact();
+    setState(() => _isLiked = !_isLiked);
+    widget.onLike?.call();
+  }
 
   void _handleSendWave() {
     HapticFeedback.mediumImpact();
@@ -289,10 +309,7 @@ class _SoulMatchCardState extends State<SoulMatchCard> {
                     children: [
                       // Nút Thả tim (Like)
                       InkWell(
-                        onTap: () {
-                          setState(() => _isLiked = !_isLiked);
-                          widget.onLike?.call();
-                        },
+                        onTap: _handleLike,
                         borderRadius: BorderRadius.circular(14),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),

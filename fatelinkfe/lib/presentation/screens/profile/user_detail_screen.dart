@@ -39,9 +39,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _isFollowing = widget.user.isMutualFollow;
+    _isFollowing = widget.user.isLiked || widget.user.isMutualFollow;
     _isMutualFollow = widget.user.isMutualFollow;
-    _likesCount = widget.user.resolvedLikesCount;
+    _likesCount = widget.user.likesCount ?? 0;
     _recordProfileView();
   }
 
@@ -83,7 +83,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         final res = await ApiService.post(url, context, token: token);
         if (res != null && mounted) {
           final isMutual = res['isMutual'] == true;
+          final isLiked = res['isLiked'] == true;
           setState(() {
+            _isFollowing = isLiked;
             _isMutualFollow = isMutual;
             if (res['likesReceived'] is num) {
               _likesCount = (res['likesReceived'] as num).toInt();
@@ -705,7 +707,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     const Text(
-                                      'Lượt thả tim',
+                                      'Lượt tim',
                                       style: TextStyle(
                                         fontFamily: 'BeVietnamPro',
                                         fontSize: 11,

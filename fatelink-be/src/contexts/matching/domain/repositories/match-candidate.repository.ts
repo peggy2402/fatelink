@@ -11,6 +11,11 @@ export interface MatchCandidate {
   avatar?: string;
   moodIcon?: string;
   desiredVibe?: string;
+  likesReceived?: number;
+  likedUsers?: string[];
+  isFaceLocked?: boolean;
+  gender?: string;
+  blockedUsers?: string[];
 }
 
 export interface MatchCandidateRepository {

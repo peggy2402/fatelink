@@ -23,7 +23,15 @@ export class MongooseMatchCandidateRepository implements MatchCandidateRepositor
   }
 
   async findOtherCandidates(userId: string): Promise<MatchCandidate[]> {
-    const users = await this.userModel.find({ _id: { $ne: userId } }).exec();
+    const currentUser = await this.userModel.findById(userId).exec();
+    const myBlocked = currentUser?.blockedUsers || [];
+
+    const users = await this.userModel
+      .find({
+        _id: { $ne: userId, $nin: myBlocked },
+        blockedUsers: { $ne: userId },
+      })
+      .exec();
     return users.map((user) => this.toCandidate(user));
   }
 
@@ -52,6 +60,11 @@ export class MongooseMatchCandidateRepository implements MatchCandidateRepositor
       avatar: document.avatar,
       moodIcon: document.moodIcon,
       desiredVibe: document.desiredVibe,
+      likesReceived: document.likesReceived ?? 0,
+      likedUsers: Array.isArray(document.likedUsers) ? [...document.likedUsers] : [],
+      isFaceLocked: document.isFaceLocked ?? false,
+      gender: document.gender || 'female',
+      blockedUsers: Array.isArray(document.blockedUsers) ? [...document.blockedUsers] : [],
     };
   }
 }

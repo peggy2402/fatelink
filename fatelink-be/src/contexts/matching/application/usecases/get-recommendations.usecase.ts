@@ -108,6 +108,10 @@ export class GetRecommendationsUseCase {
 
       const formattedDistance = parseFloat(dist.toFixed(1));
 
+      const isLiked = (currentUser?.likedUsers || []).includes(c.id);
+      const isMutual =
+        isLiked && (c.likedUsers || []).includes(input.userId);
+
       return {
         id: c.id,
         displayName: c.displayName || 'Nguoi Dau Ten',
@@ -120,6 +124,11 @@ export class GetRecommendationsUseCase {
           c.avatar ||
           `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(c.displayName)}&backgroundColor=e0e7ff`,
         moodIcon: c.moodIcon || '✨',
+        likesReceived: c.likesReceived ?? 0,
+        isLiked,
+        isMutualFollow: isMutual,
+        isFaceLocked: c.isFaceLocked ?? false,
+        gender: c.gender || 'female',
       };
     });
   }

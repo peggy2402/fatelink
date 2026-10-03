@@ -42,6 +42,21 @@ export class MatchCandidateReadModel {
 
   @Prop()
   desiredVibe?: string;
+
+  @Prop({ default: 0 })
+  likesReceived!: number;
+
+  @Prop({ type: [String], default: () => [] })
+  likedUsers!: string[];
+
+  @Prop({ default: false })
+  isFaceLocked!: boolean;
+
+  @Prop({ default: 'female' })
+  gender!: string;
+
+  @Prop({ type: [String], default: () => [] })
+  blockedUsers!: string[];
 }
 
 export const MatchCandidateReadSchema = SchemaFactory.createForClass(

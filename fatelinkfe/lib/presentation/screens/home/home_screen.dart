@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fatelinkfe/core/utils/secure_storage_helper.dart';
+import 'package:fatelinkfe/core/utils/constants.dart';
+import 'package:fatelinkfe/core/utils/toast_utils.dart';
+import 'package:fatelinkfe/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fatelinkfe/data/models/match_user.dart';
@@ -213,6 +216,37 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleToggleLikeUser(MatchUser user) async {
+    final token = await SecureStorageHelper.read('accessToken');
+    if (token == null || user.id.isEmpty) return;
+
+    final url = '${AppConstants.baseUrl}/${AppConstants.userToggleLike(user.id)}';
+    try {
+      final res = await ApiService.post(url, context, token: token);
+      if (res != null && mounted) {
+        final isLiked = res['isLiked'] == true;
+        final isMutual = res['isMutual'] == true;
+
+        if (isMutual) {
+          ToastUtil.showSuccess(
+            context,
+            '✨ Định mệnh giao thoa! Bạn và ${user.displayName} đã cùng thả tim! Diện mạo đã được mở khóa.',
+          );
+        } else if (isLiked) {
+          ToastUtil.showSuccess(
+            context,
+            'Đã thả tim kết nối cùng ${user.displayName} 💕',
+          );
+        } else {
+          ToastUtil.showInfo(context, 'Đã bỏ thả tim ${user.displayName}');
+        }
+
+        context.read<HomeBloc>().add(LoadRecommendationsEvent(context));
+      }
+    } catch (e) {
+      debugPrint('Lỗi thả tim: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -712,11 +746,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: matchedUsers.map((user) {
                                 return SoulMatchCard(
                                   user: user,
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => UserDetailScreen(user: user),
-                                    ),
-                                  ),
+                                  onLike: () => _handleToggleLikeUser(user),
+                                  onTap: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => UserDetailScreen(user: user),
+                                      ),
+                                    );
+                                    if (mounted) {
+                                      context.read<HomeBloc>().add(LoadRecommendationsEvent(context));
+                                    }
+                                  },
                                   onChat: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => MatchChatScreen(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/utils/anonymous_avatar_helper.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/secure_storage_helper.dart';
 import '../../../../core/utils/toast_utils.dart';
 import '../../../../data/models/match_user.dart';
+import '../../../../services/api_service.dart';
 import '../../../widgets/cosmic_pulse_received_modal.dart';
 
 /// Thẻ Danh Thiếp Tâm Hồn (ExploreListCard):
@@ -27,8 +30,22 @@ class ExploreListCard extends StatefulWidget {
 }
 
 class _ExploreListCardState extends State<ExploreListCard> {
-  bool _isLiked = false;
+  late bool _isLiked;
   bool _isPinged = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.user.isLiked;
+  }
+
+  @override
+  void didUpdateWidget(ExploreListCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.isLiked != widget.user.isLiked) {
+      _isLiked = widget.user.isLiked;
+    }
+  }
 
   void _handlePing() {
     if (_isPinged) return;
@@ -47,14 +64,39 @@ class _ExploreListCardState extends State<ExploreListCard> {
     });
   }
 
-  void _handleLike() {
+  Future<void> _handleLike() async {
     HapticFeedback.lightImpact();
-    setState(() => _isLiked = !_isLiked);
-    if (_isLiked) {
+    final nextState = !_isLiked;
+    setState(() => _isLiked = nextState);
+
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && widget.user.id.isNotEmpty) {
+        final url =
+            '${AppConstants.baseUrl}/${AppConstants.userToggleLike(widget.user.id)}';
+        final res = await ApiService.post(url, context, token: token);
+        if (res != null && mounted) {
+          final isLiked = res['isLiked'] == true;
+          final isMutual = res['isMutual'] == true;
+          setState(() => _isLiked = isLiked);
+          if (isMutual) {
+            ToastUtil.showSuccess(
+              context,
+              '✨ Định mệnh giao thoa! Bạn và ${widget.user.displayName} đã cùng thả tim! Diện mạo đã được mở khóa.',
+            );
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (nextState) {
       ToastUtil.showSuccess(
         context,
-        'Đã gửi tương hợp tâm hồn đến ${widget.user.displayName}!',
+        'Đã gửi tương hợp tâm hồn đến ${widget.user.displayName} 💕',
       );
+    } else {
+      ToastUtil.showInfo(context, 'Đã bỏ thả tim ${widget.user.displayName}');
     }
   }
 

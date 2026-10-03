@@ -867,7 +867,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 3),
                 const Text(
-                  'Lượt nhận tim',
+                  'Lượt tim',
                   style: TextStyle(
                     fontFamily: 'BeVietnamPro',
                     fontSize: 11.5,
