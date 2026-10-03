@@ -23,7 +23,7 @@ import 'presentation/widgets/network_status_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -33,7 +33,7 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  
+
   try {
     await EasyLocalization.ensureInitialized();
     if (Firebase.apps.isEmpty) {
@@ -41,17 +41,21 @@ void main() async {
     } else {
       Firebase.app();
     }
-    
+
     try {
       await FcmService.initialize();
     } catch (fcmError) {
-      debugPrint('Cảnh báo: Không thể khởi tạo FCM (Thường xảy ra trên máy ảo iOS): $fcmError');
+      debugPrint(
+        'Cảnh báo: Không thể khởi tạo FCM (Thường xảy ra trên máy ảo iOS): $fcmError',
+      );
     }
 
     try {
       await NetworkConnectivityService.instance.initialize();
     } catch (netErr) {
-      debugPrint('Cảnh báo: Không thể khởi tạo NetworkConnectivityService: $netErr');
+      debugPrint(
+        'Cảnh báo: Không thể khởi tạo NetworkConnectivityService: $netErr',
+      );
     }
   } catch (e, stackTrace) {
     debugPrint('Lỗi khởi tạo App: $e\n$stackTrace');

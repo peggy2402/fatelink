@@ -16,6 +16,8 @@ import '../../../core/responsive/responsive.dart';
 import '../../../core/services/image_picker_service.dart';
 import '../../../data/models/vibe_photo_item.dart';
 import '../../widgets/vibe_duration_picker_modal.dart';
+import '../../../core/utils/constants.dart';
+import '../../../services/api_service.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -74,7 +76,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final parsedVibes = rawVibes.map((e) => VibePhotoItem.fromRaw(e)).toList();
     final activeVibes = VibePhotoItem.filterActive(parsedVibes);
     if (activeVibes.length != rawVibes.length) {
-      prefs.setStringList('user_vibe_photos', activeVibes.map((e) => e.toRawString()).toList());
+      prefs.setStringList(
+        'user_vibe_photos',
+        activeVibes.map((e) => e.toRawString()).toList(),
+      );
     }
 
     if (mounted) {
@@ -113,7 +118,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _addVibePhotosDirectly() async {
     if (_cachedVibes.length >= 6) {
-      ToastUtil.showWarning(context, 'Bạn đã đăng tối đa 6 ảnh trong Góc tâm hồn');
+      ToastUtil.showWarning(
+        context,
+        'Bạn đã đăng tối đa 6 ảnh trong Góc tâm hồn',
+      );
       return;
     }
     final newImages = await ImagePickerService.pickMultiVibeImages(
@@ -129,32 +137,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (selectedOption == null || !mounted) return;
 
-    final newItems = newImages.map((img) {
-      return VibePhotoItem.createNew(imageUrl: img, option: selectedOption);
-    }).toList();
+    ToastUtil.showInfo(
+      context,
+      'Đang tải ${newImages.length} ảnh lên Đám mây Cloudinary...',
+    );
+
+    final List<VibePhotoItem> newItems = [];
+    for (final img in newImages) {
+      String finalUrl = img;
+      try {
+        final uploaded = await ImagePickerService.uploadToCloudinary(
+          context,
+          img,
+          folder: 'fatelink/vibes',
+        );
+        if (uploaded != null && uploaded.isNotEmpty) {
+          finalUrl = uploaded;
+        }
+      } catch (_) {}
+
+      newItems.add(
+        VibePhotoItem.createNew(imageUrl: finalUrl, option: selectedOption),
+      );
+    }
 
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _cachedVibes.addAll(newItems);
-    });
+    if (mounted) {
+      setState(() {
+        _cachedVibes.addAll(newItems);
+      });
+    }
     await prefs.setStringList(
       'user_vibe_photos',
       _cachedVibes.map((e) => e.toRawString()).toList(),
     );
+
+    // Đồng bộ lên backend MongoDB
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && token.isNotEmpty && mounted) {
+        final url = '${AppConstants.baseUrl}/${AppConstants.updateUserProfile}';
+        await ApiService.post(
+          url,
+          context,
+          body: {'vibePhotos': _cachedVibes.map((e) => e.toJson()).toList()},
+          token: token,
+          showLoading: false,
+        );
+      }
+    } catch (_) {}
+
     if (mounted) {
-      ToastUtil.showSuccess(context, 'Đã thêm ${newItems.length} ảnh (${selectedOption.label}) vào Góc tâm hồn ✨');
+      ToastUtil.showSuccess(
+        context,
+        'Đã lưu ${newItems.length} ảnh (${selectedOption.label}) trên Góc tâm hồn ✨',
+      );
     }
   }
 
   Future<void> _deleteVibePhoto(VibePhotoItem item) async {
     setState(() {
-      _cachedVibes.removeWhere((p) => p.id == item.id || p.imageUrl == item.imageUrl);
+      _cachedVibes.removeWhere(
+        (p) => p.id == item.id || p.imageUrl == item.imageUrl,
+      );
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
       'user_vibe_photos',
       _cachedVibes.map((e) => e.toRawString()).toList(),
     );
+
+    // Đồng bộ danh sách sau khi xóa lên backend
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token != null && token.isNotEmpty && mounted) {
+        final url = '${AppConstants.baseUrl}/${AppConstants.updateUserProfile}';
+        await ApiService.post(
+          url,
+          context,
+          body: {'vibePhotos': _cachedVibes.map((e) => e.toJson()).toList()},
+          token: token,
+          showLoading: false,
+        );
+      }
+    } catch (_) {}
+
     if (mounted) {
       ToastUtil.showInfo(context, 'Đã xóa ảnh khỏi Góc tâm hồn');
     }
@@ -187,7 +254,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -203,7 +274,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.timer_outlined, color: Color(0xFF818CF8), size: 18),
+                  const Icon(
+                    Icons.timer_outlined,
+                    color: Color(0xFF818CF8),
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -235,7 +310,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.pop(ctx);
                       _deleteVibePhoto(item);
                     },
-                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF43F5E), size: 16),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFF43F5E),
+                      size: 16,
+                    ),
                     label: const Text(
                       'Xóa ngay',
                       style: TextStyle(
@@ -385,13 +464,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               bio: bio,
                               status: mood,
                               avatar: avatar,
-                              handle: _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}',
+                              handle:
+                                  _cachedHandle ??
+                                  '@${name.toLowerCase().replaceAll(' ', '')}',
                               soulId: soulId,
                             ),
                             const SizedBox(height: 28),
                             _buildHobbiesSection(tags),
                             const SizedBox(height: 28),
-                            _buildVibeCorner(data['vibePhotos'] as List<dynamic>?),
+                            _buildVibeCorner(
+                              data['vibePhotos'] as List<dynamic>?,
+                            ),
                             const SizedBox(height: 28),
                             _buildPersonalityChart(emotions),
                             const SizedBox(height: 80),
@@ -485,11 +568,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String frequency,
     required String bio,
   }) {
-    final handle = _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}';
+    final handle =
+        _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}';
     final displayBio = (_cachedTagline != null && _cachedTagline!.isNotEmpty)
         ? _cachedTagline!
         : bio;
-    final displayAddress = (_cachedAddress != null && _cachedAddress!.isNotEmpty)
+    final displayAddress =
+        (_cachedAddress != null && _cachedAddress!.isNotEmpty)
         ? _cachedAddress!
         : 'Đang phát tín hiệu gần bạn';
 
@@ -530,7 +615,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Bóng tròn đồng tâm êm dịu, không lệch Offset gây bóng chữ nhật
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.14),
+                          color: const Color(
+                            0xFF6366F1,
+                          ).withValues(alpha: 0.14),
                           blurRadius: 10,
                           spreadRadius: 1,
                         ),
@@ -699,15 +786,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icon(
                   _cachedGender == 'female'
                       ? Icons.female_rounded
-                      : (_cachedGender == 'male' ? Icons.male_rounded : Icons.all_inclusive_rounded),
+                      : (_cachedGender == 'male'
+                            ? Icons.male_rounded
+                            : Icons.all_inclusive_rounded),
                   size: 15,
                   color: _cachedGender == 'female'
                       ? const Color(0xFFEC4899)
-                      : (_cachedGender == 'male' ? const Color(0xFF6366F1) : const Color(0xFF8B5CF6)),
+                      : (_cachedGender == 'male'
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF8B5CF6)),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _cachedGender == 'female' ? 'Nữ' : (_cachedGender == 'male' ? 'Nam' : 'Khác'),
+                  _cachedGender == 'female'
+                      ? 'Nữ'
+                      : (_cachedGender == 'male' ? 'Nam' : 'Khác'),
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 12,
@@ -1088,202 +1181,241 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: screenHeight * 0.88),
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset > 0 ? bottomInset + 16 : 32),
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  16,
+                  24,
+                  bottomInset > 0 ? bottomInset + 16 : 32,
+                ),
                 child: ResponsiveCenter(
                   maxWidth: 480,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-              // Thanh kéo
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              const Text(
-                'Danh thiếp Meyu Soul',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Quét mã QR để đồng điệu tần số cùng tôi',
-                style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 20),
-
-              // Card danh thiếp
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Header avatar + name
-                    Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: Image.network(
-                              avatar,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const CircleAvatar(
-                                backgroundColor: Color(0xFFE0E7FF),
-                                child: Icon(Icons.person, color: Color(0xFF6366F1)),
-                              ),
-                            ),
+                      // Thanh kéo
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                      ),
+                      const SizedBox(height: 20),
+
+                      const Text(
+                        'Danh thiếp Meyu Soul',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Quét mã QR để đồng điệu tần số cùng tôi',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Card danh thiếp
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF6366F1,
+                              ).withValues(alpha: 0.12),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Header avatar + name
+                            Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Color(0xFFEC4899),
+                                        Color(0xFF6366F1),
+                                      ],
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.network(
+                                      avatar,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) =>
+                                          const CircleAvatar(
+                                            backgroundColor: Color(0xFFE0E7FF),
+                                            child: Icon(
+                                              Icons.person,
+                                              color: Color(0xFF6366F1),
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '@$cleanHandle • $soulId',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF6366F1),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Mã QR 2D
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFF1F5F9),
+                                  width: 2,
+                                ),
+                              ),
+                              child: QrImageView(
+                                data: profileUrl,
+                                version: QrVersions.auto,
+                                size: 160.0,
+                                eyeStyle: const QrEyeStyle(
+                                  eyeShape: QrEyeShape.square,
                                   color: Color(0xFF0F172A),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '@$cleanHandle • $soulId',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF6366F1),
-                                  fontWeight: FontWeight.w700,
+                                dataModuleStyle: const QrDataModuleStyle(
+                                  dataModuleShape: QrDataModuleShape.circle,
+                                  color: Color(0xFF0F172A),
                                 ),
                               ),
-                            ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // URL Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.link_rounded,
+                                    color: Color(0xFF6366F1),
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'meyu.com/m/@$cleanHandle',
+                                    style: const TextStyle(
+                                      color: Color(0xFF334155),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Nút Sao chép liên kết
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: profileUrl));
+                            Navigator.pop(bottomSheetContext);
+                            ToastUtil.showSuccess(
+                              context,
+                              'Đã sao chép liên kết: meyu.com/m/@$cleanHandle ✨',
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.copy_rounded,
+                            color: Colors.white,
+                            size: 18,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Mã QR 2D
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
-                      ),
-                      child: QrImageView(
-                        data: profileUrl,
-                        version: QrVersions.auto,
-                        size: 160.0,
-                        eyeStyle: const QrEyeStyle(
-                          eyeShape: QrEyeShape.square,
-                          color: Color(0xFF0F172A),
-                        ),
-                        dataModuleStyle: const QrDataModuleStyle(
-                          dataModuleShape: QrDataModuleShape.circle,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // URL Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.link_rounded, color: Color(0xFF6366F1), size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'meyu.com/m/@$cleanHandle',
-                            style: const TextStyle(
-                              color: Color(0xFF334155),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                          label: const Text(
+                            'Sao chép liên kết danh thiếp',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
                             ),
                           ),
-                        ],
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F172A),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Nút Sao chép liên kết
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: profileUrl));
-                    Navigator.pop(bottomSheetContext);
-                    ToastUtil.showSuccess(context, 'Đã sao chép liên kết: meyu.com/m/@$cleanHandle ✨');
-                  },
-                  icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
-                  label: const Text(
-                    'Sao chép liên kết danh thiếp',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    elevation: 0,
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ),
-  ),
-);
-  },
-);
+        );
+      },
+    );
   }
 
   // D. Những Mảnh Ghép (Gu sống & Sở thích)
@@ -1317,12 +1449,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.style_outlined, color: Color(0xFF94A3B8), size: 20),
+                const Icon(
+                  Icons.style_outlined,
+                  color: Color(0xFF94A3B8),
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Chưa có mảnh ghép sở thích nào. Chạm "Chỉnh sửa hồ sơ" để thêm gu sống.',
-                    style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 12.5),
+                    style: TextStyle(
+                      color: Colors.blueGrey.shade400,
+                      fontSize: 12.5,
+                    ),
                   ),
                 ),
               ],
@@ -1334,7 +1473,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             runSpacing: 8,
             children: tags.map((tag) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -1365,7 +1507,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildVibeCorner(List<dynamic>? vibePhotos) {
     List<VibePhotoItem> allVibes;
     if (vibePhotos != null && vibePhotos.isNotEmpty) {
-      final parsed = vibePhotos.map((e) => VibePhotoItem.fromRaw(e.toString())).toList();
+      final parsed = vibePhotos
+          .map((e) => VibePhotoItem.fromRaw(e.toString()))
+          .toList();
       allVibes = VibePhotoItem.filterActive(parsed);
     } else {
       allVibes = _cachedVibes;
@@ -1379,7 +1523,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.camera_alt_rounded, color: Color(0xFF6366F1), size: 20),
+                Icon(
+                  Icons.camera_alt_rounded,
+                  color: Color(0xFF6366F1),
+                  size: 20,
+                ),
                 SizedBox(width: 6),
                 Text(
                   'Góc tâm hồn (Vibe)',
@@ -1394,7 +1542,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (allVibes.isNotEmpty)
               TextButton.icon(
                 onPressed: _addVibePhotosDirectly,
-                icon: const Icon(Icons.add_a_photo_outlined, size: 15, color: Color(0xFF6366F1)),
+                icon: const Icon(
+                  Icons.add_a_photo_outlined,
+                  size: 15,
+                  color: Color(0xFF6366F1),
+                ),
                 label: const Text(
                   'Thêm ảnh',
                   style: TextStyle(
@@ -1435,19 +1587,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                     ),
                     child: const Center(
-                      child: Icon(Icons.add_photo_alternate_rounded, color: Color(0xFF6366F1), size: 26),
+                      child: Icon(
+                        Icons.add_photo_alternate_rounded,
+                        color: Color(0xFF6366F1),
+                        size: 26,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'Chưa có khoảnh khắc Vibe nào',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Chạm vào đây để tải ảnh từ thư viện chia sẻ góc tâm hồn của bạn.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.blueGrey.shade400,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -1502,7 +1665,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               left: 6,
               right: 6,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 2.5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(8),
@@ -1511,7 +1677,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.timer_outlined, color: Colors.white, size: 10),
+                    const Icon(
+                      Icons.timer_outlined,
+                      color: Colors.white,
+                      size: 10,
+                    ),
                     const SizedBox(width: 3),
                     Flexible(
                       child: Text(
