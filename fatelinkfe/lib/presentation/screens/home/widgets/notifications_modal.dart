@@ -151,17 +151,22 @@ class _NotificationsModalState extends State<NotificationsModal> {
       if (token != null && mounted) {
         final url = '${AppConstants.baseUrl}/${AppConstants.notifications}';
         final res = await ApiService.get(url, context, token: token);
-        if (res != null && res['success'] == true && res['data'] is List) {
-          final list = (res['data'] as List)
+        List<dynamic>? rawList;
+        if (res is List) {
+          rawList = res;
+        } else if (res is Map<String, dynamic> && res['data'] is List) {
+          rawList = res['data'] as List;
+        }
+
+        if (rawList != null && mounted) {
+          final list = rawList
               .map((item) => NotificationItem.fromJson(item as Map<String, dynamic>))
               .toList();
-          if (mounted) {
-            setState(() {
-              _notifications = list;
-              _isLoading = false;
-            });
-            return;
-          }
+          setState(() {
+            _notifications = list;
+            _isLoading = false;
+          });
+          return;
         }
       }
     } catch (e) {

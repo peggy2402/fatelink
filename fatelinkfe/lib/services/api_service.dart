@@ -360,7 +360,10 @@ class ApiService {
     if (showLoading) _showLoadingDialog(context);
     try {
       final uri = Uri.parse(url);
-      final headers = <String, String>{'Content-Type': 'application/json'};
+      final headers = <String, String>{};
+      if (body != null) {
+        headers['Content-Type'] = 'application/json';
+      }
       final response = await _sendWithRefresh((activeToken) {
         final nextHeaders = Map<String, String>.from(headers);
         if (activeToken != null) {
@@ -374,7 +377,7 @@ class ApiService {
           requestFn: () => http.post(
             uri,
             headers: nextHeaders,
-            body: jsonEncode(body),
+            body: body != null ? jsonEncode(body) : null,
           ),
         );
       }, context, token: token);
@@ -399,7 +402,10 @@ class ApiService {
     if (showLoading) _showLoadingDialog(context);
     try {
       final uri = Uri.parse(url);
-      final headers = <String, String>{'Content-Type': 'application/json'};
+      final headers = <String, String>{};
+      if (body != null) {
+        headers['Content-Type'] = 'application/json';
+      }
       final response = await _sendWithRefresh((activeToken) {
         final nextHeaders = Map<String, String>.from(headers);
         if (activeToken != null) {
@@ -413,7 +419,7 @@ class ApiService {
           requestFn: () => http.put(
             uri,
             headers: nextHeaders,
-            body: jsonEncode(body),
+            body: body != null ? jsonEncode(body) : null,
           ),
         );
       }, context, token: token);
@@ -438,7 +444,10 @@ class ApiService {
     if (showLoading) _showLoadingDialog(context);
     try {
       final uri = Uri.parse(url);
-      final headers = <String, String>{'Content-Type': 'application/json'};
+      final headers = <String, String>{};
+      if (body != null) {
+        headers['Content-Type'] = 'application/json';
+      }
       final response = await _sendWithRefresh((activeToken) {
         final nextHeaders = Map<String, String>.from(headers);
         if (activeToken != null) {
@@ -452,7 +461,7 @@ class ApiService {
           requestFn: () => http.patch(
             uri,
             headers: nextHeaders,
-            body: jsonEncode(body),
+            body: body != null ? jsonEncode(body) : null,
           ),
         );
       }, context, token: token);
