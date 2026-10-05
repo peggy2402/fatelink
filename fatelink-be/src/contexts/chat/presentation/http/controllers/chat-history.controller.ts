@@ -19,8 +19,11 @@ import { JwtAuthGuard } from '@contexts/auth/presentation/http/guards/jwt-auth.g
 import { ChatGateway } from '@contexts/chat/presentation/websocket/gateways/chat.gateway';
 import type { AuthenticatedUser } from '@shared/contracts/authenticated-user';
 
+import { SkipThrottle } from '@nestjs/throttler';
+
 type GuardRequest = Request & { user?: AuthenticatedUser };
 
+@SkipThrottle()
 @Controller('messages')
 export class ChatHistoryController {
   constructor(

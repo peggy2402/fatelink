@@ -142,6 +142,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Rejected websocket connection: ${client.id}. Reason: ${reason}`);
+      client.emit('authError', { message: reason });
       client.disconnect(); // Ngắt kết nối ngay nếu không xác thực được
     }
   }
