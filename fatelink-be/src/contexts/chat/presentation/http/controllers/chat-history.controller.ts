@@ -13,6 +13,7 @@ import {
 import type { Request } from 'express';
 import type { GetAiChatHistoryUseCase } from '@contexts/chat/application/usecases/get-ai-chat-history.usecase';
 import type { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
+import type { GetRecentConversationsUseCase } from '@contexts/chat/application/usecases/get-recent-conversations.usecase';
 import type { CreateDirectChatMessageUseCase } from '@contexts/chat/application/usecases/create-direct-chat-message.usecase';
 import { CHAT_APPLICATION_TOKENS } from '@contexts/chat/composition/chat.tokens';
 import { JwtAuthGuard } from '@contexts/auth/presentation/http/guards/jwt-auth.guard';
@@ -31,10 +32,23 @@ export class ChatHistoryController {
     private readonly getAiChatHistoryUseCase: GetAiChatHistoryUseCase,
     @Inject(CHAT_APPLICATION_TOKENS.getDirectHistory)
     private readonly getDirectChatHistoryUseCase: GetDirectChatHistoryUseCase,
+    @Inject(CHAT_APPLICATION_TOKENS.getRecentConversations)
+    private readonly getRecentConversationsUseCase: GetRecentConversationsUseCase,
     @Inject(CHAT_APPLICATION_TOKENS.createDirectMessage)
     private readonly createDirectChatMessageUseCase: CreateDirectChatMessageUseCase,
     private readonly chatGateway: ChatGateway,
   ) {}
+
+  @Get('conversations')
+  @UseGuards(JwtAuthGuard)
+  async getRecentConversations(@Req() req: GuardRequest) {
+    const userId = req.user?.sub;
+    if (!userId) {
+      throw new UnauthorizedException('User không xác định');
+    }
+
+    return this.getRecentConversationsUseCase.execute({ userId });
+  }
 
   @Get(':userId')
   async getChatHistory(

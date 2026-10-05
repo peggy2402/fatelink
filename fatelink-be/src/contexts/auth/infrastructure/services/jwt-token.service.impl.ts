@@ -30,6 +30,6 @@ export class JwtTokenServiceImpl implements TokenService {
 
   private getAccessTokenExpiresIn(): StringValue {
     return (this.configService.get<string>(AUTH_ENV.jwtAccessExpiresIn) ||
-      '5m') as StringValue;
+      '30d') as StringValue;
   }
 }

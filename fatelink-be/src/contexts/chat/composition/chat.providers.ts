@@ -6,9 +6,11 @@ import { CreateAiMessageUseCase } from '@contexts/chat/application/usecases/crea
 import { CreateDirectChatMessageUseCase } from '@contexts/chat/application/usecases/create-direct-chat-message.usecase';
 import { GetAiChatHistoryUseCase } from '@contexts/chat/application/usecases/get-ai-chat-history.usecase';
 import { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
+import { GetRecentConversationsUseCase } from '@contexts/chat/application/usecases/get-recent-conversations.usecase';
 import { HandleRealtimeChatMessageOrchestrator } from '@contexts/chat/application/services/handle-realtime-chat-message.orchestrator';
 import { HandleRealtimeChatMessageUseCase } from '@contexts/chat/application/usecases/handle-realtime-chat-message.usecase';
 import { SendAiMessageUseCase } from '@contexts/chat/application/usecases/send-ai-message.usecase';
+import { SuggestRepliesUseCase } from '@contexts/chat/application/usecases/suggest-replies.usecase';
 import type {
   CreateAiMessageHandler,
   GetAiChatHistoryHandler,
@@ -53,6 +55,12 @@ export const chatUseCaseProviders: Provider[] = [
     inject: [CHAT_MESSAGE_REPOSITORY],
   },
   {
+    provide: CHAT_APPLICATION_TOKENS.getRecentConversations,
+    useFactory: (chatMessageRepository: ChatMessageRepository) =>
+      new GetRecentConversationsUseCase(chatMessageRepository),
+    inject: [CHAT_MESSAGE_REPOSITORY],
+  },
+  {
     provide: CHAT_APPLICATION_TOKENS.sendAiMessage,
     useFactory: (
       providers: IAiProvider[],
@@ -93,6 +101,14 @@ export const chatUseCaseProviders: Provider[] = [
       USERS_APPLICATION_TOKENS.updateUserTraits,
     ],
   },
+  {
+    provide: CHAT_APPLICATION_TOKENS.suggestReplies,
+    useFactory: (
+      providers: IAiProvider[],
+      aiModelCatalogRepository: AiModelCatalogRepository,
+    ) => new SuggestRepliesUseCase(providers, aiModelCatalogRepository),
+    inject: [AI_PROVIDER, AI_MODEL_CATALOG_REPOSITORY],
+  },
 ];
 
 export const chatUseCases = [
@@ -100,6 +116,8 @@ export const chatUseCases = [
   CHAT_APPLICATION_TOKENS.createDirectMessage,
   CHAT_APPLICATION_TOKENS.getHistory,
   CHAT_APPLICATION_TOKENS.getDirectHistory,
+  CHAT_APPLICATION_TOKENS.getRecentConversations,
   CHAT_APPLICATION_TOKENS.sendAiMessage,
   CHAT_APPLICATION_TOKENS.handleRealtimeMessage,
+  CHAT_APPLICATION_TOKENS.suggestReplies,
 ];

@@ -36,3 +36,29 @@ export class SendAiMessageDto {
   @Type(() => AiHistoryItemDto)
   history?: AiHistoryItemDto[];
 }
+
+export class SuggestReplyDto {
+  @ApiProperty({
+    example: 'Ngọc Ánh',
+    description: 'Tên đối phương (bạn chat)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  partnerName!: string;
+
+  @ApiPropertyOptional({
+    example: 'Hôm nay đi làm về mệt quá cậu ơi...',
+    description: 'Đoạn tin nhắn gần nhất của đối phương gửi',
+  })
+  @IsString()
+  @IsOptional()
+  lastPartnerMessage?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Lịch sử vài tin nhắn ngữ cảnh trước đó',
+  })
+  @IsOptional()
+  @IsArray()
+  recentContext?: string[];
+}

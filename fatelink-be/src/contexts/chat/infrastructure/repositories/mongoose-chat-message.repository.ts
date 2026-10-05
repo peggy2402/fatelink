@@ -95,6 +95,40 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
     return messages.map((message) => this.toDomainMessage(message));
   }
 
+  async getRecentConversations(userId: string) {
+    const results = await this.messageModel.aggregate([
+      {
+        $match: {
+          userId,
+          conversationType: 'direct',
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: '$partnerId',
+          partnerId: { $first: '$partnerId' },
+          lastMessage: { $first: '$text' },
+          lastMessageTime: { $first: '$createdAt' },
+          isSentByMe: { $first: '$isSentByMe' },
+        },
+      },
+      {
+        $sort: { lastMessageTime: -1 },
+      },
+    ]);
+
+    return results.map((item) => ({
+      partnerId: item.partnerId || item._id,
+      lastMessage: item.lastMessage || '',
+      lastMessageTime: item.lastMessageTime || new Date(),
+      isSentByMe: !!item.isSentByMe,
+      unreadCount: 0,
+    }));
+  }
+
   private getDirectConversationId(firstUserId: string, secondUserId: string) {
     return [firstUserId, secondUserId].sort().join(':');
   }

@@ -17,6 +17,7 @@ class AppConstants {
   static const String zaloAppId = '3205454775701109337';
   static const String logout = 'auth/logout';
   static const String userRecommendations = 'users/recommendations';
+  static const String suggestReplies = 'chat/suggest-replies';
 
   static String userMatches(String userId) => 'users/$userId/matches';
   static String userProfile(String userId) => 'users/$userId/profile';

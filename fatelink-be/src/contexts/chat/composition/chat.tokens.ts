@@ -3,6 +3,8 @@ export const CHAT_APPLICATION_TOKENS = {
   createDirectMessage: 'application.chat.create-direct-message',
   getHistory: 'application.chat.get-history',
   getDirectHistory: 'application.chat.get-direct-history',
+  getRecentConversations: 'application.chat.get-recent-conversations',
   sendAiMessage: 'application.chat.send-ai-message',
   handleRealtimeMessage: 'application.chat.handle-realtime-message',
+  suggestReplies: 'application.chat.suggest-replies',
 } as const;

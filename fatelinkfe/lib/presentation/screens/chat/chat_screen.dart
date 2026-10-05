@@ -19,6 +19,26 @@ import '../home/widgets/radar_scanner_modal.dart';
 import '../home/widgets/notifications_modal.dart';
 import '../../widgets/cosmic_pulse_received_modal.dart';
 import '../../../core/utils/anonymous_avatar_helper.dart';
+import '../../../services/api_service.dart';
+import '../../../core/utils/constants.dart';
+import '../../../core/utils/secure_storage_helper.dart';
+
+/// Dữ liệu tổng hợp một cuộc hội thoại trực tiếp lấy từ API
+class DirectConversationMeta {
+  final String partnerId;
+  final String lastMessage;
+  final DateTime lastMessageTime;
+  final bool isSentByMe;
+  final int unreadCount;
+
+  DirectConversationMeta({
+    required this.partnerId,
+    required this.lastMessage,
+    required this.lastMessageTime,
+    this.isSentByMe = false,
+    this.unreadCount = 0,
+  });
+}
 
 // Enum để quản lý 2 chế độ xem: Danh sách hoặc Phòng trò chuyện
 enum ChatView { list, room }
@@ -52,6 +72,11 @@ class ChatScreenState extends State<ChatScreen> {
   String _selectedFilter = 'all'; // 'all', 'ai', 'unread'
   String? _currentUserFrequency;
 
+  // Dữ liệu tin nhắn & thông báo thực tế nạp từ Backend API
+  Map<String, DirectConversationMeta> _recentConversations = {};
+  NotificationItem? _latestSystemNotification;
+  int _systemUnreadCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +87,87 @@ class ChatScreenState extends State<ChatScreen> {
       });
     });
     _loadUserFrequency();
+    _fetchDirectConversationsAndNotifications();
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
+  }
+
+  /// Nạp tin nhắn gần nhất của bạn bè và thông báo hệ thống THẬT từ API
+  Future<void> _fetchDirectConversationsAndNotifications() async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token == null || token.isEmpty || !mounted) return;
+
+      // 1. Lấy danh sách hội thoại trực tiếp gần nhất từ API
+      final convUrl = '${AppConstants.baseUrl}/messages/conversations';
+      final convRes = await ApiService.get(convUrl, context, token: token, showLoading: false);
+      if (convRes is List && mounted) {
+        final Map<String, DirectConversationMeta> map = {};
+        for (final item in convRes) {
+          if (item is Map) {
+            final pId = item['partnerId']?.toString() ?? '';
+            final text = item['lastMessage']?.toString() ?? '';
+            final timeStr = item['lastMessageTime']?.toString() ?? '';
+            final parsedTime = DateTime.tryParse(timeStr)?.toLocal() ?? DateTime.now();
+            final isSentByMe = item['isSentByMe'] == true;
+            final unread = int.tryParse(item['unreadCount']?.toString() ?? '0') ?? 0;
+            if (pId.isNotEmpty) {
+              map[pId] = DirectConversationMeta(
+                partnerId: pId,
+                lastMessage: text,
+                lastMessageTime: parsedTime,
+                isSentByMe: isSentByMe,
+                unreadCount: unread,
+              );
+            }
+          }
+        }
+        setState(() {
+          _recentConversations = map;
+        });
+      }
+
+      // 2. Lấy thông báo hệ thống FateLink từ API
+      if (!mounted) return;
+      final notifUrl = '${AppConstants.baseUrl}/${AppConstants.notifications}';
+      final notifRes = await ApiService.get(notifUrl, context, token: token, showLoading: false);
+      List<dynamic>? rawList;
+      if (notifRes is List) {
+        rawList = notifRes;
+      } else if (notifRes is Map<String, dynamic> && notifRes['data'] is List) {
+        rawList = notifRes['data'] as List;
+      }
+
+      if (rawList != null && rawList.isNotEmpty && mounted) {
+        final notifs = rawList
+            .map((item) => NotificationItem.fromJson(item as Map<String, dynamic>))
+            .toList();
+        final unreadCount = notifs.where((n) => !n.isRead).length;
+        setState(() {
+          _latestSystemNotification = notifs.first;
+          _systemUnreadCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatScreen] Lỗi nạp tin nhắn/thông báo thực tế: $e');
+    }
+  }
+
+  String _formatConversationTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final diff = now.difference(timestamp);
+    if (diff.inMinutes < 1) {
+      return 'Vừa xong';
+    } else if (diff.inHours < 1) {
+      return '${diff.inMinutes}m';
+    } else if (diff.inDays == 0 && now.day == timestamp.day) {
+      final hour = timestamp.hour.toString().padLeft(2, '0');
+      final minute = timestamp.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
+    } else if (diff.inDays == 1 || (diff.inDays == 0 && now.day != timestamp.day)) {
+      return 'Hôm qua';
+    } else {
+      return '${timestamp.day.toString().padLeft(2, '0')}/${timestamp.month.toString().padLeft(2, '0')}';
+    }
   }
 
   Future<void> _loadUserFrequency() async {
@@ -605,7 +710,7 @@ class ChatScreenState extends State<ChatScreen> {
       );
     }
 
-    // Item 2: Tin nhắn hệ thống FateLink
+    // Item 2: Tin nhắn hệ thống FateLink nạp thật từ API Notifications
     final bool matchSystem =
         _searchQuery.isEmpty ||
         'hệ thống fatelink'.contains(_searchQuery.toLowerCase()) ||
@@ -613,16 +718,28 @@ class ChatScreenState extends State<ChatScreen> {
     final bool showSystem = matchSystem && (_selectedFilter == 'all');
 
     if (showSystem) {
+      final notif = _latestSystemNotification;
+      final systemLastMsg = notif != null
+          ? (notif.message.isNotEmpty ? notif.message : notif.title)
+          : 'Chào mừng bạn đến với FateLink! Khám phá tần số tâm hồn ngay ✨';
+      final systemTime = notif != null
+          ? _formatConversationTime(notif.createdAt)
+          : 'Hôm nay';
+
       conversationTiles.add(
         ChatConversationTile(
           name: 'Hệ thống FateLink',
           systemIcon: Icons.all_inclusive_rounded,
-          lastMessage:
-              'Chào mừng bạn đến với FateLink! Khám phá tần số tâm hồn ngay ✨',
-          time: 'Hôm nay',
-          unreadCount: 0,
+          lastMessage: systemLastMsg,
+          time: systemTime,
+          unreadCount: _systemUnreadCount,
           isSystem: true,
-          onTap: () => NotificationsModal.show(context),
+          onTap: () async {
+            await NotificationsModal.show(context);
+            if (mounted) {
+              _fetchDirectConversationsAndNotifications();
+            }
+          },
         ),
       );
     }
@@ -665,15 +782,26 @@ class ChatScreenState extends State<ChatScreen> {
 
     // Item 4+: CÁC BẠN BÈ ĐÃ KẾT ĐÔI CHÍNH THỨC (Mutual Matches)
     // CHỈ hiển thị những người CẢ HAI ĐÃ CÙNG THẢ TIM NHAU!
+    // Lấy tin nhắn thực tế từ cơ sở dữ liệu qua API /messages/conversations
     if (_selectedFilter == 'all' || _selectedFilter == 'matches') {
       for (final user in mutualMatches) {
         final String displayName = user.name;
         final String avatarUrl = user.avatar ?? '';
 
+        final directMeta = _recentConversations[user.id];
+        final String effectiveLastMessage = directMeta != null && directMeta.lastMessage.isNotEmpty
+            ? (directMeta.isSentByMe ? 'Bạn: ${directMeta.lastMessage}' : directMeta.lastMessage)
+            : 'Đã kết đôi • Mở khóa trò chuyện vĩnh viễn 💕';
+        final String effectiveTime = directMeta != null
+            ? _formatConversationTime(directMeta.lastMessageTime)
+            : 'Vừa xong';
+        final int effectiveUnread = directMeta?.unreadCount ?? 0;
+
         final bool matchUser =
             _searchQuery.isEmpty ||
             displayName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            user.emotion.toLowerCase().contains(_searchQuery.toLowerCase());
+            user.emotion.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            effectiveLastMessage.toLowerCase().contains(_searchQuery.toLowerCase());
 
         if (matchUser) {
           final progress = (user.compatibilityScore / 100.0).clamp(0.0, 1.0);
@@ -684,14 +812,14 @@ class ChatScreenState extends State<ChatScreen> {
             ChatConversationTile(
               name: displayName,
               imageUrl: avatarUrl,
-              lastMessage: 'Đã kết đôi • Mở khóa trò chuyện vĩnh viễn 💕',
-              time: 'Vừa xong',
-              unreadCount: 0,
+              lastMessage: effectiveLastMessage,
+              time: effectiveTime,
+              unreadCount: effectiveUnread,
               gender: calculatedGender,
               age: calculatedAge,
               meyuFeelProgress: progress,
-              onTap: () {
-                Navigator.of(context).push(
+              onTap: () async {
+                await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => MatchChatScreen(
                       partnerName: user.name,
@@ -699,6 +827,9 @@ class ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                 );
+                if (mounted) {
+                  _fetchDirectConversationsAndNotifications();
+                }
               },
             ),
           );

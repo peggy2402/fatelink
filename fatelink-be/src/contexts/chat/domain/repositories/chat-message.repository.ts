@@ -1,5 +1,13 @@
 import { type Message } from '@contexts/chat/domain/entities/message';
 
+export interface RecentConversationItem {
+  partnerId: string;
+  lastMessage: string;
+  lastMessageTime: Date;
+  isSentByMe: boolean;
+  unreadCount?: number;
+}
+
 export interface ChatMessageRepository {
   createAiMessage(
     userId: string,
@@ -17,4 +25,5 @@ export interface ChatMessageRepository {
     conversationId: string,
     limit: number,
   ): Promise<Message[]>;
+  getRecentConversations(userId: string): Promise<RecentConversationItem[]>;
 }

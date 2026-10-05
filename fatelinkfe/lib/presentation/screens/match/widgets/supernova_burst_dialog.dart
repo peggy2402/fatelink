@@ -144,33 +144,33 @@ class SupernovaBurstDialog extends StatelessWidget {
             ),
             const SizedBox(height: 22),
 
-            // 4. Nút bấm CTA: Tiếp tục trò chuyện vĩnh viễn (Chuẩn Cosmic Design & không rớt dòng)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onContinue();
-                },
+            // 4. Nút bấm CTA: Tiếp tục trò chuyện vĩnh viễn (Chuẩn Cosmic Design & triệt tiêu vệt vuông)
+            Container(
+              height: 50,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
                 borderRadius: BorderRadius.circular(25),
-                child: Ink(
-                  height: 50,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFEC4899).withValues(alpha: 0.38),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEC4899).withValues(alpha: 0.38),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onContinue();
+                  },
+                  borderRadius: BorderRadius.circular(25),
                   child: const Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

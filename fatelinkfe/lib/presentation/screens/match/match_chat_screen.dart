@@ -90,6 +90,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   int _unreadCount = 0;
   bool _hasInputText = false;
   bool _isSyncing = false;
+  bool _isEmojiPickerVisible = false;
 
   // Trạng thái Reply & Multi-select
   ChatMessage? _replyingMessage;
@@ -125,6 +126,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _partnerMoodIcon = widget.moodIcon ?? '✨';
     _partnerUserObject = widget.partnerUser;
 
+    _focusNode.addListener(_onFocusChanged);
     _scrollController.addListener(_scrollListener);
     _chatController.addListener(_onTextChanged);
 
@@ -479,7 +481,16 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus && _isEmojiPickerVisible) {
+      setState(() => _isEmojiPickerVisible = false);
+    }
+  }
+
   void _scrollListener() {
+    if (_isEmojiPickerVisible) {
+      setState(() => _isEmojiPickerVisible = false);
+    }
     if (!_scrollController.hasClients) return;
 
     final isNearBottom = _scrollController.offset <= 100.0;
@@ -488,6 +499,52 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
     if (isNearBottom && _unreadCount > 0) {
       setState(() => _unreadCount = 0);
+    }
+  }
+
+  void _toggleEmojiPicker() {
+    HapticFeedback.lightImpact();
+    if (_isEmojiPickerVisible) {
+      setState(() => _isEmojiPickerVisible = false);
+      _focusNode.requestFocus();
+    } else {
+      _focusNode.unfocus();
+      setState(() => _isEmojiPickerVisible = true);
+    }
+  }
+
+  void _insertEmoji(String emoji) {
+    final text = _chatController.text;
+    final selection = _chatController.selection;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, emoji);
+    _chatController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+  }
+
+  void _handleEmojiBackspace() {
+    final text = _chatController.text;
+    final selection = _chatController.selection;
+    if (text.isEmpty) return;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    if (start != end) {
+      final newText = text.replaceRange(start, end, '');
+      _chatController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: start),
+      );
+    } else if (start > 0) {
+      final runes = text.runes.toList();
+      runes.removeLast();
+      final newText = String.fromCharCodes(runes);
+      _chatController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newText.length),
+      );
     }
   }
 
@@ -506,6 +563,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _historyTimeoutTimer?.cancel();
     _typingDebounce?.cancel();
     _pollingFallbackTimer?.cancel();
+    _focusNode.removeListener(_onFocusChanged);
     _scrollController.removeListener(_scrollListener);
     _chatController.removeListener(_onTextChanged);
 
@@ -1153,9 +1211,30 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
   void _showAiSuggestionModal() {
     HapticFeedback.lightImpact();
+    // Tìm tin nhắn gần nhất của đối phương để AI suy nghĩ câu trả lời phù hợp
+    String? lastPartnerMessage;
+    for (final m in _messages) {
+      if (!m.isSentByMe && m.text.trim().isNotEmpty) {
+        lastPartnerMessage = m.text.trim();
+        break;
+      }
+    }
+
+    // Lấy ngữ cảnh vài tin nhắn gần nhất
+    final recentContext = _messages
+        .take(5)
+        .toList()
+        .reversed
+        .map((m) =>
+            '${m.isSentByMe ? "Tôi" : _partnerDisplayName}: ${m.text.trim()}')
+        .where((s) => s.isNotEmpty)
+        .toList();
+
     MatchAiSuggestionSheet.show(
       context,
       partnerName: _partnerDisplayName,
+      lastPartnerMessage: lastPartnerMessage,
+      recentContext: recentContext,
       onSelectSuggestion: (text) {
         _chatController.text = text;
         _chatController.selection = TextSelection.fromPosition(
@@ -1198,7 +1277,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 children: [
                   const MeyuFeelWatermarkLotus(),
                   GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
+                onTap: () {
+                  if (_isEmojiPickerVisible) {
+                    setState(() => _isEmojiPickerVisible = false);
+                  }
+                  FocusScope.of(context).unfocus();
+                },
                 child: _isLoadingHistory
                     ? const Center(
                         child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
@@ -1236,9 +1320,16 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             if (_messages.length <= 4 && !_isMultiSelectMode)
               _buildIcebreakerChips(),
 
-            // Thanh công cụ nhập liệu đa năng phong cách Telegram / Messenger
-            if (!_isMultiSelectMode)
+            // Thanh công cụ nhập liệu đa năng phong cách Telegram / Messenger & Bảng Emoji inline phía dưới
+            if (!_isMultiSelectMode) ...[
               _buildTelegramMessengerInputBar(),
+              if (_isEmojiPickerVisible)
+                CosmicEmojiPickerPanel(
+                  onEmojiSelected: _insertEmoji,
+                  onBackspace: _handleEmojiBackspace,
+                  onClose: () => setState(() => _isEmojiPickerVisible = false),
+                ),
+            ],
           ],
         ),
       ),
@@ -1458,42 +1549,15 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                       ),
                     ),
 
-                    // Vấn đề 3: Nút Gọi thoại trực tiếp (Voice Call)
-                    Container(
-                      margin: const EdgeInsets.only(right: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F3FF),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                    // Nút Gọi thoại trực tiếp (chỉ icon điện thoại thuần túy, không viền tròn)
+                    IconButton(
+                      tooltip: 'Cuộc gọi thoại',
+                      icon: const Icon(
+                        Icons.phone_rounded,
+                        color: Color(0xFF7C3AED),
+                        size: 22,
                       ),
-                      child: IconButton(
-                        tooltip: 'Cuộc gọi thoại Soulmate',
-                        icon: const Icon(
-                          Icons.phone_in_talk_rounded,
-                          color: Color(0xFF7C3AED),
-                          size: 19,
-                        ),
-                        onPressed: _handleStartVoiceCall,
-                      ),
-                    ),
-
-                    // Nút Faye AI gợi ý mở lời
-                    Container(
-                      margin: const EdgeInsets.only(right: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F3FF),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFDDD6FE)),
-                      ),
-                      child: IconButton(
-                        tooltip: 'Faye AI gợi ý câu mở lời',
-                        icon: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: Color(0xFF8B5CF6),
-                          size: 19,
-                        ),
-                        onPressed: _showAiSuggestionModal,
-                      ),
+                      onPressed: _handleStartVoiceCall,
                     ),
 
                     // Nút Tuỳ chọn 3 chấm
@@ -1771,9 +1835,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
-    final effectiveBottomPadding = bottomInset > 0
+    final effectiveBottomPadding = _isEmojiPickerVisible
         ? 6.0
-        : (safeBottom > 0 ? safeBottom : 8.0);
+        : (bottomInset > 0
+            ? 6.0
+            : (safeBottom > 0 ? safeBottom : 8.0));
 
     return ClipRect(
       child: BackdropFilter(
@@ -1863,27 +1929,28 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                           onSubmitted: (val) => _handleSendMessage(val),
                         ),
                       ),
-                      // Icon Emoji mở CosmicEmojiPickerSheet
+                      // Icon Faye AI gợi ý trả lời (đặt cạnh icon emoji, chỉ icon thuần túy)
                       GestureDetector(
-                        onTap: () {
-                          CosmicEmojiPickerSheet.show(
-                            context,
-                            onEmojiSelected: (emoji) {
-                              final text = _chatController.text;
-                              final selection = _chatController.selection;
-                              final start = selection.start >= 0 ? selection.start : text.length;
-                              final end = selection.end >= 0 ? selection.end : text.length;
-                              final newText = text.replaceRange(start, end, emoji);
-                              _chatController.value = TextEditingValue(
-                                text: newText,
-                                selection: TextSelection.collapsed(offset: start + emoji.length),
-                              );
-                            },
-                          );
-                        },
-                        child: const Icon(
-                          Icons.sentiment_satisfied_alt_rounded,
-                          color: Color(0xFF7C3AED),
+                        onTap: _showAiSuggestionModal,
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                          child: Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Color(0xFF8B5CF6),
+                            size: 21,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      // Icon Emoji chuyển đổi giữa Bàn phím & Bảng chọn Emoji inline
+                      GestureDetector(
+                        onTap: _toggleEmojiPicker,
+                        child: Icon(
+                          _isEmojiPickerVisible
+                              ? Icons.keyboard_alt_outlined
+                              : Icons.sentiment_satisfied_alt_rounded,
+                          color: const Color(0xFF7C3AED),
                           size: 22,
                         ),
                       ),

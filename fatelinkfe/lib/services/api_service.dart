@@ -57,16 +57,8 @@ class ApiService {
         return response.body; // Trả về dạng String nếu API không trả về chuẩn JSON
       }
     } else if (response.statusCode == 401 || response.statusCode == 403) {
-      // Xử lý Lỗi Auth: Token hết hạn hoặc không hợp lệ -> Xóa token và về trang Login
-      _secureStorage.delete(key: 'accessToken');
-      _secureStorage.delete(key: 'refreshToken');
-
-      // Chuyển hướng về trang Login
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
-      );
-      throw Exception('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      final msg = _extractErrorMessage(response);
+      throw Exception(ErrorFormatter.format(msg.isNotEmpty ? msg : 'Phiên đăng nhập không hợp lệ.'));
     } else {
       final msg = _extractErrorMessage(response);
       throw Exception(ErrorFormatter.format(msg));
@@ -84,7 +76,8 @@ class ApiService {
     }
 
     if (response.statusCode == 401 || response.statusCode == 403) {
-      throw Exception('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      final msg = _extractErrorMessage(response);
+      throw Exception(ErrorFormatter.format(msg.isNotEmpty ? msg : 'Phiên đăng nhập không hợp lệ.'));
     }
 
     final msg = _extractErrorMessage(response);
@@ -131,53 +124,80 @@ class ApiService {
     }
   }
 
+  static Future<String?>? _refreshingFuture;
+
+  /// Làm mới token an toàn (kèm Mutex chống xung đột luồng giống cơ chế Facebook)
   static Future<String?> tryRefreshToken() async {
-    final refreshToken = await _secureStorage.read(key: 'refreshToken');
-    if (refreshToken == null || refreshToken.isEmpty) {
-      return null;
+    if (_refreshingFuture != null) {
+      return _refreshingFuture!;
     }
+    final future = _doRefreshToken();
+    _refreshingFuture = future;
+    try {
+      return await future;
+    } finally {
+      _refreshingFuture = null;
+    }
+  }
 
-    final deviceId = await DeviceIdHelper.getOrCreateDeviceId();
-    final uri = Uri.parse('${AppConstants.baseUrl}/${AppConstants.refreshToken}');
-    final headers = {'Content-Type': 'application/json'};
-    final body = {
-      'refreshToken': refreshToken,
-      'deviceId': deviceId,
-    };
+  static Future<String?> _doRefreshToken() async {
+    try {
+      final refreshToken = await _secureStorage.read(key: 'refreshToken');
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return null;
+      }
 
-    final response = await executeWithLogging(
-      method: 'POST',
-      uri: uri,
-      headers: headers,
-      body: body,
-      requestFn: () => http.post(
-        uri,
+      final deviceId = await DeviceIdHelper.getOrCreateDeviceId();
+      final uri = Uri.parse('${AppConstants.baseUrl}/${AppConstants.refreshToken}');
+      final headers = {'Content-Type': 'application/json'};
+      final body = {
+        'refreshToken': refreshToken,
+        'deviceId': deviceId,
+      };
+
+      final response = await executeWithLogging(
+        method: 'POST',
+        uri: uri,
         headers: headers,
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15)),
-    );
+        body: body,
+        requestFn: () => http.post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 15)),
+      );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      await _clearAuthTokens();
+      // Nếu server xác nhận refresh token thực sự bị thu hồi hoặc hết hạn (401/403)
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await _clearAuthTokens();
+        return null;
+      }
+
+      // Nếu gặp mã lỗi 5xx hoặc chập chờn mạng, TUYỆT ĐỐI không xóa token của người dùng (giống Facebook)
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final data = jsonDecode(response.body);
+      final nextAccessToken = data['accessToken']?.toString();
+      final nextRefreshToken = data['refreshToken']?.toString();
+
+      if (nextAccessToken == null || nextAccessToken.isEmpty) {
+        return null;
+      }
+
+      await _persistAuthSession(
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
+        payload: data,
+      );
+
+      return nextAccessToken;
+    } catch (e) {
+      // Bắt exception mạng/timeout: giữ nguyên phiên để người dùng không bị văng ra (chuẩn Facebook)
+      debugPrint('⚠️ [ApiService] Tạm thời không làm mới được token: $e');
       return null;
     }
-
-    final data = jsonDecode(response.body);
-    final nextAccessToken = data['accessToken']?.toString();
-    final nextRefreshToken = data['refreshToken']?.toString();
-
-    if (nextAccessToken == null || nextAccessToken.isEmpty) {
-      await _clearAuthTokens();
-      return null;
-    }
-
-    await _persistAuthSession(
-      accessToken: nextAccessToken,
-      refreshToken: nextRefreshToken,
-      payload: data,
-    );
-
-    return nextAccessToken;
   }
 
   static Future<void> _persistAuthSession({
@@ -299,7 +319,9 @@ class ApiService {
 
     final refreshedToken = await tryRefreshToken();
     if (refreshedToken == null) {
-      if (context.mounted) {
+      // Chỉ đăng xuất khi refreshToken đã thực sự bị xóa (bị từ chối hoàn toàn bởi server)
+      final hasRefreshToken = (await _secureStorage.read(key: 'refreshToken')) != null;
+      if (!hasRefreshToken && context.mounted) {
         await _handleUnauthorized(context);
       }
       return response;
@@ -308,7 +330,8 @@ class ApiService {
     response = await sendRequest(refreshedToken);
 
     if (response.statusCode == 401 || response.statusCode == 403) {
-      if (context.mounted) {
+      final hasRefreshToken = (await _secureStorage.read(key: 'refreshToken')) != null;
+      if (!hasRefreshToken && context.mounted) {
         await _handleUnauthorized(context);
       }
     }

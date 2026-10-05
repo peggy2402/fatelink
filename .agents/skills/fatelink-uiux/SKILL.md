@@ -102,3 +102,39 @@ Lấy cảm hứng từ TikTok và Instagram, thanh trạng thái (giờ, pin, w
 - **Hiệu ứng Kính Mờ (Glassmorphism):** Dùng `BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10))` với viền mảnh `Border.all(color: Colors.white.withValues(alpha: 0.2))`.
 - **Rung phản hồi xúc giác (Haptic Feedback):** Gọi `HapticFeedback.lightImpact()` khi người dùng thả tim, quẹt thẻ hoặc chạm vào radar để tăng cảm giác chân thực.
 - **Trạng thái Trống & Đang tải:** Luôn có hiệu ứng Skeleton sóng sánh (Shimmer) thay vì chỉ một vòng quay tròn `CircularProgressIndicator` đơn điệu.
+
+---
+
+## 7. Quy chuẩn Nút Bấm CTA (Triệt tiêu tuyệt đối Vệt Vuông Mờ)
+
+Khi thiết kế nút bấm gradient bo tròn (Pill / Rounded Button) có hiệu ứng chạm sóng nước (Ink splash):
+- **LỖI NGHIÊM CẤM:** Không bao giờ đặt `boxShadow` bên trong `Ink(decoration: BoxDecoration(boxShadow: ...))` khi được bọc bởi `Material(color: Colors.transparent)`. Flutter sẽ vẽ bóng đổ lên canvas hình chữ nhật của `Material`, tạo ra vệt vuông mờ (rectangular ghost halo) đè sau nút bo tròn!
+- **CHUẨN MỰC CHÍNH XÁC:**
+  1. Đặt `BoxDecoration` (gồm `gradient`, `borderRadius`, và `boxShadow`) lên **`Container` ngoài cùng**.
+  2. Bên trong `Container`, lồng `Material(color: Colors.transparent)` + `InkWell(borderRadius: ..., onTap: ...)` để chỉ xử lý hiệu ứng gợn sóng nước (ripple splash).
+  ```dart
+  Container(
+    height: 50,
+    width: double.infinity,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFF6366F1)]),
+      borderRadius: BorderRadius.circular(25),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFFEC4899).withValues(alpha: 0.38),
+          blurRadius: 14,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(25),
+        onTap: () => ...,
+        child: const Center(child: ...),
+      ),
+    ),
+  )
+  ```
+
