@@ -52,6 +52,14 @@ class ChatConversationTile extends StatelessWidget {
     required this.onTap,
   });
 
+  String _formatSnippet(String raw) {
+    if (raw.contains('[voice:')) {
+      final isMe = raw.startsWith('Bạn: ');
+      return isMe ? 'Bạn: 🎙️ [Tin nhắn thoại]' : '🎙️ [Tin nhắn thoại]';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool hasUnread = unreadCount > 0;
@@ -60,14 +68,14 @@ class ChatConversationTile extends StatelessWidget {
         !isWaveRequest &&
         (gender != null || age != null || meyuFeelProgress != null);
 
-    return InkWell(
-      onTap: onTap,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 340;
-          final displayTime = isNarrow && time == 'Vừa xong' ? 'Vừa' : time;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isNarrow = screenWidth < 340;
+    final displayTime = isNarrow && time == 'Vừa xong' ? 'Vừa' : time;
 
-          return MediaQuery.withClampedTextScaling(
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: MediaQuery.withClampedTextScaling(
             minScaleFactor: 1.0,
             maxScaleFactor: 1.15,
             child: ConstrainedBox(
@@ -173,7 +181,7 @@ class ChatConversationTile extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  lastMessage,
+                                  _formatSnippet(lastMessage),
                                   style: TextStyle(
                                     fontFamily: 'BeVietnamPro',
                                     fontSize: kMessageFontSize,
@@ -204,10 +212,9 @@ class ChatConversationTile extends StatelessWidget {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
   }
 
   // --- CÁC WIDGET PHỤ TRỢ ---

@@ -29,3 +29,22 @@ export class DeleteImageDto {
   @IsNotEmpty()
   publicId!: string;
 }
+
+export class UploadVoiceDto {
+  @ApiProperty({
+    description: 'Chuỗi Base64 Data URI của file âm thanh (data:audio/m4a;base64,...)',
+    example: 'data:audio/m4a;base64,...',
+  })
+  @IsString()
+  @IsNotEmpty()
+  audio!: string;
+
+  @ApiProperty({
+    description: 'Thư mục trên Cloudinary để lưu file âm thanh',
+    example: 'fatelink/voice_notes',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  folder?: string;
+}

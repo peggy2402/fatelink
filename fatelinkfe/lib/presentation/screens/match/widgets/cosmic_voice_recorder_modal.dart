@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/services/voice_note_service.dart';
+import '../../../../core/utils/toast_utils.dart';
 
 /// Modal ghi âm giọng nói trực tiếp (Voice Note) phong cách Telegram / WhatsApp
-/// Giải quyết vấn đề 4.4: Ghi âm giọng nói thực tế, có sóng âm động, đếm giây,
-/// cho phép hủy hoặc gửi tin nhắn thoại.
+/// Tích hợp Microphone thật bằng VoiceNoteService (record package) & Upload lên Cloudinary
 class CosmicVoiceRecorderModal extends StatefulWidget {
   final Function(String voiceMessageText, int durationSeconds) onSendVoice;
 
@@ -37,6 +38,8 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
   Timer? _timer;
   int _seconds = 0;
   bool _isPaused = false;
+  bool _isUploading = false;
+  bool _isReady = false;
 
   @override
   void initState() {
@@ -46,11 +49,36 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused && mounted) {
-        setState(() => _seconds++);
+    _initAndStartRecording();
+  }
+
+  Future<void> _initAndStartRecording() async {
+    final hasPermission = await VoiceNoteService().hasPermission();
+    if (!hasPermission) {
+      if (mounted) {
+        ToastUtil.showError(context, 'Vui lòng cấp quyền Microphone để ghi âm giọng nói');
+        Navigator.pop(context);
       }
-    });
+      return;
+    }
+
+    final filePath = await VoiceNoteService().startRecording();
+    if (filePath == null) {
+      if (mounted) {
+        ToastUtil.showError(context, 'Không thể khởi động bộ ghi âm trên thiết bị');
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isReady = true);
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!_isPaused && mounted) {
+          setState(() => _seconds++);
+        }
+      });
+    }
   }
 
   @override
@@ -64,6 +92,63 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
     final m = totalSecs ~/ 60;
     final s = totalSecs % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _handleCancel() async {
+    HapticFeedback.lightImpact();
+    await VoiceNoteService().cancelRecording();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _handleTogglePause() async {
+    HapticFeedback.lightImpact();
+    if (_isPaused) {
+      await VoiceNoteService().resumeRecording();
+      setState(() => _isPaused = false);
+    } else {
+      await VoiceNoteService().pauseRecording();
+      setState(() => _isPaused = true);
+    }
+  }
+
+  Future<void> _handleSend() async {
+    if (_isUploading) return;
+    if (_seconds == 0) _seconds = 1;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _isUploading = true);
+
+    // 1. Dừng ghi âm và nhận đường dẫn file .m4a thực tế
+    final localPath = await VoiceNoteService().stopRecording();
+
+    if (localPath == null) {
+      if (mounted) {
+        ToastUtil.showError(context, 'Ghi âm thất bại, vui lòng thử lại');
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    // 2. Upload file lên Cloudinary CDN
+    if (!mounted) return;
+    final cloudUrl = await VoiceNoteService().uploadVoiceFile(
+      context: context,
+      localPath: localPath,
+    );
+
+    // 3. Tạo payload tin nhắn thoại hoàn chỉnh
+    final durationSeconds = _seconds;
+    final formattedTime = _formatDuration(durationSeconds);
+    final voiceUrl = cloudUrl ?? localPath;
+    final voicePayload = '🎙️ [voice:$voiceUrl|duration:$durationSeconds|time:$formattedTime]';
+
+    widget.onSendVoice(voicePayload, durationSeconds);
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -121,7 +206,11 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _isPaused ? 'Đã tạm dừng' : 'Đang lắng nghe giọng nói...',
+                  _isUploading
+                      ? 'Đang gửi tin nhắn thoại...'
+                      : (!_isReady
+                          ? 'Đang khởi động micro...'
+                          : (_isPaused ? 'Đã tạm dừng' : 'Đang lắng nghe giọng nói...')),
                   style: TextStyle(
                     fontFamily: 'BeVietnamPro',
                     fontSize: 13,
@@ -162,7 +251,7 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: List.generate(24, (i) {
                       final factor = (i % 5 + 1) * 0.18;
-                      final waveHeight = _isPaused
+                      final waveHeight = (_isPaused || !_isReady)
                           ? 8.0
                           : (12.0 + 36.0 * ((_animController.value + factor) % 1.0));
                       return Container(
@@ -185,88 +274,86 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
             const SizedBox(height: 28),
 
             // Hàng nút điều khiển: Hủy - Tạm dừng - Gửi
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Nút Hủy
-                IconButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(context);
-                  },
-                  iconSize: 48,
-                  icon: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF1F5F9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: Color(0xFF64748B),
-                      size: 24,
-                    ),
+            if (_isUploading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Color(0xFF6366F1),
                   ),
                 ),
-
-                // Nút Tạm dừng / Tiếp tục
-                IconButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() => _isPaused = !_isPaused);
-                  },
-                  iconSize: 52,
-                  icon: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEDE9FE),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFDDD6FE)),
-                    ),
-                    child: Icon(
-                      _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      color: const Color(0xFF7C3AED),
-                      size: 26,
-                    ),
-                  ),
-                ),
-
-                // Nút Gửi tin nhắn thoại
-                GestureDetector(
-                  onTap: () {
-                    if (_seconds == 0) _seconds = 1;
-                    HapticFeedback.mediumImpact();
-                    final formatted = _formatDuration(_seconds);
-                    final voiceText = '🎙️ [Tin nhắn thoại $formatted]';
-                    widget.onSendVoice(voiceText, _seconds);
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Nút Hủy
+                  IconButton(
+                    onPressed: _handleCancel,
+                    iconSize: 48,
+                    icon: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
+                        shape: BoxShape.circle,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFEC4899).withValues(alpha: 0.4),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.arrow_upward_rounded,
-                      color: Colors.white,
-                      size: 28,
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFF64748B),
+                        size: 24,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+
+                  // Nút Tạm dừng / Tiếp tục
+                  IconButton(
+                    onPressed: _isReady ? _handleTogglePause : null,
+                    iconSize: 52,
+                    icon: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDE9FE),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: Icon(
+                        _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                        color: const Color(0xFF7C3AED),
+                        size: 26,
+                      ),
+                    ),
+                  ),
+
+                  // Nút Gửi tin nhắn thoại
+                  GestureDetector(
+                    onTap: _isReady ? _handleSend : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_upward_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

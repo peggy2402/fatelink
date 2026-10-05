@@ -6,9 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 /// hiệu ứng nước dâng ngang (Horizontal Liquid Fill) chuẩn xác như ảnh mẫu SOULMATE:
 /// - Bên trái ranh giới: Gradient hồng tím neon (#E11D48 -> #EC4899 -> #A855F7 -> #C084FC).
 /// - Bên phải ranh giới: Màu xám than Slate-600 (#475569) đậm đà, đọc rõ 100%.
-/// - Ranh giới nước nhấp nhô nhẹ nhàng bằng AnimationController (±0.015) và có feather mềm mại.
-/// - Dùng duy nhất một Text widget bọc trong ShaderMask (BlendMode.srcIn) + RepaintBoundary.
-class MeyuFeelLiquidText extends StatefulWidget {
+/// - Tối ưu hóa hiệu năng cao (StatelessWidget + RepaintBoundary): không chạy AnimationController lặp vô tận
+///   trên từng dòng chat, giúp danh sách cuộn đạt chuẩn mượt mà 60-120 FPS.
+class MeyuFeelLiquidText extends StatelessWidget {
   final double progress; // Từ 0.0 đến 1.0 (ví dụ 0.35 = 35%)
   final double fontSize;
   final String text;
@@ -20,14 +20,6 @@ class MeyuFeelLiquidText extends StatefulWidget {
     this.text = 'MEYUFEEL',
   });
 
-  @override
-  State<MeyuFeelLiquidText> createState() => _MeyuFeelLiquidTextState();
-}
-
-class _MeyuFeelLiquidTextState extends State<MeyuFeelLiquidText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _waveController;
-
   static const Color _unfilledColor = Color(0xFF475569); // Slate-600 đậm sắc sảo, đọc rõ 100%
   static const Color _cRose = Color(0xFFE11D48);
   static const Color _cPink = Color(0xFFEC4899);
@@ -35,40 +27,8 @@ class _MeyuFeelLiquidTextState extends State<MeyuFeelLiquidText>
   static const Color _cLavender = Color(0xFFC084FC);
   static const Color _cHighlight = Color(0xFFFDF2F8); // Ánh sáng mảnh mờ ngay mép nước
 
-  @override
-  void initState() {
-    super.initState();
-    _waveController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    );
-    if (widget.progress > 0.0 && widget.progress < 1.0) {
-      _waveController.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(MeyuFeelLiquidText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.progress <= 0.0 || widget.progress >= 1.0) {
-      if (_waveController.isAnimating) {
-        _waveController.stop();
-      }
-    } else {
-      if (!_waveController.isAnimating) {
-        _waveController.repeat();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _waveController.dispose();
-    super.dispose();
-  }
-
   Shader _createLiquidShader(Rect bounds) {
-    final clampedProgress = widget.progress.clamp(0.0, 1.0);
+    final clampedProgress = progress.clamp(0.0, 1.0);
 
     // Khi progress = 0: toàn chữ màu xám slate
     if (clampedProgress <= 0.0) {
@@ -86,9 +46,7 @@ class _MeyuFeelLiquidTextState extends State<MeyuFeelLiquidText>
       ).createShader(bounds);
     }
 
-    // Dao động nhẹ của mặt nước dâng ngang (biên độ ±0.015)
-    final waveOffset = 0.015 * math.sin(_waveController.value * 2 * math.pi);
-    final level = (clampedProgress + waveOffset).clamp(0.01, 0.99);
+    final level = clampedProgress.clamp(0.01, 0.99);
 
     // Dải chuyển màu mềm (feather) 4% chiều ngang giữa phần đầy và phần xám
     const feather = 0.04;
@@ -130,7 +88,7 @@ class _MeyuFeelLiquidTextState extends State<MeyuFeelLiquidText>
   @override
   Widget build(BuildContext context) {
     final textStyle = GoogleFonts.playfairDisplay(
-      fontSize: widget.fontSize,
+      fontSize: fontSize,
       fontWeight: FontWeight.w800,
       fontStyle: FontStyle.italic,
       letterSpacing: 0.8,
@@ -138,21 +96,16 @@ class _MeyuFeelLiquidTextState extends State<MeyuFeelLiquidText>
     );
 
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _waveController,
-        builder: (context, _) {
-          return ShaderMask(
-            blendMode: BlendMode.srcIn,
-            shaderCallback: (bounds) => _createLiquidShader(bounds),
-            child: Text(
-              widget.text,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.visible,
-              style: textStyle,
-            ),
-          );
-        },
+      child: ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (bounds) => _createLiquidShader(bounds),
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: textStyle,
+        ),
       ),
     );
   }

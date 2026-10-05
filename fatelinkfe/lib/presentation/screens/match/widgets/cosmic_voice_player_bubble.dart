@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 /// Widget phát tin nhắn thoại Voice Note thực tế phong cách iMessage / Telegram
-/// Giải quyết vấn đề 3:
-/// - Loại bỏ hoàn toàn text dài dòng thừa thãi.
-/// - Chỉ có nút Play/Pause tròn, sóng âm động Waveform và thời lượng (00:02).
-/// - Có thể bấm Play để chạy thực tế: Đếm giây, sóng âm nhấp nhô sống động, kết thúc tự động về Play.
+/// - Tự động phát âm thanh ra loa bằng `audioplayers`
+/// - Hỗ trợ cả URL Cloudinary CDN và file cục bộ
+/// - Hiển thị Waveform sóng âm nhấp nhô và thời lượng thực tế
 class CosmicVoicePlayerBubble extends StatefulWidget {
   final String text;
   final bool isSentByMe;
@@ -24,10 +24,17 @@ class CosmicVoicePlayerBubble extends StatefulWidget {
 class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  Timer? _playbackTimer;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  StreamSubscription? _posSub;
+  StreamSubscription? _stateSub;
+  StreamSubscription? _completeSub;
+  Timer? _fallbackTimer;
+
   bool _isPlaying = false;
   int _currentSeconds = 0;
   late int _totalDurationSeconds;
+  String? _audioUrl;
 
   @override
   void initState() {
@@ -37,22 +44,79 @@ class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
       duration: const Duration(milliseconds: 600),
     );
 
-    // Trích xuất thời lượng từ format "00:02" hoặc "0:02"
+    _audioUrl = _extractAudioUrl(widget.text);
     _totalDurationSeconds = _extractDurationSeconds(widget.text);
+
+    _listenAudioPlayer();
+  }
+
+  void _listenAudioPlayer() {
+    _stateSub = _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      final playing = state == PlayerState.playing;
+      setState(() => _isPlaying = playing);
+      if (playing) {
+        _animController.repeat(reverse: true);
+      } else {
+        _animController.stop();
+      }
+    });
+
+    _posSub = _audioPlayer.onPositionChanged.listen((pos) {
+      if (!mounted) return;
+      setState(() {
+        _currentSeconds = pos.inSeconds;
+      });
+    });
+
+    _completeSub = _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = false;
+        _currentSeconds = 0;
+      });
+      _animController.stop();
+    });
+  }
+
+  String? _extractAudioUrl(String text) {
+    // Format 1: [voice:https://res.cloudinary.com/...]
+    final reg = RegExp(r'\[voice:(https?://[^\|\]]+)');
+    final match = reg.firstMatch(text);
+    if (match != null) return match.group(1);
+
+    // Format 2: Đường dẫn file cục bộ [voice:/data/user/...]
+    final regFile = RegExp(r'\[voice:(/[^\|\]]+)');
+    final matchFile = regFile.firstMatch(text);
+    if (matchFile != null) return matchFile.group(1);
+
+    // Format 3: URL trực tiếp
+    final regDirect = RegExp(r'(https?://[^\s]+\.(m4a|aac|mp3|ogg|wav))');
+    final matchDirect = regDirect.firstMatch(text);
+    if (matchDirect != null) return matchDirect.group(1);
+
+    return null;
   }
 
   int _extractDurationSeconds(String text) {
     try {
+      final regDur = RegExp(r'duration:(\d+)');
+      final matchDur = regDur.firstMatch(text);
+      if (matchDur != null) {
+        final sec = int.tryParse(matchDur.group(1) ?? '3') ?? 3;
+        if (sec > 0) return sec;
+      }
+
       final reg = RegExp(r'(\d+):(\d+)');
       final match = reg.firstMatch(text);
       if (match != null) {
         final m = int.tryParse(match.group(1) ?? '0') ?? 0;
-        final s = int.tryParse(match.group(2) ?? '2') ?? 2;
+        final s = int.tryParse(match.group(2) ?? '3') ?? 3;
         final total = m * 60 + s;
         return total > 0 ? total : 3;
       }
     } catch (_) {}
-    return 3; // Mặc định 3s
+    return 3;
   }
 
   String _formatDuration(int secs) {
@@ -61,30 +125,44 @@ class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  void _togglePlay() {
+  Future<void> _togglePlay() async {
     HapticFeedback.mediumImpact();
-    setState(() {
-      _isPlaying = !_isPlaying;
-      if (_isPlaying) {
-        _animController.repeat(reverse: true);
-        _startPlayback();
-      } else {
-        _animController.stop();
-        _playbackTimer?.cancel();
+
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      _fallbackTimer?.cancel();
+      setState(() => _isPlaying = false);
+      _animController.stop();
+      return;
+    }
+
+    if (_audioUrl != null && _audioUrl!.isNotEmpty) {
+      try {
+        if (_audioUrl!.startsWith('http://') || _audioUrl!.startsWith('https://')) {
+          await _audioPlayer.play(UrlSource(_audioUrl!));
+        } else {
+          await _audioPlayer.play(DeviceFileSource(_audioUrl!));
+        }
+      } catch (e) {
+        debugPrint('⚠️ [CosmicVoicePlayerBubble] Lỗi play audio: $e');
+        _startFallbackTimer();
       }
-    });
+    } else {
+      _startFallbackTimer();
+    }
   }
 
-  void _startPlayback() {
-    _playbackTimer?.cancel();
-    _playbackTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+  void _startFallbackTimer() {
+    setState(() => _isPlaying = true);
+    _animController.repeat(reverse: true);
+    _fallbackTimer?.cancel();
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       HapticFeedback.selectionClick();
       setState(() {
         if (_currentSeconds < _totalDurationSeconds) {
           _currentSeconds++;
         } else {
-          // Kết thúc phát
           _isPlaying = false;
           _currentSeconds = 0;
           _animController.stop();
@@ -96,7 +174,11 @@ class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
 
   @override
   void dispose() {
-    _playbackTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _posSub?.cancel();
+    _stateSub?.cancel();
+    _completeSub?.cancel();
+    _audioPlayer.dispose();
     _animController.dispose();
     super.dispose();
   }
@@ -121,26 +203,29 @@ class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: isMe ? Colors.white : const Color(0xFF7C3AED),
+                color: isMe ? Colors.white : const Color(0xFF6366F1),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 6,
+                    color: (isMe ? Colors.black : const Color(0xFF6366F1))
+                        .withValues(alpha: isMe ? 0.08 : 0.25),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: Icon(
-                _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: isMe ? const Color(0xFF7C3AED) : Colors.white,
-                size: 22,
+              child: Center(
+                child: Icon(
+                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: isMe ? const Color(0xFF6366F1) : Colors.white,
+                  size: 22,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 10),
 
-          // Sóng âm Audio Waveform sống động
+          // Sóng âm giả lập di chuyển nhịp nhàng khi phát
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,43 +236,50 @@ class _CosmicVoicePlayerBubbleState extends State<CosmicVoicePlayerBubble>
                   builder: (context, child) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(14, (i) {
-                        final heights = [
-                          8.0, 14.0, 22.0, 16.0, 28.0, 18.0, 24.0,
-                          12.0, 20.0, 26.0, 16.0, 22.0, 10.0, 14.0,
-                        ];
-                        final baseHeight = heights[i % heights.length];
-                        final waveHeight = _isPlaying
-                            ? (baseHeight * (0.6 + 0.8 * ((_animController.value + (i * 0.1)) % 1.0))).clamp(6.0, 28.0)
-                            : baseHeight;
-
-                        final isPlayed = (_currentSeconds / (_totalDurationSeconds > 0 ? _totalDurationSeconds : 1)) >= (i / 14);
+                      children: List.generate(14, (index) {
+                        final factor = (index % 4 + 1) * 0.22;
+                        final barHeight = _isPlaying
+                            ? (6.0 + 16.0 * ((_animController.value + factor) % 1.0))
+                            : (6.0 + (index % 3) * 4.0);
 
                         return Container(
                           width: 3,
-                          height: waveHeight,
+                          height: barHeight,
                           decoration: BoxDecoration(
                             color: isMe
-                                ? (isPlayed ? Colors.white : Colors.white.withValues(alpha: 0.45))
-                                : (isPlayed ? const Color(0xFF7C3AED) : const Color(0xFFDDD6FE)),
-                            borderRadius: BorderRadius.circular(3),
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : const Color(0xFF6366F1).withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         );
                       }),
                     );
                   },
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
 
-                // Thời lượng hiển thị gọn gàng
-                Text(
-                  displayDuration,
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isMe ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF64748B),
-                  ),
+                // Hiển thị thời lượng
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      displayDuration,
+                      style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isMe
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                    if (_audioUrl != null)
+                      Icon(
+                        Icons.cloud_done_rounded,
+                        size: 11,
+                        color: isMe ? Colors.white70 : const Color(0xFF10B981),
+                      ),
+                  ],
                 ),
               ],
             ),

@@ -74,6 +74,7 @@ class _ExploreListCardState extends State<ExploreListCard> {
       if (token != null && widget.user.id.isNotEmpty) {
         final url =
             '${AppConstants.baseUrl}/${AppConstants.userToggleLike(widget.user.id)}';
+        if (!mounted) return;
         final res = await ApiService.post(url, context, token: token);
         if (res != null && mounted) {
           final isLiked = res['isLiked'] == true;
@@ -90,6 +91,7 @@ class _ExploreListCardState extends State<ExploreListCard> {
       }
     } catch (_) {}
 
+    if (!mounted) return;
     if (nextState) {
       ToastUtil.showSuccess(
         context,

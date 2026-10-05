@@ -302,11 +302,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       if (partner?.fcmToken) {
         const senderName = sender?.name || 'Bạn mới trên FateLink';
+        let displayBody = text;
+        if (text.startsWith('🎙️') || text.includes('[voice:')) {
+          displayBody = '🎙️ [Tin nhắn thoại]';
+        } else if (text.startsWith('[Hình ảnh]')) {
+          displayBody = '📷 [Hình ảnh]';
+        } else if (text.startsWith('📍 [Vị trí]')) {
+          displayBody = '📍 [Vị trí được chia sẻ]';
+        }
+
         await this.firebaseNotificationService.sendPushNotification(
           partner.fcmToken,
           {
             title: senderName,
-            body: text,
+            body: displayBody,
             data: {
               partnerId: senderId,
               senderName,

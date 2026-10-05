@@ -5,7 +5,6 @@ import '../../../logic/blocs/chat/chat_bloc.dart';
 import '../../../logic/blocs/chat/chat_event.dart';
 import '../../../logic/blocs/chat/chat_state.dart';
 import '../../../logic/blocs/home/home_bloc.dart';
-import '../../../data/models/match_user.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/chat_conversation_tile.dart';
@@ -13,12 +12,14 @@ import 'widgets/chat_message_bubble.dart';
 import 'widgets/chat_online_stories.dart';
 import 'widgets/chat_room_app_bar.dart';
 import 'widgets/chat_typing_indicator_bubble.dart';
+import 'widgets/chat_filter_chips.dart';
+import 'widgets/chat_empty_state.dart';
+import 'widgets/chat_pending_waves_modal.dart';
 import '../match/cosmic_broadcast_screen.dart';
 import '../match/match_chat_screen.dart';
 import '../home/widgets/radar_scanner_modal.dart';
 import '../home/widgets/notifications_modal.dart';
 import '../../widgets/cosmic_pulse_received_modal.dart';
-import '../../../core/utils/anonymous_avatar_helper.dart';
 import '../../../services/api_service.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/secure_storage_helper.dart';
@@ -470,7 +471,11 @@ class ChatScreenState extends State<ChatScreen> {
                 final allUsers = ctx.watch<HomeBloc>().state.matchedUsers;
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: _buildFilterChips(allUsers),
+                  child: ChatFilterChips(
+                    allUsers: allUsers,
+                    selectedFilter: _selectedFilter,
+                    onFilterSelected: (key) => setState(() => _selectedFilter = key),
+                  ),
                 );
               },
             ),
@@ -548,67 +553,7 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildFilterChips(List<MatchUser> allUsers) {
-    final pendingCount = allUsers.where((u) => !u.isMutualFollow).length;
-    final matchCount = allUsers.where((u) => u.isMutualFollow).length;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _buildChip('all', 'Tất cả'),
-          const SizedBox(width: 8),
-          _buildChip('matches', 'Bạn bè kết đôi 💕 ($matchCount)'),
-          const SizedBox(width: 8),
-          if (pendingCount > 0) ...[
-            _buildChip('pending', 'Sóng chờ ⚡ ($pendingCount)'),
-            const SizedBox(width: 8),
-          ],
-          _buildChip('ai', 'Trợ lý AI Faye'),
-          const SizedBox(width: 8),
-          _buildChip('unread', 'Chưa đọc'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChip(String key, String label) {
-    final isSelected = _selectedFilter == key;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = key),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF6366F1)
-                : const Color(0xFFE2E8F0),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF6366F1).withValues(alpha: 0.25)
-                  : Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'BeVietnamPro',
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSearchBar() {
     return Padding(
@@ -773,7 +718,7 @@ class ChatScreenState extends State<ChatScreen> {
                 sender: pendingWaves.first,
               );
             } else {
-              _showPendingWavesBottomSheet(context, pendingWaves);
+              ChatPendingWavesModal.show(context, pendingWaves);
             }
           },
         ),
@@ -839,48 +784,8 @@ class ChatScreenState extends State<ChatScreen> {
 
     // Trạng thái trống khi tìm kiếm hoặc lọc không có kết quả
     if (conversationTiles.isEmpty) {
-      return SliverList(
-        delegate: SliverChildListDelegate([
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.search_off_rounded,
-                    size: 36,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Không tìm thấy cuộc trò chuyện nào',
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF334155),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Hãy thử tìm kiếm với từ khóa khác hoặc bấm dấu "+" để tạo kết nối mới.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 12.5,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ]),
+      return const SliverToBoxAdapter(
+        child: ChatEmptyState(),
       );
     }
 
@@ -889,263 +794,6 @@ class ChatScreenState extends State<ChatScreen> {
         (context, index) => conversationTiles[index],
         childCount: conversationTiles.length,
       ),
-    );
-  }
-
-  /// Hiển thị danh sách các sóng rung cảm 432Hz đang chờ kết nối (Tin nhắn chờ)
-  void _showPendingWavesBottomSheet(
-    BuildContext context,
-    List<MatchUser> waves,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (bottomSheetCtx) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(bottomSheetCtx).size.height * 0.75,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 20,
-                offset: Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 44,
-                height: 4.5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFFEC4899,
-                            ).withValues(alpha: 0.35),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.sensors_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tín hiệu sóng chờ kết nối (${waves.length})',
-                            style: const TextStyle(
-                              fontFamily: 'BeVietnamPro',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Các tâm hồn đang phát sóng rung cảm đến bạn',
-                            style: TextStyle(
-                              fontFamily: 'BeVietnamPro',
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: Color(0xFF94A3B8),
-                      ),
-                      onPressed: () => Navigator.pop(bottomSheetCtx),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(color: Colors.grey.shade200, height: 1),
-              Flexible(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shrinkWrap: true,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: waves.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (ctx, index) {
-                    final waveUser = waves[index];
-                    final avatarAsset =
-                        AnonymousAvatarHelper.getAnonymousAvatarAsset(
-                          waveUser.id,
-                        );
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(
-                            0xFF8B5CF6,
-                          ).withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: const Color(0xFFEEF2FF),
-                                backgroundImage: AssetImage(avatarAsset),
-                              ),
-                              Positioned(
-                                right: -2,
-                                bottom: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2.5),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF64748B),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.lock_rounded,
-                                    size: 9,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      waveUser.anonymousName,
-                                      style: const TextStyle(
-                                        fontFamily: 'BeVietnamPro',
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF0F172A),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 1.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFFEC4899,
-                                        ).withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        '${waveUser.compatibilityScore}% Tương hợp',
-                                        style: const TextStyle(
-                                          fontFamily: 'BeVietnamPro',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFFDB2777),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  waveUser.emotion.isNotEmpty
-                                      ? waveUser.emotion
-                                      : 'Đang tìm kiếm tần số đồng điệu...',
-                                  style: const TextStyle(
-                                    fontFamily: 'BeVietnamPro',
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(bottomSheetCtx);
-                              CosmicPulseReceivedModal.show(
-                                context,
-                                sender: waveUser,
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              'Đón sóng ⚡',
-                              style: TextStyle(
-                                fontFamily: 'BeVietnamPro',
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
     );
   }
 

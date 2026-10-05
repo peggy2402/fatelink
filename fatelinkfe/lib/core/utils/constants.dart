@@ -28,6 +28,7 @@ class AppConstants {
   static const String updateFcmToken = 'users/fcm-token';
   static const String updateUserProfile = 'users/profile';
   static const String uploadImage = 'upload/image';
+  static const String uploadVoice = 'upload/voice';
   static String userRecordView(String userId) => 'users/$userId/view';
   static String userToggleLike(String userId) => 'users/$userId/like';
   static String userRecordWave(String userId) => 'users/$userId/wave';

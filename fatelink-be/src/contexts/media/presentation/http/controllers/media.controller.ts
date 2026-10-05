@@ -8,7 +8,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@contexts/auth/presentation/http/guards/jwt-auth.guard';
 import { CloudinaryService } from '@contexts/media/infrastructure/services/cloudinary.service';
-import { DeleteImageDto, UploadImageDto } from '../dtos/upload-image.dto';
+import { DeleteImageDto, UploadImageDto, UploadVoiceDto } from '../dtos/upload-image.dto';
 
 @ApiTags('Media & Upload')
 @Controller('upload')
@@ -27,6 +27,25 @@ export class MediaController {
     const result = await this.cloudinaryService.uploadImage(
       dto.image,
       dto.folder || 'fatelink/vibes',
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('voice')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tải tin nhắn thoại Voice Note lên Cloudinary CDN' })
+  @ApiResponse({
+    status: 201,
+    description: 'Tin nhắn thoại được tải lên Cloudinary thành công, trả về HTTPS URL.',
+  })
+  async uploadVoice(@Body() dto: UploadVoiceDto) {
+    const result = await this.cloudinaryService.uploadAudio(
+      dto.audio,
+      dto.folder || 'fatelink/voice_notes',
     );
     return {
       success: true,

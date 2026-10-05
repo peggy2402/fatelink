@@ -60,81 +60,7 @@ class _ExploreScreenState extends State<ExploreScreen>
   MatchUser? _selectedUser;
   String? _myAvatarUrl;
 
-  // Danh sách tần số sóng vũ trụ dự phòng (Cosmic Echoes) chuẩn cảm xúc FateLink
-  static final List<MatchUser> _fallbackEchoes = [
-    MatchUser(
-      id: 'echo-9941a',
-      name: 'Khánh Linh',
-      emotion: 'Bình yên',
-      compatibilityScore: 94,
-      distanceKm: 1.2,
-      tags: ['#NhạcIndie', '#ĐêmMuộn', '#TràChiều'],
-      bio: 'Muốn tìm người cùng đi dạo hồ Tây ngắm hoàng hôn...',
-      gender: 'female',
-      age: 22,
-      moodIcon: '☕',
-    ),
-    MatchUser(
-      id: 'nova-7201b',
-      name: 'Minh Quân',
-      emotion: 'Lãng mạn',
-      compatibilityScore: 89,
-      distanceKm: 2.4,
-      tags: ['#Acoustic', '#ĐọcSách', '#CàPhêMộtMình'],
-      bio: 'Yêu những giai điệu Trịnh Công Sơn và ngày mưa rơi...',
-      gender: 'male',
-      age: 24,
-      moodIcon: '💕',
-    ),
-    MatchUser(
-      id: 'luna-8834c',
-      name: 'Thanh Thảo',
-      emotion: 'Bí ẩn',
-      compatibilityScore: 85,
-      distanceKm: 3.8,
-      tags: ['#ThiênVăn', '#PhimArtHouse', '#DeepTalk'],
-      bio: 'Có ai cùng thức đêm ngắm mưa sao băng không?',
-      gender: 'female',
-      age: 21,
-      moodIcon: '✨',
-    ),
-    MatchUser(
-      id: 'aura-1923d',
-      name: 'Gia Huy',
-      emotion: 'Chill',
-      compatibilityScore: 80,
-      distanceKm: 5.6,
-      tags: ['#Podcast', '#LofiChill', '#TâmSự'],
-      bio: 'Lắng nghe những tâm sự chân thành sau ngày dài tất bật...',
-      gender: 'male',
-      age: 25,
-      moodIcon: '🎧',
-    ),
-    MatchUser(
-      id: 'cosmo-3301e',
-      name: 'Phương Anh',
-      emotion: 'Sâu lắng',
-      compatibilityScore: 76,
-      distanceKm: 7.2,
-      tags: ['#DeepTalk', '#ĐêmMuộn', '#TrầmLắng'],
-      bio: 'Lắng nghe những rung cảm tinh tế trong đêm muộn...',
-      gender: 'female',
-      age: 23,
-      moodIcon: '🌙',
-    ),
-    MatchUser(
-      id: 'sunny-5521f',
-      name: 'Quang Đăng',
-      emotion: 'Phấn khích',
-      compatibilityScore: 74,
-      distanceKm: 8.8,
-      tags: ['#DuLịch', '#NhiếpẢnh', '#TựDo'],
-      bio: 'Cuối tuần này có ai muốn đi săn mây Ba Vì cùng mình?',
-      gender: 'male',
-      age: 24,
-      moodIcon: '☀️',
-    ),
-  ];
+
 
   @override
   void initState() {
@@ -382,11 +308,32 @@ class _ExploreScreenState extends State<ExploreScreen>
   Widget build(BuildContext context) {
     final screenWidth = context.screenWidth;
     final screenHeight = context.screenHeight;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final topSafePadding = MediaQuery.paddingOf(context).top;
+    final bottomSafePadding = MediaQuery.paddingOf(context).bottom;
 
-    // Tọa độ tâm của vòm radar (ở vị trí 39% chiều cao màn hình)
-    final radarCenter = Offset(screenWidth / 2, screenHeight * 0.39);
-    final radarRadius = math.min(screenWidth, screenHeight) * 0.36;
+    // Chiều cao thực tế của ExploreTopHeader (SafeArea.top + Title row + Vibe Pills row)
+    final headerTotalHeight = topSafePadding + 114.0;
+    final bottomSheetMargin = 100.0 + bottomSafePadding;
+    const peekCardEstimatedHeight = 160.0;
+
+    // Tâm Radar được căn chỉnh thông minh và cân đối tuyệt đối giữa Header và SoulPeekCard
+    final availableSpaceTop = headerTotalHeight;
+    final availableSpaceBottom = _selectedUser != null
+        ? screenHeight - bottomSheetMargin - peekCardEstimatedHeight
+        : screenHeight - bottomSheetMargin;
+
+    final radarCenterY = availableSpaceTop + (availableSpaceBottom - availableSpaceTop) * 0.48;
+    final radarCenter = Offset(screenWidth / 2, radarCenterY);
+
+    // Bán kính radar co giãn thích ứng theo kích cỡ màn hình
+    final maxAvailableRadius = math.min(
+      (radarCenterY - availableSpaceTop) * 0.88,
+      (availableSpaceBottom - radarCenterY) * 0.88,
+    );
+    final radarRadius = math.min(
+      screenWidth * 0.42,
+      math.max(120.0, maxAvailableRadius),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -440,24 +387,26 @@ class _ExploreScreenState extends State<ExploreScreen>
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Canvas vẽ Vòm Radar thiên văn 360 độ (Animated)
-                        AnimatedBuilder(
-                          animation: Listenable.merge([
-                            _sweepController,
-                            _waveController,
-                            _shockwaveController,
-                          ]),
-                          builder: (context, child) {
-                            final sweepRad = _sweepController.value * 2 * math.pi;
-                            return CosmicRadarCanvas(
-                              sweepAngle: sweepRad,
-                              waveProgress: _waveController.value,
-                              shockwaveProgress: _shockwaveController.value,
-                              selectedTarget: selectedOffset,
-                              center: radarCenter,
-                              radius: radarRadius,
-                            );
-                          },
+                        // Canvas vẽ Vòm Radar thiên văn 360 độ (Animated) - Bọc RepaintBoundary
+                        RepaintBoundary(
+                          child: AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _sweepController,
+                              _waveController,
+                              _shockwaveController,
+                            ]),
+                            builder: (context, child) {
+                              final sweepRad = _sweepController.value * 2 * math.pi;
+                              return CosmicRadarCanvas(
+                                sweepAngle: sweepRad,
+                                waveProgress: _waveController.value,
+                                shockwaveProgress: _shockwaveController.value,
+                                selectedTarget: selectedOffset,
+                                center: radarCenter,
+                                radius: radarRadius,
+                              );
+                            },
+                          ),
                         ),
 
                         // Nút Tâm Radar: Bạn (Current User Core)
@@ -506,9 +455,9 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
                 ),
 
-                // Nút nổi "Quét 432Hz" (FAB Pulse)
+                // Nút nổi "Quét 432Hz" (FAB Pulse) - Căn chỉnh Responsive chuẩn dưới Header
                 Positioned(
-                  top: screenHeight * 0.165,
+                  top: headerTotalHeight + 12.0,
                   right: 16,
                   child: PulseActionButton(
                     animation: _pulseFabController,
@@ -516,9 +465,9 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
                 ),
 
-                // Cụm phím điều khiển Zoom kính mờ (+, -, Tỷ lệ Zoom, Tâm sóng)
+                // Cụm phím điều khiển Zoom kính mờ (+, -, Tỷ lệ Zoom, Tâm sóng) - Responsive
                 Positioned(
-                  top: screenHeight * 0.235,
+                  top: headerTotalHeight + 68.0,
                   right: 16,
                   child: RadarControlsCluster(
                     currentScale: _currentScale,
@@ -532,7 +481,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                 // Đặt cao hơn thanh Bottom Navigation Bar để không bị nút Trái tim hồng che khuất
                 if (_selectedUser != null)
                   Positioned(
-                    bottom: 110.0 + bottomPadding,
+                    bottom: bottomSheetMargin,
                     left: 0,
                     right: 0,
                     child: ResponsiveCenter(
@@ -578,9 +527,12 @@ class _ExploreScreenState extends State<ExploreScreen>
                     ),
                   ),
               ] else ...[
-                // Chế độ Lưới Tần Số (Orbit Cards View)
+                // Chế độ Lưới Tần Số (Orbit Cards View) - Căn chỉnh Responsive chuẩn dưới Header
                 Padding(
-                  padding: EdgeInsets.only(top: screenHeight * 0.17),
+                  padding: EdgeInsets.only(
+                    top: headerTotalHeight + 8.0,
+                    bottom: bottomSheetMargin,
+                  ),
                   child: ExploreGridView(
                     users: users,
                     onRefresh: () async {

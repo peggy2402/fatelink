@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../services/api_service.dart';
-import '../../../../core/services/image_picker_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/secure_storage_helper.dart';
 import '../../../../core/utils/toast_utils.dart';

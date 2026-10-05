@@ -2167,7 +2167,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
     final isImageStack = msg.messageType == 'imageStack' || msg.imageUrls.length > 1;
     final isSingleImage = msg.messageType == 'image' || (msg.imageUrls.length == 1) || msg.text.startsWith('[Hình ảnh]');
-    final isVoice = msg.messageType == 'voice' || msg.text.startsWith('🎙️ [Tin nhắn thoại');
+    final isVoice = msg.messageType == 'voice' || msg.text.startsWith('🎙️');
     final isLocation = msg.messageType == 'location' || msg.text.startsWith('📍 [Vị trí]');
     final isRevoked = msg.isRevoked;
 
