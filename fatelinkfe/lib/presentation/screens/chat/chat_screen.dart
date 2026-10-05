@@ -7,7 +7,7 @@ import '../../../logic/blocs/chat/chat_state.dart';
 import '../../../logic/blocs/home/home_bloc.dart';
 import '../../../data/models/match_user.dart';
 
-// Components tách rời sạch sẽ
+import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/chat_conversation_tile.dart';
 import 'widgets/chat_message_bubble.dart';
 import 'widgets/chat_online_stories.dart';
@@ -51,6 +51,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isSearchOpen = false;
   String _searchQuery = '';
   String _selectedFilter = 'all'; // 'all', 'ai', 'unread'
+  String? _currentUserFrequency;
 
   @override
   void initState() {
@@ -61,7 +62,20 @@ class ChatScreenState extends State<ChatScreen> {
         _searchQuery = _searchController.text.trim();
       });
     });
+    _loadUserFrequency();
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
+  }
+
+  Future<void> _loadUserFrequency() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedHertz = prefs.getString('user_frequency_hertz');
+      if (cachedHertz != null && cachedHertz.isNotEmpty && mounted) {
+        setState(() {
+          _currentUserFrequency = cachedHertz;
+        });
+      }
+    } catch (_) {}
   }
 
   void _scrollListener() {
@@ -192,12 +206,13 @@ class ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 12),
 
-              // 2. Phát sóng tần số 432Hz
+              // 2. Phát sóng tần số cảm xúc thực tế
               _buildActionItem(
                 icon: Icons.podcasts_rounded,
                 color: const Color(0xFFEC4899),
-                title: 'Phát sóng tần số 432Hz',
-                subtitle: 'Tìm người cùng gu tần số trong 120 giây',
+                title:
+                    'Phát sóng tần số ${_currentUserFrequency ?? '528 Hz'}',
+                subtitle: 'Tìm người cùng gu tần số cảm xúc trong 120 giây',
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.of(context).push(
@@ -630,8 +645,8 @@ class ChatScreenState extends State<ChatScreen> {
           name: 'Tín hiệu sóng chờ kết nối',
           systemIcon: Icons.sensors_rounded,
           lastMessage: pendingWaves.length == 1
-              ? '${pendingWaves.first.anonymousName} vừa phát sóng 432Hz rung cảm • Chạm để hòa âm & kết nối'
-              : 'Có ${pendingWaves.length} người đang phát sóng 432Hz đến bạn • Chạm để hòa âm & kết nối',
+              ? '${pendingWaves.first.anonymousName} vừa phát sóng rung cảm • Chạm để hòa âm & kết nối'
+              : 'Có ${pendingWaves.length} người đang phát sóng rung cảm đến bạn • Chạm để hòa âm & kết nối',
           time: 'Mới nhận',
           unreadCount: pendingWaves.length,
           isWaveRequest: true,
@@ -820,7 +835,7 @@ class ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            'Các tâm hồn đang phát sóng 432Hz rung cảm đến bạn',
+                            'Các tâm hồn đang phát sóng rung cảm đến bạn',
                             style: TextStyle(
                               fontFamily: 'BeVietnamPro',
                               fontSize: 12,

@@ -214,20 +214,16 @@ export class MongooseUserRepository implements UserRepositoryPort {
       )
       .exec();
 
-    // Nếu người xem khác chủ hồ sơ, lưu thông báo
+    // Nếu người xem khác chủ hồ sơ, lưu thông báo ở chế độ ẩn danh
     if (targetUserId !== viewerId) {
-      const viewer = await this.userModel.findById(viewerId).exec();
-      const senderName = viewer?.name || 'Một tâm hồn đồng điệu';
-      const senderAvatar = viewer?.avatar || '';
-
       await this.notificationModel.create({
         userId: targetUserId,
         senderId: viewerId,
-        senderName,
-        senderAvatar,
+        senderName: 'Một tâm hồn đồng điệu',
+        senderAvatar: '',
         type: 'view_profile',
         title: 'Ai đó vừa ghé thăm tần số của bạn! ✨',
-        message: `${senderName} vừa dừng chân ghé thăm hồ sơ và tần số cảm xúc của bạn.`,
+        message: 'Một tâm hồn đồng điệu vừa dừng chân ghé thăm hồ sơ và tần số cảm xúc của bạn.',
       });
     }
 
@@ -301,15 +297,15 @@ export class MongooseUserRepository implements UserRepositoryPort {
           message: `Bạn và ${targetUser.name} đã cùng thả tim! Diện mạo đã được mở khóa. Hãy bắt đầu trò chuyện ngay!`,
         });
       } else {
-        // Chỉ liker thả tim targetUser
+        // Chỉ liker thả tim targetUser -> Giữ ẩn danh tuyệt đối cho đến khi mutual match
         await this.notificationModel.create({
           userId: targetUserId,
           senderId: likerId,
-          senderName: liker.name,
-          senderAvatar: liker.avatar,
+          senderName: 'Một tâm hồn đồng điệu',
+          senderAvatar: '',
           type: 'like',
           title: 'Ai đó vừa thả tim bạn! 💕',
-          message: `${liker.name} vừa thả tim hồ sơ của bạn. Cùng thả tim lại để mở khóa diện mạo nhé!`,
+          message: 'Một tâm hồn đồng điệu vừa thả tim hồ sơ của bạn. Cùng thả tim lại để mở khóa diện mạo nhé!',
         });
       }
 
@@ -329,7 +325,6 @@ export class MongooseUserRepository implements UserRepositoryPort {
       return { wavesReceived: 1 };
     }
 
-    const sender = await this.userModel.findById(senderId).exec();
     const updated = await this.userModel
       .findByIdAndUpdate(
         targetUserId,
@@ -338,15 +333,15 @@ export class MongooseUserRepository implements UserRepositoryPort {
       )
       .exec();
 
-    if (sender && targetUserId !== senderId) {
+    if (targetUserId !== senderId) {
       await this.notificationModel.create({
         userId: targetUserId,
         senderId,
-        senderName: sender.name,
-        senderAvatar: sender.avatar,
+        senderName: 'Một tâm hồn đồng điệu',
+        senderAvatar: '',
         type: 'wave',
-        title: '🌊 Nhận được sóng tần số 432Hz!',
-        message: `${sender.name} vừa phát sóng cảm xúc 432Hz hướng về bạn!`,
+        title: '🌊 Nhận được sóng rung cảm mới!',
+        message: 'Một tâm hồn đồng điệu vừa phát sóng rung cảm hướng về bạn!',
       });
     }
 
@@ -359,7 +354,24 @@ export class MongooseUserRepository implements UserRepositoryPort {
       .sort({ createdAt: -1 })
       .limit(50)
       .exec();
-    return list.map((item) => item.toObject());
+    return list.map((item) => {
+      const obj = item.toObject();
+      if (obj.type !== 'mutual_match' && obj.type !== 'mutual_like') {
+        obj.senderName = 'Một tâm hồn đồng điệu';
+        obj.senderAvatar = '';
+        if (obj.type === 'like') {
+          obj.message =
+            'Một tâm hồn đồng điệu vừa thả tim hồ sơ của bạn. Cùng thả tim lại để mở khóa diện mạo nhé!';
+        } else if (obj.type === 'view_profile' || obj.type === 'view') {
+          obj.message =
+            'Một tâm hồn đồng điệu vừa dừng chân ghé thăm hồ sơ và tần số cảm xúc của bạn.';
+        } else if (obj.type === 'wave') {
+          obj.message =
+            'Một tâm hồn đồng điệu vừa phát sóng rung cảm hướng về bạn!';
+        }
+      }
+      return obj;
+    });
   }
 
   async markNotificationAsRead(

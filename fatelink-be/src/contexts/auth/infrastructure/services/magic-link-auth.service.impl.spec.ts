@@ -106,6 +106,7 @@ describe('MagicLinkAuthServiceImpl', () => {
       authChallengeRepository as never,
       configService,
       new SecretHashService(),
+      emailDeliveryService as never,
     );
 
     await expect(

@@ -5,6 +5,7 @@ import {
 import { CreateAiMessageUseCase } from '@contexts/chat/application/usecases/create-ai-message.usecase';
 import { CreateDirectChatMessageUseCase } from '@contexts/chat/application/usecases/create-direct-chat-message.usecase';
 import { GetAiChatHistoryUseCase } from '@contexts/chat/application/usecases/get-ai-chat-history.usecase';
+import { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
 import { HandleRealtimeChatMessageOrchestrator } from '@contexts/chat/application/services/handle-realtime-chat-message.orchestrator';
 import { HandleRealtimeChatMessageUseCase } from '@contexts/chat/application/usecases/handle-realtime-chat-message.usecase';
 import { SendAiMessageUseCase } from '@contexts/chat/application/usecases/send-ai-message.usecase';
@@ -43,6 +44,12 @@ export const chatUseCaseProviders: Provider[] = [
     provide: CHAT_APPLICATION_TOKENS.getHistory,
     useFactory: (chatMessageRepository: ChatMessageRepository) =>
       new GetAiChatHistoryUseCase(chatMessageRepository),
+    inject: [CHAT_MESSAGE_REPOSITORY],
+  },
+  {
+    provide: CHAT_APPLICATION_TOKENS.getDirectHistory,
+    useFactory: (chatMessageRepository: ChatMessageRepository) =>
+      new GetDirectChatHistoryUseCase(chatMessageRepository),
     inject: [CHAT_MESSAGE_REPOSITORY],
   },
   {
@@ -92,6 +99,7 @@ export const chatUseCases = [
   CHAT_APPLICATION_TOKENS.createMessage,
   CHAT_APPLICATION_TOKENS.createDirectMessage,
   CHAT_APPLICATION_TOKENS.getHistory,
+  CHAT_APPLICATION_TOKENS.getDirectHistory,
   CHAT_APPLICATION_TOKENS.sendAiMessage,
   CHAT_APPLICATION_TOKENS.handleRealtimeMessage,
 ];

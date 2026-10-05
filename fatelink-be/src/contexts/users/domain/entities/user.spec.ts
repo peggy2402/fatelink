@@ -7,7 +7,6 @@ describe('User.applyTraitsUpdate', () => {
       email: 'user@example.com',
       name: 'User',
       avatar: '',
-      googleId: 'google-1',
       latestEmotion: 'Cu',
       emotions: {
         stress: 10,
@@ -51,7 +50,6 @@ describe('User.applyTraitsUpdate', () => {
       email: 'user@example.com',
       name: 'User',
       avatar: '',
-      googleId: 'google-2',
       latestEmotion: 'Binh thuong',
       emotions: undefined as never,
       personality: [] as number[],

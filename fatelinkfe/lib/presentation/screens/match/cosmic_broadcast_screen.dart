@@ -49,40 +49,6 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
     {'name': 'Lắng nghe', 'icon': '🌊', 'freq': '741Hz'},
   ];
 
-  // Danh sách dự phòng nếu chưa có data từ mạng
-  static final List<MatchUser> _fallbackPartners = [
-    MatchUser(
-      id: 'echo-9941a',
-      name: 'Khánh Linh',
-      emotion: 'Bình yên',
-      compatibilityScore: 96,
-      distanceKm: 1.2,
-      tags: ['#NhạcIndie', '#ĐêmMuộn', '#TràChiều'],
-      bio: 'Muốn tìm người cùng đi dạo hồ Tây ngắm hoàng hôn...',
-      gender: 'female',
-    ),
-    MatchUser(
-      id: 'echo-8823b',
-      name: 'Minh Trí',
-      emotion: 'Chữa lành',
-      compatibilityScore: 92,
-      distanceKm: 2.8,
-      tags: ['#Guitar', '#ĐọcSách', '#SốngChậm'],
-      bio: 'Lắng nghe những câu chuyện chưa kể trong đêm sâu...',
-      gender: 'male',
-    ),
-    MatchUser(
-      id: 'echo-7712c',
-      name: 'Hoàng Yến',
-      emotion: 'Tìm tri kỷ',
-      compatibilityScore: 95,
-      distanceKm: 3.5,
-      tags: ['#TâmSự', '#HộiHọa', '#CàPhê'],
-      bio: 'Một tâm hồn mộng mơ tìm kiếm sự đồng điệu chân thành...',
-      gender: 'female',
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -145,8 +111,13 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
         if (!mounted) return;
         setState(() => _broadcastPhase = 2);
 
-        // Chọn đối phương phù hợp
+        // Chọn đối phương phù hợp từ dữ liệu thực tế
         _pickBestMatch();
+
+        if (_matchedPartner == null) {
+          // Chưa có đối tác thực tế trực tuyến cùng tần số -> Giữ sóng phát liên tục
+          return;
+        }
 
         // Giai đoạn 3: Đối phương bấm [Đón nhận sóng] (Fast-Pass Handshake) sau thêm 2s
         _phaseTimer = Timer(const Duration(milliseconds: 2000), () {
@@ -183,19 +154,29 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
 
   void _pickBestMatch() {
     final homeState = context.read<HomeBloc>().state;
-    List<MatchUser> pool = _fallbackPartners;
+    final pool = homeState.matchedUsers;
 
-    if (homeState.matchedUsers.isNotEmpty) {
-      pool = homeState.matchedUsers;
-    }
-
-    // Ưu tiên người có cùng cảm xúc hoặc điểm tương hợp cao nhất
-    final sameMoodMatches = pool.where((u) => u.emotion.toLowerCase().contains(_currentMood.toLowerCase())).toList();
-    if (sameMoodMatches.isNotEmpty) {
-      _matchedPartner = sameMoodMatches.first;
+    if (pool.isNotEmpty) {
+      // Ưu tiên người có cùng cảm xúc hoặc điểm tương hợp cao nhất
+      final sameMoodMatches = pool
+          .where((u) => u.emotion.toLowerCase().contains(_currentMood.toLowerCase()))
+          .toList();
+      if (sameMoodMatches.isNotEmpty) {
+        _matchedPartner = sameMoodMatches.first;
+      } else {
+        _matchedPartner = pool.first;
+      }
     } else {
-      _matchedPartner = pool.first;
+      _matchedPartner = null;
     }
+  }
+
+  String _getMoodFrequency(String mood) {
+    final found = _availableMoods.firstWhere(
+      (m) => m['name'] == mood,
+      orElse: () => {'freq': '528Hz'},
+    );
+    return found['freq'] ?? '528Hz';
   }
 
   @override
@@ -307,9 +288,9 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'PHÁT SÓNG ĐỊNH MỆNH 432Hz',
-                      style: TextStyle(
-                        color: const Color(0xFF00FFB2),
+                      'PHÁT SÓNG TẦN SỐ CẢM XÚC',
+                      style: const TextStyle(
+                        color: Color(0xFF00FFB2),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
@@ -450,7 +431,7 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
                   const Icon(Icons.graphic_eq_rounded, color: Color(0xFF00FFB2), size: 13),
                   const SizedBox(width: 4),
                   Text(
-                    '$_currentMood • 432Hz',
+                    '$_currentMood • ${_getMoodFrequency(_currentMood)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -528,21 +509,21 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
               ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Đang nén tần số 432Hz...',
-                    style: TextStyle(
+                    'Đang nén tần số ${_getMoodFrequency(_currentMood)}...',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
+                  const SizedBox(height: 2),
+                  const Text(
                     'Chuẩn bị giải phóng sóng cảm xúc vào không gian',
                     style: TextStyle(color: Colors.white60, fontSize: 12),
                   ),
@@ -590,6 +571,18 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
         );
 
       case 2:
+        final realUsers = context.read<HomeBloc>().state.matchedUsers;
+        final matchingCount = realUsers
+            .where((u) => u.emotion.toLowerCase().contains(_currentMood.toLowerCase()))
+            .length;
+        final displayCount = matchingCount > 0 ? matchingCount : realUsers.length;
+        final phase2Title = displayCount > 0
+            ? 'Đã tìm thấy $displayCount tâm hồn cùng tần số!'
+            : 'Đang mở rộng phạm vi quét tần số...';
+        final phase2Sub = displayCount > 0
+            ? 'Đang chờ phản hồi chạm sóng đầu tiên (Fast-Pass)...'
+            : 'Chưa có tâm hồn nào trực tuyến cùng tần số. Giữ sóng để kết nối sớm nhất!';
+
         return Row(
           key: const ValueKey(2),
           children: [
@@ -603,23 +596,23 @@ class _CosmicBroadcastScreenState extends State<CosmicBroadcastScreen>
               child: const Icon(Icons.wifi_tethering_rounded, color: Color(0xFFFFC107), size: 18),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Đã tìm thấy 3 tâm hồn cùng tần số!',
-                    style: TextStyle(
+                    phase2Title,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Đang chờ phản hồi chạm sóng đầu tiên (Fast-Pass)...',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    phase2Sub,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ),

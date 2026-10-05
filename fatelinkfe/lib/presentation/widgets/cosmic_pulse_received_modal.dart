@@ -470,108 +470,156 @@ class _CosmicPulseReceivedModalState extends State<CosmicPulseReceivedModal>
                         // 5. Hai nút hành động chuẩn nghiệp vụ: "Phát sóng đáp lại" & "Thả tim kết nối"
                         Row(
                           children: [
-                            // Nút Phát sóng đáp lại
+                            // Nút 1: Phát sóng đáp lại (Gradient Cosmic Pill Button)
                             Expanded(
                               flex: 5,
-                              child: GestureDetector(
-                                onTap: _handleResonateBack,
-                                child: Container(
-                                  height: 46,
-                                  decoration: BoxDecoration(
-                                    gradient: _hasResonatedBack
-                                        ? const LinearGradient(
-                                            colors: [Color(0xFF10B981), Color(0xFF059669)],
-                                          )
-                                        : const LinearGradient(
-                                            colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    _handleResonateBack();
+                                  },
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Ink(
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      gradient: _hasResonatedBack
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF10B981), Color(0xFF059669)],
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                            )
+                                          : const LinearGradient(
+                                              colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                            ),
+                                      borderRadius: BorderRadius.circular(24),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (_hasResonatedBack
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFFEC4899))
+                                              .withValues(alpha: 0.35),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      child: Center(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                _hasResonatedBack
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons.bolt_rounded,
+                                                color: Colors.white,
+                                                size: 19,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                _hasResonatedBack
+                                                    ? 'Đã cộng hưởng ✨'
+                                                    : 'Phát sóng đáp lại',
+                                                style: const TextStyle(
+                                                  fontFamily: 'BeVietnamPro',
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                  letterSpacing: 0.1,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                    borderRadius: BorderRadius.circular(23),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: (_hasResonatedBack
-                                                ? const Color(0xFF10B981)
-                                                : const Color(0xFFEC4899))
-                                            .withValues(alpha: 0.35),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        _hasResonatedBack
-                                            ? Icons.check_circle_rounded
-                                            : Icons.bolt_rounded,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        _hasResonatedBack
-                                            ? 'Đã cộng hưởng ✨'
-                                            : 'Phát sóng đáp lại',
-                                        style: const TextStyle(
-                                          fontFamily: 'BeVietnamPro',
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 10),
 
-                            // Nút Thả tim kết nối (hoặc Trò chuyện nếu đã là bạn bè mutual match)
+                            // Nút 2: Thả tim kết nối (Pearly Pink Border Button)
                             Expanded(
                               flex: 5,
-                              child: GestureDetector(
-                                onTap: _handleHeartOrChat,
-                                child: Container(
-                                  height: 46,
-                                  decoration: BoxDecoration(
-                                    color: sender.isMutualFollow
-                                        ? const Color(0xFFEEF2FF)
-                                        : const Color(0xFFFDF2F8),
-                                    borderRadius: BorderRadius.circular(23),
-                                    border: Border.all(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    _handleHeartOrChat();
+                                  },
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Ink(
+                                    height: 48,
+                                    decoration: BoxDecoration(
                                       color: sender.isMutualFollow
-                                          ? const Color(0xFFC7D2FE)
-                                          : const Color(0xFFFBCFE8),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        sender.isMutualFollow
-                                            ? Icons.chat_bubble_outline_rounded
-                                            : Icons.favorite_rounded,
+                                          ? const Color(0xFFEEF2FF)
+                                          : const Color(0xFFFFF1F2),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
                                         color: sender.isMutualFollow
-                                            ? const Color(0xFF4F46E5)
-                                            : const Color(0xFFEC4899),
-                                        size: 17,
+                                            ? const Color(0xFFC7D2FE)
+                                            : const Color(0xFFFECDD3),
+                                        width: 1.2,
                                       ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        sender.isMutualFollow
-                                            ? 'Trò chuyện'
-                                            : 'Thả tim kết nối',
-                                        style: TextStyle(
-                                          fontFamily: 'BeVietnamPro',
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: sender.isMutualFollow
-                                            ? const Color(0xFF4F46E5)
-                                            : const Color(0xFFEC4899),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (sender.isMutualFollow
+                                                  ? const Color(0xFF6366F1)
+                                                  : const Color(0xFFEC4899))
+                                              .withValues(alpha: 0.12),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      child: Center(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                sender.isMutualFollow
+                                                    ? Icons.chat_bubble_outline_rounded
+                                                    : Icons.favorite_rounded,
+                                                color: sender.isMutualFollow
+                                                    ? const Color(0xFF4F46E5)
+                                                    : const Color(0xFFEC4899),
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                sender.isMutualFollow
+                                                    ? 'Trò chuyện'
+                                                    : 'Thả tim kết nối',
+                                                style: TextStyle(
+                                                  fontFamily: 'BeVietnamPro',
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: sender.isMutualFollow
+                                                      ? const Color(0xFF4F46E5)
+                                                      : const Color(0xFFEC4899),
+                                                  letterSpacing: 0.1,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),

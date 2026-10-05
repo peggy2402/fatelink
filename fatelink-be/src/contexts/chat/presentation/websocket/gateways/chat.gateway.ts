@@ -13,6 +13,7 @@ import { AUTH_APPLICATION_TOKENS } from '@contexts/auth/composition/auth.tokens'
 import { CHAT_APPLICATION_TOKENS } from '@contexts/chat/composition/chat.tokens';
 import { ChatPresenceService } from '@contexts/chat/presentation/websocket/services/chat-presence.service';
 import type { CreateDirectChatMessageUseCase } from '@contexts/chat/application/usecases/create-direct-chat-message.usecase';
+import type { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
 import type { HandleRealtimeChatMessageUseCase } from '@contexts/chat/application/usecases/handle-realtime-chat-message.usecase';
 import type { ValidateUserTokenUseCase } from '@contexts/auth/application/usecases/validate-user-token.usecase';
 
@@ -27,6 +28,7 @@ const websocketCorsOrigins = (
 type ClientToServerEvents = {
   sendMessage: (payload: { text: string }) => void;
   sendDirectMessage: (payload: { partnerId: string; text: string }) => void;
+  loadDirectHistory: (payload: { partnerId: string; limit?: number }) => void;
   checkUserStatus: (payload: { targetUserId: string }) => void;
   checkUsersStatus: (payload: { targetUserIds: string[] }) => void;
   typing: (payload: { partnerId: string; isTyping: boolean }) => void;
@@ -45,6 +47,14 @@ type ServerToClientEvents = {
     senderId: string;
     text: string;
     timestamp: string;
+  }) => void;
+  directHistoryResult: (payload: {
+    partnerId: string;
+    messages: Array<{
+      text: string;
+      isSentByMe: boolean;
+      timestamp: string;
+    }>;
   }) => void;
   userStatusResult: (payload: { userId: string; isOnline: boolean }) => void;
   usersStatusResult: (payload: Record<string, boolean>) => void;
@@ -85,6 +95,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly validateUserTokenUseCase: ValidateUserTokenUseCase,
     @Inject(CHAT_APPLICATION_TOKENS.createDirectMessage)
     private readonly createDirectChatMessageUseCase: CreateDirectChatMessageUseCase,
+    @Inject(CHAT_APPLICATION_TOKENS.getDirectHistory)
+    private readonly getDirectChatHistoryUseCase: GetDirectChatHistoryUseCase,
     private readonly chatPresenceService: ChatPresenceService,
   ) {}
 
@@ -271,5 +283,35 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         isTyping: payload.isTyping,
       });
     });
+  }
+
+  // --- TẢI LỊCH SỬ TIN NHẮN 1-1 THẬT GIỮA 2 USER ---
+  @SubscribeMessage('loadDirectHistory')
+  async handleLoadDirectHistory(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string; limit?: number },
+  ) {
+    const userId = client.data.userId;
+    if (!userId) {
+      return;
+    }
+
+    try {
+      const messages = await this.getDirectChatHistoryUseCase.execute({
+        userId,
+        partnerId: payload.partnerId,
+        limit: payload.limit || 50,
+      });
+
+      client.emit('directHistoryResult', {
+        partnerId: payload.partnerId,
+        messages,
+      });
+    } catch (error: unknown) {
+      this.logger.error(
+        'Failed to load direct history',
+        error instanceof Error ? error.stack || error.message : String(error),
+      );
+    }
   }
 }

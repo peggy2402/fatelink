@@ -117,6 +117,7 @@ describe('PhoneAuthServiceImpl', () => {
       authChallengeRepository as never,
       configService,
       new SecretHashService(),
+      phoneOtpDeliveryService as never,
     );
 
     await expect(

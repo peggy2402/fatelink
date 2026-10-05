@@ -411,3 +411,147 @@
 
 #### 3. Backend & Localization (NestJS)
 - **Đa ngôn ngữ cho Thời gian (Time Processing)**: Tích hợp và cấu hình thành công các gói ngôn ngữ địa phương (`locales`) cho thư viện `dayjs` trong `fatelink-be`. Cụ thể đã thêm Tiếng Việt (`vi.js`), Tiếng Bồ Đào Nha (`pt.js`, `pt-br.js`) vào hệ thống để hỗ trợ định dạng, hiển thị ngày giờ chuẩn xác theo đa vùng miền.
+
+---
+
+## 📅 Ngày: 03/10/2026 (16:16 PM)
+
+### 🎯 Trọng tâm hôm nay: Ẩn danh tuyệt đối Thông báo, Chuẩn hóa UI/UX Modal theo Cosmic Design System, Loại bỏ 100% Mock Data & Tích hợp Tính năng Tương tác Thật
+
+#### 1. Bảo mật & Ẩn danh Tuyệt đối trong Thông báo (`notifications_modal.dart` & Backend)
+- **Phát hiện & Khắc phục lỗ hổng danh tính**:
+  - Khi có người thả tim, xem hồ sơ hoặc phát sóng đến người dùng mà **chưa mutual match (chưa cùng thả tim nhau)**, hệ thống trước đây hiển thị trực tiếp tên thật (`Max Veo`) và avatar thật (hoặc ký tự đầu "M"), gây mâu thuẫn hoàn toàn với triết lý kết nối tâm hồn ẩn danh của FateLink.
+- **Backend (NestJS - `mongoose-user.repository.ts`)**:
+  - Cập nhật các hàm `toggleLike` (khi chưa mutual), `recordProfileView`, và `recordWave`: không lưu tên thật hay avatar thật vào database; lưu `senderName: 'Một tâm hồn đồng điệu'` và `senderAvatar: ''`.
+  - Cập nhật `getNotifications`: tự động che/ẩn danh hóa toàn bộ các thông báo cũ trước đó trong database nếu không phải là `mutual_match`.
+- **Frontend (Flutter - `notifications_modal.dart`)**:
+  - Tích hợp `AnonymousAvatarHelper.buildAvatar`: khi chưa mutual match, avatar tự động hiển thị **Avatar Linh vật Vũ trụ 3D** (chọn ngẫu nhiên nhưng cố định theo seed `id.hashCode`) kèm **huy hiệu ổ khóa hồng 🔒** ở góc dưới.
+  - Tên người gửi hiển thị bằng **bí danh định mệnh** (vd: `Pulse#W13X8`, `Soul#9X48B`...) hoặc "Một tâm hồn đồng điệu".
+  - Khi người dùng chạm vào thông báo để xem hồ sơ `UserDetailScreen`, trạng thái `isFaceLocked = true` và `isMutualFollow = false` được bảo toàn nghiêm ngặt để ảnh thật và diện mạo tiếp tục được làm mờ/ẩn danh cho đến khi bạn cũng thả tim lại họ.
+
+#### 2. Chuẩn hóa UI/UX các Modal & Nút bấm theo Cosmic Design System
+- **Sửa lỗi rớt dòng icon & căn chỉnh thô ráp**:
+  - **`supernova_burst_dialog.dart` (Modal Kết nối định mệnh)**:
+    - Khắc phục lỗi chuỗi text `"Tiếp tục trò chuyện vĩnh viễn 🚀"` bị rớt icon tên lửa `🚀` xuống dòng thứ 2 gây mất cân đối; thay thế `ElevatedButton` màu hồng đỏ `#FFFF2A6D` phẳng thô ráp.
+    - Tái cấu trúc bằng `Dialog` mờ ảo vũ trụ, thẻ bạn bè hiển thị avatar mở khóa có viền gradient phát sáng.
+    - Nút CTA chuyển sang dạng **Cosmic Pill Gradient Signature** (`#EC4899` ➔ `#6366F1`) bo góc 25px, đổ bóng phát sáng `BoxShadow`, dòng chữ và `Icon(Icons.rocket_launch_rounded)` được khóa chặt trong cùng 1 hàng bằng `Row` + `Flexible`, không bao giờ bị rớt dòng trên mọi kích cỡ màn hình.
+  - **`cosmic_pulse_received_modal.dart` (Modal Nhận tín hiệu sóng rung cảm)**:
+    - Tái thiết kế 2 nút "Phát sóng đáp lại" và "Thả tim kết nối": tăng chiều cao lên 48px chuẩn công thái học; áp dụng typography `BeVietnamPro` SemiBold w600 với `FittedBox` bảo vệ co giãn responsive.
+    - Bổ sung hiệu ứng chạm `InkWell` và rung phản hồi xúc giác `HapticFeedback.lightImpact()`.
+
+#### 3. Loại bỏ 100% Mock Data & Sử dụng Dữ liệu Thực tế
+- **`chat_screen.dart`**:
+  - Loại bỏ hoàn toàn dòng hardcode `Phát sóng tần số 432Hz`. Màn hình hiện đọc tần số năng lượng thực tế của tài khoản từ `SharedPreferences` / `user_frequency_hertz` (`_currentUserFrequency ?? '528 Hz'`) để hiển thị đúng tần số người dùng đã chọn trong hồ sơ.
+  - Loại bỏ các text hardcode `432Hz` trong mục tin nhắn sóng chờ kết nối, hiển thị số lượng và danh sách sóng thực tế từ server.
+- **`cosmic_broadcast_screen.dart` (Màn hình Phát sóng tâm hồn)**:
+  - **Xóa bỏ hoàn toàn mảng mockdata tĩnh** `_fallbackPartners` (Khánh Linh, Minh Trí, Hoàng Yến ảo).
+  - Quá trình phát sóng hiện chỉ quét và kết nối với danh sách người dùng thực tế từ Database thông qua `HomeBloc`. Nếu không có ai đang phát sóng cùng tần số ở gần, hệ thống sẽ giữ sóng phát thực tế và hiển thị thông báo trung thực thay vì tạo kết đôi giả.
+  - Tần số phát sóng và huy hiệu hiển thị tự động biến đổi động theo tâm trạng đang chọn (`_getMoodFrequency(_currentMood)`).
+
+#### 4. Khắc phục lỗi HTTP 400 & HttpLogger Toàn diện
+- **Sửa lỗi `Unexpected token 'n', "null" is not valid JSON`**:
+  - Khắc phục `ApiService.dart`: kiểm tra `body == null` để tránh `jsonEncode(null) = "null"`.
+- **HttpLogger trực quan**:
+  - In đầy đủ URL API + REQUEST + RESPONSE ra Debug Console theo định dạng bảng box Unicode trực quan, giúp dễ dàng theo dõi và debug mọi luồng API.
+
+#### 5. Triển khai Tính năng Tương tác Thật (Tim, Block, Report & Profile Views)
+- **Backend (NestJS)**: Triển khai các API `POST /users/:id/like` (toggle thả tim, tự động nhận diện mutual like -> mutual match), `POST /users/:id/block`, `POST /users/:id/report`, `POST /users/:id/view` (tăng profile views).
+- **Frontend (Flutter)**: Đồng bộ trạng thái `likesReceived`, `isLiked`, `profileViews` thực tế từ Database (xóa bỏ triệt để mock random 89 tim trong `match_user.dart`), tích hợp tương tác nút tim tại `HomeScreen`, `SoulMatchCard`, `ExploreListCard`, và `UserDetailScreen`.
+
+#### 6. Kiểm tra & Đảm bảo Chất lượng Mã nguồn
+- **Flutter Analyzer**: Đã giải quyết toàn bộ compile error, đạt chuẩn zero compile error trên toàn bộ codebase Flutter.
+- **Backend Build**: Chạy `npm run build` biên dịch NestJS TypeScript thành công 100% (`exit code 0`).
+
+---
+
+## 📅 Ngày: 05/10/2026
+
+### 🎯 Trọng tâm hôm nay: Khắc phục triệt để lỗi vỡ Avatar tròn khi tên linh vật dài, Triển khai Ma trận 120+ Avatar Vũ Trụ Độc Bản & Hệ thống Sinh Danh Xưng Linh Thú Động 400+ Tổ Hợp
+
+#### 1. Khắc phục triệt để lỗi vỡ Layout Avatar khi Tên Linh Vật từ 4 từ trở lên
+- **Nguyên nhân cốt lõi**:
+  - Tại `user_detail_screen.dart`, khi chưa mở diện mạo thật (`!canViewIdentity`), code cũ nhồi nhét một `Container` huy hiệu màu đen chứa Icon Khóa và Text tên linh vật (`AnonymousAvatarHelper.getAnonymousPersonaName(...)`) ngay vào chính giữa hình tròn avatar (`Center`).
+  - Hình tròn avatar có đường kính cố định 130px. Khi tên linh vật có 4 từ ("Sinh Mệnh Âm Nhạc") hoặc tên dài, độ dài chuỗi text vượt quá 130px gây tràn mép hoặc bị ép xuống dòng, đè bẹp dí và che khuất hoàn toàn khuôn mặt linh vật 3D, phá vỡ tính thẩm mỹ theo quy chuẩn `fatelink-uiux`.
+- **Giải pháp hoàn thiện**:
+  - **Giải phóng mặt avatar 100%**: Xóa bỏ hoàn toàn lớp text đen đè ngang giữa mặt avatar. Khuôn mặt linh vật 3D vũ trụ được hiển thị nguyên vẹn, sắc nét và tỏa sáng.
+  - **Tách biệt huy hiệu chuẩn công thái học**:
+    - **Góc trên bên phải (`top-right`)**: Đặt `moodIcon` cảm xúc/tần số (☕, ✨, 🎧, 🌧️) bằng `Positioned(top: 0, right: 0)`.
+    - **Góc dưới bên phải (`bottom-right`)**: Đặt Huy hiệu Ổ khóa ẩn danh 🔒 bằng `Positioned(bottom: 2, right: 2)` với gradient phát sáng và viền trắng 2px.
+    - Hai huy hiệu độc lập, không bao giờ chồng chéo lên nhau.
+  - **Tạo Cosmic Soul Chip thanh lịch**:
+    - Chuyển tên linh vật xuống ngay dưới phần hiển thị `displayName` thành một Pill Chip tinh tế: `[✨ Linh vật: Mèo Vũ Trụ]`.
+    - Bọc `Flexible` kết hợp `overflow: TextOverflow.ellipsis` và `maxLines: 1`. Dù tên linh vật 4 từ, 6 từ hay 10 từ cũng không bao giờ làm vỡ layout avatar.
+
+#### 2. Xóa bỏ Mockdata & Triển khai Hệ thống Danh Xưng Linh Thú Vũ Trụ Động (400+ Tổ hợp)
+- **Cải tiến `AnonymousAvatarHelper.getAnonymousPersonaName(userId)`**:
+  - Xóa bỏ danh sách tĩnh 6 tên cố định (`Mèo Vũ Trụ`, `Cáo Tinh Tú`,...).
+  - Xây dựng thuật toán sinh danh xưng ngẫu nhiên cố định (Deterministic Hash từ `userId.hashCode`):
+    - **20 Loài Linh Thú Vũ Trụ Thần Thoại**: Mèo, Cáo, Thỏ, Hươu, Sói, Cá Voi, Gấu, Phượng Hoàng, Cú Đêm, Kỳ Lân, Rồng Sao, Thiên Nga, Hải Âu, Bướm Đêm, Báo Tuyết, Chim Ưng, Rái Cá, Gấu Trúc, Hạc Tiên, Sư Tử Sao.
+    - **20 Cõi Thuộc Tính Năng Lượng Vũ Trụ**: Vũ Trụ, Tinh Tú, Ánh Trăng, Hào Quang, Bụi Sao, Dạ Nguyệt, Thái Dương, Pha Lê, Tinh Cầu, Hư Không, Rực Rỡ, Âm Nhạc, Bắc Cực, Tinh Vân, Trầm Lặng, Giấc Mơ, Tương Lai, Ngân Hà, Bất Diệt, Thời Không.
+    - Tạo ra **400+ tổ hợp danh xưng độc bản** tự nhiên, giàu chất thơ (ví dụ: `Phượng Hoàng Thái Dương`, `Cá Voi Ngân Hà`, `Cú Đêm Giấc Mơ`, `Sói Cực Quang`...).
+  - Bổ sung hàm `getAnonymousPersonaBadge(userId)` kết hợp mã tần số năng lượng linh hồn (`#432`, `#528`, `#639`, `#741`, `#852`, `#963`...).
+
+#### 3. Mở rộng Kho Avatar Nội bộ & Ma trận 120+ Avatar Thị Giác Độc Bản trong `assets/` (Không phụ thuộc Cloudinary)
+- **Tạo và bổ sung 6 Base Avatar 3D Vũ Trụ mới vào `assets/avatars/`**:
+  - Tạo bằng AI với phong cách Claymation 3D Pastel Glow đồng nhất 100% với bộ avatar gốc:
+    - `avatar_7.png`: Sói Cực Quang (Aurora Cosmic Wolf)
+    - `avatar_8.png`: Cá Voi Ngân Hà (Starlight Galaxy Whale)
+    - `avatar_9.png`: Phượng Hoàng Lửa Sao (Cosmic Solar Phoenix)
+    - `avatar_10.png`: Cú Đêm Tri Thức (Celestial Nebula Owl)
+    - `avatar_11.png`: Kỳ Lân Tinh Cầu (Nebula Crystal Unicorn)
+    - `avatar_12.png`: Rồng Sao Hư Không (Astral Baby Dragon)
+  - Tối ưu kích thước chuẩn 512x512, dung lượng siêu nhẹ (~30KB-400KB), nâng tổng số base avatar từ 6 lên 12 file lưu trữ offline hoàn toàn trong `assets/avatars/`.
+- **Triển khai 10 Dải Hào Quang Năng Lượng Vũ Trụ (Cosmic Aura Matrix)**:
+  - 12 Base Avatar × 10 Dải Hào Quang Solfeggio (Cosmic Pulse 432Hz, Electric Cyan 528Hz, Emerald Healer 528Hz, Golden Solfeggio 852Hz, Crown Awakening 963Hz, Rose Heart 639Hz, Aurora Borealis, Supernova Burst, Starlight Nebula, Cosmic Obsidian).
+  - Tự động sinh ra **120+ Avatar thị giác độc bản**, tải tức thì 0ms mà không tốn chi phí băng thông Cloudinary hay làm phình dung lượng app.
+- **Đồng bộ viền phát sáng Avatar**:
+  - `user_detail_screen.dart` và `AnonymousAvatarHelper.buildAvatar` tự động đồng bộ viền gradient và màu bóng đổ `boxShadow` theo đúng dải hào quang của từng linh thú.
+
+#### 5. Tái Thiết Kế Toàn Diện Màn Hình MatchChatScreen theo Chuẩn Cosmic Ethereal
+- **Khắc phục giao diện tối tăm, u ám & thiếu hoàn toàn UI/UX**:
+  - **Nền vũ trụ đa chiều (Atmospheric Cosmic Background)**: Thay vì nền đen kịt phẳng lì `#070B18`, chuyển sang nền Gradient đa tầng `[#0F172A, #090D18, #110E24]` kết hợp 2 quầng sáng tinh vân mờ ảo (Nebula Glow Ambient) màu tím thạch anh và xanh cyan, tạo chiều sâu thị giác mê hoặc.
+  - **AppBar Kính Mờ (Cosmic Glass AppBar)**:
+    - Bổ sung Avatar tròn của bạn chat có viền hào quang phát sáng và chấm xanh ngọc Online. Bấm vào Avatar hoặc tên để mở trực tiếp `UserDetailScreen`.
+    - Trạng thái tần số phát sóng (`528 Hz • Đang phát sóng`) và huy hiệu khóa/mở diện mạo.
+    - Nút AI AutoAwesome với hiệu ứng phát sáng cyan nhẹ để mở gợi ý phá băng.
+  - **Thẻ Se Duyên Chúc Mừng Định Mệnh (Cosmic Match Celebration Header)**:
+    - Nằm ở đỉnh cuộc trò chuyện với Avatar 76px viền hào quang phát sáng `BoxShadow`.
+    - Tên đối phương, Chip Linh vật Vũ Trụ & Tần số cảm xúc (`Linh vật: Mèo Vũ Trụ • 528 Hz`).
+    - Lời chúc se duyên ý nghĩa và huy hiệu bảo mật `🔒 Cuộc trò chuyện được mã hóa tâm hồn`.
+  - **Bong bóng tin nhắn (Cosmic Message Bubbles)**:
+    - **Tin nhắn đối phương**: Avatar nhỏ 28px bên cạnh, bong bóng kính mờ `Color(0xFF1E293B)` với viền mảnh ánh sao, chữ trắng ngà thoáng đãng, thời gian rõ nét.
+    - **Tin nhắn của tôi**: Nền Gradient Signature FateLink (`#EC4899` ➔ `#6366F1`) rực rỡ, lãng mạn, bo góc mềm 20px, đổ bóng phát sáng tím dịu, thời gian kèm 2 dấu tick xanh `Icons.done_all_rounded`.
+  - **Hàng Chip Phá Băng Nhanh (Icebreakers)**:
+    - Hiển thị các câu hỏi mở lời dễ thương lơ lửng trên thanh input khi mới bắt đầu cuộc trò chuyện (*"Hôm nay của bạn thế nào? ✨"*, *"Bạn thích nghe thể loại nhạc gì? 🎧"*,...); chạm vào là gửi ngay.
+
+#### 6. Triển Khai WebSocket Real-time 1-1 Giữa 2 Người Dùng Thật Đã Match
+- **Nguyên nhân trước đây 2 bên không chat qua lại được**:
+  - `MatchChatScreen` trước đây chỉ là màn hình mockup: khi gửi tin nhắn chỉ thêm vào state cục bộ của máy người gửi và chạy hàm hẹn giờ `_simulatePartnerReply()` giả lập câu trả lời ảo.
+  - Client chưa hề kết nối WebSocket tới `ChatGateway`, không phát sự kiện `sendDirectMessage`, và không lắng nghe sự kiện `receiveDirectMessage` để nhận tin nhắn từ đối phương.
+- **Giải pháp hoàn thiện**:
+  - **Frontend [match_chat_screen.dart](file:///Users/peggy2402/Projects/fatelink/fatelinkfe/lib/presentation/screens/match/match_chat_screen.dart)**:
+    - Tích hợp `socket_io_client`: kết nối với `accessToken` tới `AppConstants.serverUrl`.
+    - Phát sự kiện `sendDirectMessage` thật mỗi khi người dùng gửi tin nhắn (loại bỏ hoàn toàn mock `_simulatePartnerReply`).
+    - Lắng nghe sự kiện `receiveDirectMessage`: nhận tin nhắn từ đối phương thời gian thực và cập nhật UI ngay lập tức.
+    - Lắng nghe & phát sự kiện `typing` / `receiveTyping`: hiển thị chỉ báo "Đang gõ..." thời gian thực.
+    - Lắng nghe trạng thái online thật `checkUserStatus` & `userStatusChanged` để cập nhật chấm xanh trực tuyến của đối phương.
+    - Tự động tải toàn bộ lịch sử tin nhắn thật từ MongoDB thông qua `loadDirectHistory` & `directHistoryResult`.
+  - **Backend [chat.gateway.ts](file:///Users/peggy2402/Projects/fatelink/fatelink-be/src/contexts/chat/presentation/websocket/gateways/chat.gateway.ts)**:
+    - Bổ sung usecase `GetDirectChatHistoryUseCase` và sự kiện WebSocket `@SubscribeMessage('loadDirectHistory')` để truy xuất lịch sử chat 1-1 theo `conversationId` (`firstUserId:secondUserId`).
+  - **Khắc phục lỗi compile `MatchUser`**:
+    - Sửa `displayName` ➔ `name`, bỏ `frequencyHertz` không tồn tại trong `MatchUser`, đảm bảo khởi tạo đúng tham số bắt buộc (`name`, `emotion`, `compatibilityScore`).
+
+#### 7. Kiểm tra & Đảm bảo Chất lượng Mã nguồn Toàn diện (Full-stack)
+- **`fatelink-be`**:
+  - `npx tsc --noEmit`: Đạt chuẩn **0 errors** trên toàn bộ codebase TypeScript (đã chuẩn hóa kiểu `timestamp: string` trong `directHistoryResult` của `ChatGateway`, sửa tham số test `MagicLinkAuthServiceImpl` và `PhoneAuthServiceImpl`, bỏ `googleId` cũ trong `user.spec.ts`).
+  - `npm run build`: `nest build` thành công 100% với exit code 0.
+  - Server dev `npm run start:dev` đã khởi động thành công với Webpack HMR, `ChatGateway` đã subscribe đầy đủ các kênh: `sendMessage`, `sendDirectMessage`, `checkUserStatus`, `checkUsersStatus`, `typing`, `loadDirectHistory`.
+- **`fatelinkfe`**:
+  - `flutter analyze`: Toàn bộ codebase đạt chuẩn **zero compile errors**, không có lỗi cú pháp hay kiểu dữ liệu.
+
+---
+
+### 🚀 Việc cần làm tiếp theo (Next Steps):
+- [ ] Mở 2 tài khoản trên 2 thiết bị/máy ảo để chat qua lại thời gian thực và trải nghiệm tốc độ tức thì qua WebSocket.
+- [ ] Tiếp tục theo dõi luồng tương tác thực tế giữa 2 tài khoản khi cùng thả tim nhau trên môi trường thực tế.
+- [ ] Mở rộng tính năng chặn (Block) và báo cáo (Report) ra giao diện danh sách đen trong màn hình Cài đặt (`settings_manage_block_screen.dart`).

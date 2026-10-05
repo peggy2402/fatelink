@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../../core/utils/anonymous_avatar_helper.dart';
 import '../../../../data/models/match_user.dart';
 
 /// Modal chúc mừng Siêu Tân Tinh (SupernovaBurstDialog):
 /// - Bùng nổ hạt ánh sao
 /// - Gỡ bỏ 120s vĩnh viễn
-/// - Nút tiếp tục trò chuyện dài hạn
+/// - Nút tiếp tục trò chuyện chuẩn Cosmic Design System
 class SupernovaBurstDialog extends StatelessWidget {
   final MatchUser partner;
   final VoidCallback onContinue;
@@ -18,95 +20,191 @@ class SupernovaBurstDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1C1335),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Column(
-        children: [
-          Text('✨💖✨', style: TextStyle(fontSize: 32)),
-          SizedBox(height: 8),
-          Text(
-            'KẾT NỐI ĐỊNH MỆNH!',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16102B).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.16),
+            width: 1.5,
           ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Cả hai bạn đã cùng chạm tim! Mọi bí ẩn sương mù đã được gỡ bỏ, và giới hạn 120 giây đã bị phá vỡ vĩnh viễn.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 14,
-              height: 1.4,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEC4899).withValues(alpha: 0.28),
+              blurRadius: 36,
+              offset: const Offset(0, 10),
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+            BoxShadow(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.22),
+              blurRadius: 28,
+              offset: const Offset(0, -4),
             ),
-            child: Row(
-              children: [
-                ClipOval(
-                  child: partner.avatar != null && partner.avatar!.isNotEmpty
-                      ? Image.network(
-                          partner.avatar!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(width: 44, height: 44, color: Colors.purple),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 1. Emoji & Tiêu đề
+            const Text('✨💖✨', style: TextStyle(fontSize: 32)),
+            const SizedBox(height: 10),
+            const Text(
+              'KẾT NỐI ĐỊNH MỆNH!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Nội dung thông điệp
+            Text(
+              'Cả hai bạn đã cùng chạm tim! Mọi bí ẩn sương mù đã được gỡ bỏ, và giới hạn 120 giây đã bị phá vỡ vĩnh viễn.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13.5,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // 3. Card thông tin bạn bè đã mở khóa
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  width: 1,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        partner.displayName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+              ),
+              child: Row(
+                children: [
+                  AnonymousAvatarHelper.buildAvatar(
+                    user: partner,
+                    size: 48,
+                    showLockBadge: false,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          partner.name.isNotEmpty
+                              ? partner.name
+                              : partner.displayName,
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        'Tương hợp: ${partner.compatibilityScore}%',
-                        style: const TextStyle(
-                          color: Color(0xFF00FFB2),
-                          fontSize: 12,
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Tương hợp: ${partner.compatibilityScore}%',
+                              style: const TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                color: Color(0xFF10B981),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            // 4. Nút bấm CTA: Tiếp tục trò chuyện vĩnh viễn (Chuẩn Cosmic Design & không rớt dòng)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onContinue();
+                },
+                borderRadius: BorderRadius.circular(25),
+                child: Ink(
+                  height: 50,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFEC4899).withValues(alpha: 0.38),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
+                  child: const Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Tiếp tục trò chuyện vĩnh viễn',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              color: Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.rocket_launch_rounded,
+                          color: Colors.white,
+                          size: 19,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF2A6D),
-            minimumSize: const Size(double.infinity, 46),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          onPressed: onContinue,
-          child: const Text(
-            'Tiếp tục trò chuyện vĩnh viễn 🚀',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

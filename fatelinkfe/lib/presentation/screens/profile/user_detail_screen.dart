@@ -443,34 +443,40 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Avatar: Nếu canViewIdentity = false -> Hiệu ứng Kính Mờ (Blur) + Ổ Khóa
-                        Center(
-                          child: Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              Container(
-                                width: 130,
-                                height: 130,
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
+                        Builder(
+                          builder: (context) {
+                            final auraGradient = AnonymousAvatarHelper.getCosmicAuraGradient(widget.user.id);
+                            final avatarBorderGradient = canViewIdentity
+                                ? const LinearGradient(
                                     colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.16),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
+                                  )
+                                : auraGradient;
+
+                            return Center(
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                alignment: Alignment.center,
+                                children: [
+                                  // Avatar Container with Gradient Border
+                                  Container(
+                                    width: 130,
+                                    height: 130,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: avatarBorderGradient,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: avatarBorderGradient.colors.first.withValues(alpha: 0.25),
+                                          blurRadius: 16,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      Image(
+                                    child: ClipOval(
+                                      child: Image(
                                         image: canViewIdentity
                                             ? NetworkImage(avatarUrl) as ImageProvider
                                             : AssetImage(AnonymousAvatarHelper.getAnonymousAvatarAsset(widget.user.id)),
@@ -481,61 +487,63 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                           child: Icon(Icons.person_rounded, color: Color(0xFF6366F1), size: 60),
                                         ),
                                       ),
-                                      // Lớp phủ Kính mờ nhẹ + Huy hiệu Linh vật ẩn danh nếu chưa mở diện mạo
-                                      if (!canViewIdentity)
-                                        Container(
-                                          color: Colors.black.withValues(alpha: 0.18),
-                                          child: Center(
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.6),
-                                                borderRadius: BorderRadius.circular(16),
-                                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(Icons.lock_rounded, color: Colors.white, size: 13),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    AnonymousAvatarHelper.getAnonymousPersonaName(widget.user.id),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 10.5,
-                                                      fontWeight: FontWeight.w700,
-                                                      letterSpacing: 0.2,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                    ),
+                                  ),
+
+                                  // Mood icon ở góc trên bên phải (top-right) theo quy chuẩn UI/UX
+                                  if (widget.user.moodIcon != null)
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 6,
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (widget.user.moodIcon != null)
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 6,
+                                        child: Text(
+                                          widget.user.moodIcon!,
+                                          style: const TextStyle(fontSize: 18),
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    widget.user.moodIcon!,
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
-                                ),
-                            ],
-                          ),
+                                    ),
+
+                                  // Huy hiệu ổ khóa ẩn danh ở góc dưới bên phải (bottom-right)
+                                  if (!canViewIdentity)
+                                    Positioned(
+                                      bottom: 2,
+                                      right: 2,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          gradient: auraGradient,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.25),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.lock_rounded,
+                                          color: Colors.white,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 16),
@@ -567,6 +575,46 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                               ),
                           ],
                         ),
+
+                        // Chip thông tin Linh vật Vũ trụ thanh lịch & không bao giờ vỡ avatar
+                        if (!canViewIdentity) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4.5),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF6366F1).withValues(alpha: 0.12),
+                                  const Color(0xFFEC4899).withValues(alpha: 0.12),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF8B5CF6)),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    'Linh vật: ${AnonymousAvatarHelper.getAnonymousPersonaName(widget.user.id)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF4F46E5),
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         const SizedBox(height: 6),
 

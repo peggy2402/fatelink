@@ -7,6 +7,7 @@ import '../../../../core/utils/secure_storage_helper.dart';
 import '../../../../core/utils/toast_utils.dart';
 import '../../../../data/models/match_user.dart';
 import '../../profile/user_detail_screen.dart';
+import '../../../../core/utils/anonymous_avatar_helper.dart';
 
 class NotificationItem {
   final String id;
@@ -219,20 +220,24 @@ class _NotificationsModalState extends State<NotificationsModal> {
       }
     }
 
-    // Nếu thông báo liên quan đến User khác -> Mở trang hồ sơ tương tác
+    // Nếu thông báo liên quan đến User khác -> Mở trang hồ sơ tương tác chuẩn chế độ ẩn danh
     if (item.senderId != null && item.senderId!.isNotEmpty && mounted) {
+      final bool isMutual =
+          item.type == 'mutual_like' || item.type == 'mutual_match';
+      final matchUser = MatchUser(
+        id: item.senderId!,
+        name: item.senderName ?? 'Tâm hồn bí ẩn',
+        emotion: 'Bình yên',
+        compatibilityScore: 88,
+        avatar: item.senderAvatar,
+        isFaceLocked: !isMutual,
+        isMutualFollow: isMutual,
+      );
+
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => UserDetailScreen(
-            user: MatchUser(
-              id: item.senderId!,
-              name: item.senderName ?? 'Tâm hồn bí ẩn',
-              emotion: 'Bình yên',
-              compatibilityScore: 88,
-              avatar: item.senderAvatar,
-              isFaceLocked: false,
-              isMutualFollow: item.type == 'mutual_like',
-            ),
+            user: matchUser,
           ),
         ),
       );
@@ -425,6 +430,50 @@ class _NotificationsModalState extends State<NotificationsModal> {
   }
 
   Widget _buildNotificationCard(NotificationItem item) {
+    final bool isUserAction =
+        item.senderId != null && item.senderId!.trim().isNotEmpty;
+    final bool isMutual =
+        item.type == 'mutual_like' || item.type == 'mutual_match';
+
+    MatchUser? tempUser;
+    String displayTitle = item.title;
+    String displayMessage = item.message;
+
+    if (isUserAction) {
+      tempUser = MatchUser(
+        id: item.senderId!,
+        name: item.senderName ?? 'Tâm hồn bí ẩn',
+        emotion: 'Bình yên',
+        compatibilityScore: 88,
+        avatar: item.senderAvatar,
+        isFaceLocked: !isMutual,
+        isMutualFollow: isMutual,
+      );
+
+      // Nếu chưa cùng thả tim (chưa mutual match) -> Ẩn danh tuyệt đối
+      if (!isMutual) {
+        final alias = tempUser.displayName;
+        if (item.type == 'like') {
+          displayTitle = 'Ai đó vừa thả tim bạn! 💕';
+          displayMessage =
+              'Một tâm hồn đồng điệu ($alias) vừa thả tim hồ sơ của bạn. Cùng thả tim lại để mở khóa diện mạo nhé!';
+        } else if (item.type == 'view' || item.type == 'view_profile') {
+          displayTitle = 'Ai đó vừa ghé thăm tần số của bạn! ✨';
+          displayMessage =
+              'Một tâm hồn đồng điệu ($alias) vừa dừng chân ghé thăm hồ sơ và tần số cảm xúc của bạn.';
+        } else if (item.type == 'wave') {
+          displayTitle = 'Tín hiệu sóng rung cảm mới! 🌊';
+          displayMessage =
+              'Một tâm hồn đồng điệu ($alias) vừa phát sóng rung cảm hướng về bạn!';
+        } else {
+          // Che tên thật trong message nếu có
+          if (item.senderName != null && item.senderName!.isNotEmpty) {
+            displayMessage = displayMessage.replaceAll(item.senderName!, alias);
+          }
+        }
+      }
+    }
+
     return GestureDetector(
       onTap: () => _markSingleAsRead(item),
       child: Container(
@@ -433,7 +482,9 @@ class _NotificationsModalState extends State<NotificationsModal> {
           color: item.isRead ? Colors.white : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: item.isRead ? const Color(0xFFF1F5F9) : const Color(0xFFE0E7FF),
+            color: item.isRead
+                ? const Color(0xFFF1F5F9)
+                : const Color(0xFFE0E7FF),
           ),
           boxShadow: [
             BoxShadow(
@@ -446,57 +497,53 @@ class _NotificationsModalState extends State<NotificationsModal> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar hoặc Icon
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: item.iconColor.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: item.senderAvatar != null && item.senderAvatar!.isNotEmpty
-                      ? ClipOval(
-                          child: Image(
-                            image: ImagePickerService.getImageProvider(item.senderAvatar!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              item.icon,
-                              color: item.iconColor,
-                              size: 22,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          item.icon,
-                          color: item.iconColor,
-                          size: 22,
-                        ),
-                ),
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(3.5),
+            // Avatar chuẩn mực: Tự động ẩn danh linh vật vũ trụ hoặc hiện ảnh thật khi mutual
+            if (isUserAction && tempUser != null)
+              AnonymousAvatarHelper.buildAvatar(
+                user: tempUser,
+                size: 46,
+                showLockBadge: !isMutual,
+              )
+            else
+              // Icon thông báo hệ thống
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
-                      color: item.iconColor,
+                      color: item.iconColor.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
                     ),
                     child: Icon(
                       item.icon,
-                      size: 9,
-                      color: Colors.white,
+                      color: item.iconColor,
+                      size: 22,
                     ),
                   ),
-                ),
-              ],
-            ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3.5),
+                      decoration: BoxDecoration(
+                        color: item.iconColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: Icon(
+                        item.icon,
+                        size: 9,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(width: 14),
 
-            // Nội dung
+            // Nội dung thông báo
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,11 +553,12 @@ class _NotificationsModalState extends State<NotificationsModal> {
                     children: [
                       Expanded(
                         child: Text(
-                          item.title,
+                          displayTitle,
                           style: TextStyle(
                             fontFamily: 'BeVietnamPro',
                             fontSize: 14,
-                            fontWeight: item.isRead ? FontWeight.w700 : FontWeight.w800,
+                            fontWeight:
+                                item.isRead ? FontWeight.w700 : FontWeight.w800,
                             color: const Color(0xFF0F172A),
                           ),
                         ),
@@ -528,11 +576,13 @@ class _NotificationsModalState extends State<NotificationsModal> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    item.message,
+                    displayMessage,
                     style: TextStyle(
                       fontFamily: 'BeVietnamPro',
                       fontSize: 12.5,
-                      color: item.isRead ? const Color(0xFF64748B) : const Color(0xFF334155),
+                      color: item.isRead
+                          ? const Color(0xFF64748B)
+                          : const Color(0xFF334155),
                       height: 1.35,
                     ),
                   ),
