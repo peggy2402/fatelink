@@ -16,26 +16,37 @@ import '../../../data/models/match_user.dart';
 import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
 
-// Components tách rời sạch sẽ
+// Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
 import '../profile/user_detail_screen.dart';
+import 'widgets/cosmic_location_modal.dart';
+import 'widgets/cosmic_voice_call_modal.dart';
+import 'widgets/cosmic_voice_recorder_modal.dart';
+import 'widgets/glassmorphic_card_stack.dart';
+import 'widgets/glassmorphic_image_viewer.dart';
 import 'widgets/match_ai_suggestion_sheet.dart';
 import 'widgets/match_options_bottom_sheet.dart';
+import 'widgets/cosmic_emoji_picker_sheet.dart';
+import 'widgets/cosmic_voice_player_bubble.dart';
+import 'widgets/meyufeel_resonance_bar.dart';
+import 'widgets/meyufeel_watermark_lotus.dart';
 
-/// Màn hình trò chuyện giữa 2 người dùng đã ghép đôi (MatchChatScreen):
-/// 1. Vấn đề 1: Danh tính thật đã mở khóa (không còn ẩn danh):
-///    - Tải profile thật của đối phương từ API `/api/users/:id/profile`.
-///    - Hiển thị avatar thật (Google/Upload) ở AppBar, Header và từng bong bóng chat.
-///    - Bấm vào avatar ở bất kỳ vị trí nào để xem toàn bộ Profile chi tiết của người đó.
-/// 2. Vấn đề 2: Thanh chat phong cách Telegram / Messenger:
-///    - Nút '+' mở Popup/Sheet đa tiện ích: Camera, Thư viện ảnh, Vị trí, Voice Note.
-///    - Nút Camera chụp nhanh cạnh nút '+'.
-///    - Nút Emoji trong ô nhập.
-///    - Nút chuyển đổi thông minh: Ô text có chữ -> Nút Gửi; Ô text rỗng -> Nút Mic ghi âm thoại.
-///    - Bong bóng tin nhắn hỗ trợ: Văn bản, Hình ảnh, Tin nhắn âm thanh thoại, Vị trí.
-/// 3. Vấn đề 3: Trò chuyện 2 chiều song hành siêu bền vững (Dual Channel):
-///    - WebSocket Socket.IO Real-time + REST API HTTP Fallback (`/api/messages/direct`).
-///    - Tự động refresh token nếu token hết hạn, kết nối tự động hồi phục khi rớt mạng.
+/// Màn hình trò chuyện ghép đôi FateLink (MatchChatScreen):
+/// - Vấn đề 1: Thả react (❤️, 🔥, 😂, 😮, 😢, 👍), Trả lời trích dẫn (Reply/Quote),
+///             Gỡ/Thu hồi tin nhắn ("Xóa ở tôi" & "Thu hồi với mọi người"),
+///             Chọn nhiều tin nhắn để xóa cùng lúc (Multi-select Mode).
+/// - Vấn đề 2 & 4.1: Gửi nhiều ảnh cùng lúc qua `pickMultiImage()`.
+///                   Hiển thị đoạn chat dạng "Modern Glassmorphic Card Stack UI"
+///                   với card xếp lớp 3D bo góc lớn 22px, viền kính mờ, soft shadow.
+///                   Nhấn vào ảnh để xem trọn vẹn phóng to (`GlassmorphicImageViewer`).
+/// - Vấn đề 3: Đàm thoại trực tiếp qua mic với sóng âm Soulmate (`CosmicVoiceCallModal`).
+/// - Vấn đề 4.3: Chia sẻ vị trí thực tế (`CosmicLocationPickerModal`) với bản đồ radar,
+///               tọa độ GPS và địa chỉ chi tiết (không còn mock thô sơ).
+/// - Vấn đề 4.4: Ghi âm giọng nói thực tế (`CosmicVoiceRecorderModal`) với sóng âm chuyển động.
+/// - Vấn đề 5: Bỏ tích xanh cạnh tên ở cả AppBar và Header se duyên.
+/// - Tính năng Soulmate & Giữ lửa 🔥: Thanh Soulmate Resonance Bar hiển thị chuỗi giữ lửa
+///   và mức độ thấu hiểu tâm giao, mở rộng bản đồ kết nối cảm xúc.
+/// - UI/UX: Siêu mềm mại, bo góc 22-26px, đa tầng glassmorphism, micro-interactions chuẩn Apple.
 class MatchChatScreen extends StatefulWidget {
   final String partnerName;
   final String partnerId;
@@ -50,7 +61,7 @@ class MatchChatScreen extends StatefulWidget {
     required this.partnerName,
     required this.partnerId,
     this.partnerAvatar,
-    this.canViewIdentity = true, // Cả 2 đã match -> Mặc định đã mở khóa danh tính
+    this.canViewIdentity = true,
     this.frequencyHertz,
     this.moodIcon,
     this.partnerUser,
@@ -78,8 +89,14 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   bool _isNearBottom = true;
   int _unreadCount = 0;
   bool _hasInputText = false;
+  bool _isSyncing = false;
 
-  // Thông tin thực tế của đối phương được nạp từ Profile API
+  // Trạng thái Reply & Multi-select
+  ChatMessage? _replyingMessage;
+  bool _isMultiSelectMode = false;
+  final Set<String> _selectedMessageIds = {};
+
+  // Thông tin thực tế đối phương nạp từ API Profile
   late String _partnerDisplayName;
   String? _partnerRealAvatar;
   String? _partnerBio;
@@ -91,7 +108,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   // Danh sách tin nhắn cuộc trò chuyện
   final List<ChatMessage> _messages = [];
 
-  // Gợi ý mở lời phá băng (Icebreakers) thông minh & ngọt ngào
+  // Gợi ý mở lời phá băng (Icebreakers) ngọt ngào
   final List<String> _icebreakers = [
     'Hôm nay của bạn thế nào? ✨',
     'Bạn thích nghe thể loại nhạc gì? 🎧',
@@ -111,7 +128,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _scrollController.addListener(_scrollListener);
     _chatController.addListener(_onTextChanged);
 
-    // Mặc định luôn có sẵn câu chào se duyên định mệnh từ đối phương
+    // Tin nhắn mở đầu se duyên mặc định
     _messages.add(
       ChatMessage(
         text: 'Xin chào! Rất vui vì định mệnh đã kết nối chúng ta hôm nay ✨',
@@ -120,10 +137,10 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       ),
     );
 
-    // 1. Tải Profile thực tế của đối phương (Ảnh thật, bio, cảm xúc)
+    // 1. Tải Profile thực tế đối phương
     _fetchPartnerProfile();
 
-    // 2. Tải lịch sử tin nhắn và khởi tạo Socket.IO
+    // 2. Tải lịch sử và khởi tạo Socket.IO
     _isLoadingHistory = true;
     _historyTimeoutTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted && _isLoadingHistory) {
@@ -133,9 +150,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
     _initSocketAndLoadHistory();
 
-    // 3. Fallback Polling định kỳ mỗi 4s để đảm bảo 100% không sót tin nhắn khi socket disconnect
-    _pollingFallbackTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (_socket == null || !_socket!.connected) {
+    // 3. Fallback Polling dự phòng nhẹ nhàng mỗi 12s
+    _pollingFallbackTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (mounted && (_socket == null || !_socket!.connected)) {
         _syncMessagesViaHttp();
       }
     });
@@ -147,47 +164,42 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       setState(() => _hasInputText = hasText);
     }
 
-    if (_socket == null || !_socket!.connected) return;
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit('typing', {
+        'partnerId': widget.partnerId,
+        'isTyping': hasText,
+      });
 
-    // Phát sự kiện đang gõ cho đối phương
-    _socket!.emit('typing', {
-      'partnerId': widget.partnerId,
-      'isTyping': true,
-    });
-
-    // Sau 1.5s nếu người dùng dừng gõ thì phát dừng gõ
-    _typingDebounce?.cancel();
-    _typingDebounce = Timer(const Duration(milliseconds: 1500), () {
-      if (_socket != null && _socket!.connected) {
-        _socket!.emit('typing', {
-          'partnerId': widget.partnerId,
-          'isTyping': false,
-        });
-      }
-    });
+      _typingDebounce?.cancel();
+      _typingDebounce = Timer(const Duration(seconds: 2), () {
+        if (_socket != null && _socket!.connected) {
+          _socket!.emit('typing', {
+            'partnerId': widget.partnerId,
+            'isTyping': false,
+          });
+        }
+      });
+    }
   }
 
-  /// Tải thông tin thực tế của đối phương từ API `/api/users/:id/profile`
+  /// Tải thông tin hồ sơ đối phương
   Future<void> _fetchPartnerProfile() async {
     try {
       final token = await _secureStorage.read(key: 'accessToken');
       if (token == null || token.isEmpty || !mounted) return;
 
-      final url = '${AppConstants.baseUrl}/${AppConstants.userProfile(widget.partnerId)}';
+      final url = '${AppConstants.baseUrl}/users/${widget.partnerId}/profile';
       final res = await ApiService.get(url, context, token: token, showLoading: false);
 
-      if (res is Map && mounted) {
+      if (res != null && mounted) {
+        final profileData = res is Map ? res : {};
         setState(() {
-          _partnerDisplayName = res['name']?.toString() ??
-              res['displayName']?.toString() ??
-              widget.partnerName;
-          _partnerRealAvatar = res['avatar']?.toString() ?? widget.partnerAvatar;
-          _partnerBio = res['bio']?.toString();
-          _partnerEmotion = res['latestEmotion']?.toString() ??
-              res['dominantEmotion']?.toString() ??
-              'Đồng điệu';
-          _partnerHertz = res['frequencyHertz']?.toString() ?? widget.frequencyHertz ?? '528 Hz';
-          _partnerMoodIcon = res['moodIcon']?.toString() ?? widget.moodIcon ?? '✨';
+          _partnerDisplayName = profileData['name'] ?? profileData['fullName'] ?? widget.partnerName;
+          _partnerRealAvatar = profileData['avatar'] ?? profileData['avatarUrl'] ?? widget.partnerAvatar;
+          _partnerBio = profileData['bio'] ?? profileData['about'];
+          _partnerEmotion = profileData['emotion'] ?? profileData['currentMood'];
+          _partnerHertz = profileData['frequencyHertz'] ?? widget.frequencyHertz ?? '528 Hz';
+          _partnerMoodIcon = profileData['moodIcon'] ?? widget.moodIcon ?? '✨';
 
           _partnerUserObject = MatchUser(
             id: widget.partnerId,
@@ -207,10 +219,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
-  /// Khởi tạo kết nối Socket và tải lịch sử tin nhắn
+  /// Khởi tạo kết nối Socket và nạp tin nhắn
   Future<void> _initSocketAndLoadHistory() async {
     try {
-      // 1. Kiểm tra và đảm bảo Token luôn hợp lệ
       var token = await _secureStorage.read(key: 'accessToken');
       if (token == null || _isTokenExpired(token)) {
         token = await ApiService.tryRefreshToken();
@@ -223,7 +234,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
       final cleanToken = token.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
 
-      // 2. Khởi tạo Socket.IO kết nối tới backend
       _socket = IO.io(
         AppConstants.serverUrl,
         IO.OptionBuilder()
@@ -238,19 +248,16 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
       _socket!.onConnect((_) {
         debugPrint('✅ [MatchChatSocket] Đã kết nối socket thành công');
-        // Tải lịch sử tin nhắn trực tiếp giữa 2 người từ server
         _socket!.emit('loadDirectHistory', {
           'partnerId': widget.partnerId,
           'limit': 50,
         });
 
-        // Kiểm tra trạng thái trực tuyến của đối phương
         _socket!.emit('checkUserStatus', {
           'targetUserId': widget.partnerId,
         });
       });
 
-      // Lắng nghe kết quả lịch sử tin nhắn từ server
       _socket!.on('directHistoryResult', (data) {
         if (!mounted) return;
         _historyTimeoutTimer?.cancel();
@@ -261,13 +268,22 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
           for (final item in rawMessages) {
             if (item is Map) {
+              final text = item['text'] ?? '';
+              final imageUrls = (item['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+              final messageType = item['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
+
               loaded.add(
                 ChatMessage(
-                  text: item['text'] ?? '',
+                  id: item['id']?.toString(),
+                  text: text,
                   isSentByMe: item['isSentByMe'] == true,
-                  timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')
-                          ?.toLocal() ??
-                      DateTime.now(),
+                  timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+                  reaction: item['reaction'],
+                  replyToText: item['replyToText'],
+                  replyToSender: item['replyToSender'],
+                  isRevoked: item['isRevoked'] == true,
+                  imageUrls: imageUrls,
+                  messageType: messageType,
                 ),
               );
             }
@@ -285,21 +301,29 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      // Lắng nghe tin nhắn realtime từ đối phương gửi tới
       _socket!.on('receiveDirectMessage', (data) {
         if (!mounted) return;
         if (data is Map && data['senderId'] == widget.partnerId) {
           HapticFeedback.lightImpact();
+          final text = data['text'] ?? '';
+          final imageUrls = (data['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final messageType = data['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
+
           setState(() {
             _isPartnerTyping = false;
             _messages.insert(
               0,
               ChatMessage(
-                text: data['text'] ?? '',
+                id: data['id']?.toString(),
+                text: text,
                 isSentByMe: false,
-                timestamp: DateTime.tryParse(data['timestamp']?.toString() ?? '')
-                        ?.toLocal() ??
-                    DateTime.now(),
+                timestamp: DateTime.tryParse(data['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+                reaction: data['reaction'],
+                replyToText: data['replyToText'],
+                replyToSender: data['replyToSender'],
+                isRevoked: data['isRevoked'] == true,
+                imageUrls: imageUrls,
+                messageType: messageType,
               ),
             );
           });
@@ -307,7 +331,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      // Lắng nghe trạng thái đang gõ từ đối phương
       _socket!.on('receiveTyping', (data) {
         if (!mounted) return;
         if (data is Map && data['senderId'] == widget.partnerId) {
@@ -320,7 +343,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      // Lắng nghe kết quả kiểm tra trạng thái online
       _socket!.on('userStatusResult', (data) {
         if (!mounted) return;
         if (data is Map && data['userId'] == widget.partnerId) {
@@ -346,6 +368,17 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
+      _socket!.on('authError', (data) async {
+        debugPrint('⚠️ [MatchChatSocket] Lỗi xác thực token socket: $data');
+        final refreshedToken = await ApiService.tryRefreshToken();
+        if (refreshedToken != null && mounted) {
+          final clean = refreshedToken.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
+          _socket!.io.options?['auth'] = {'token': clean};
+          _socket!.io.options?['extraHeaders'] = {'Authorization': 'Bearer $clean'};
+          _socket!.connect();
+        }
+      });
+
       _socket!.onConnectError((err) {
         debugPrint('⚠️ [MatchChatSocket] Lỗi kết nối socket: $err');
         if (mounted && _isLoadingHistory) {
@@ -360,7 +393,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      // Song song: Tải lịch sử qua HTTP REST API Fallback
       _syncMessagesViaHttp();
     } catch (e) {
       debugPrint('⚠️ [MatchChatSocket] Lỗi khởi tạo socket: $e');
@@ -370,8 +402,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
-  /// Đồng bộ tin nhắn qua REST API HTTP (`/api/messages/direct/:partnerId`)
+  /// Đồng bộ tin nhắn qua REST API HTTP
   Future<void> _syncMessagesViaHttp() async {
+    if (_isSyncing || !mounted) return;
+    _isSyncing = true;
+
     try {
       final token = await _secureStorage.read(key: 'accessToken');
       if (token == null || token.isEmpty || !mounted) return;
@@ -383,13 +418,22 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         final List<ChatMessage> loaded = [];
         for (final item in res) {
           if (item is Map) {
+            final text = item['text'] ?? '';
+            final imageUrls = (item['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+            final messageType = item['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
+
             loaded.add(
               ChatMessage(
-                text: item['text'] ?? '',
+                id: item['id']?.toString(),
+                text: text,
                 isSentByMe: item['isSentByMe'] == true,
-                timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')
-                        ?.toLocal() ??
-                    DateTime.now(),
+                timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+                reaction: item['reaction'],
+                replyToText: item['replyToText'],
+                replyToSender: item['replyToSender'],
+                isRevoked: item['isRevoked'] == true,
+                imageUrls: imageUrls,
+                messageType: messageType,
               ),
             );
           }
@@ -397,28 +441,39 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
         if (loaded.isNotEmpty) {
           setState(() {
-            _messages.clear();
-            _messages.addAll(loaded.reversed);
+            for (final msg in loaded) {
+              final alreadyExists = _messages.any((existing) =>
+                  existing.text == msg.text &&
+                  existing.isSentByMe == msg.isSentByMe &&
+                  existing.timestamp.difference(msg.timestamp).abs().inSeconds < 5);
+              if (!alreadyExists) {
+                _messages.insert(0, msg);
+              }
+            }
             _isLoadingHistory = false;
           });
         }
       }
-    } catch (_) {
-      // Bỏ qua nếu lỗi HTTP fallback
+    } catch (e) {
+      debugPrint('⚠️ [MatchChat] Lỗi sync HTTP messages: $e');
+    } finally {
+      _isSyncing = false;
     }
   }
 
   bool _isTokenExpired(String token) {
     try {
-      final parts = token.split('.');
+      final cleanToken = token.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
+      final parts = cleanToken.split('.');
       if (parts.length != 3) return true;
+
       final payload = jsonDecode(
         utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
       );
       final exp = payload['exp'];
       if (exp == null) return false;
       final expDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-      return DateTime.now().isAfter(expDate.subtract(const Duration(seconds: 30)));
+      return DateTime.now().isAfter(expDate.subtract(const Duration(seconds: 60)));
     } catch (_) {
       return true;
     }
@@ -468,7 +523,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     super.dispose();
   }
 
-  /// Xem Profile chi tiết của người dùng
+  /// Xem Profile chi tiết đối phương
   void _navigateToProfile() {
     HapticFeedback.lightImpact();
     final user = _partnerUserObject ??
@@ -493,23 +548,35 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Gửi tin nhắn thực tế (Hỗ trợ Dual Channel: Socket + REST API)
-  void _handleSendMessage(String text) {
-    if (text.trim().isEmpty) return;
+  /// Gửi tin nhắn thực tế (Văn bản / Trả lời trích dẫn)
+  void _handleSendMessage(
+    String text, {
+    String? messageType,
+    List<String>? imageUrls,
+  }) {
+    if (text.trim().isEmpty && (imageUrls == null || imageUrls.isEmpty)) return;
     HapticFeedback.lightImpact();
 
     final trimmedText = text.trim();
+    final replyText = _replyingMessage?.text;
+    final replySender = _replyingMessage != null
+        ? (_replyingMessage!.isSentByMe ? 'Chính bạn' : _partnerDisplayName)
+        : null;
+
+    final newMessage = ChatMessage(
+      text: trimmedText,
+      isSentByMe: true,
+      timestamp: DateTime.now(),
+      replyToText: replyText,
+      replyToSender: replySender,
+      imageUrls: imageUrls ?? const [],
+      messageType: messageType ?? (imageUrls != null && imageUrls.length > 1 ? 'imageStack' : 'text'),
+    );
 
     // 1. Thêm tin nhắn của mình vào UI tức thời (0ms Latency)
     setState(() {
-      _messages.insert(
-        0,
-        ChatMessage(
-          text: trimmedText,
-          isSentByMe: true,
-          timestamp: DateTime.now(),
-        ),
-      );
+      _messages.insert(0, newMessage);
+      _replyingMessage = null; // Clear reply sau khi gửi
     });
 
     _chatController.clear();
@@ -520,6 +587,10 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       _socket!.emit('sendDirectMessage', {
         'partnerId': widget.partnerId,
         'text': trimmedText,
+        'replyToText': replyText,
+        'replyToSender': replySender,
+        'imageUrls': imageUrls,
+        'messageType': newMessage.messageType,
       });
 
       _socket!.emit('typing', {
@@ -527,15 +598,14 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         'isTyping': false,
       });
     } else {
-      debugPrint('⚠️ [MatchChatSocket] Socket chưa kết nối, thử kết nối lại...');
       _socket?.connect();
     }
 
-    // 3. Song song gửi qua REST API HTTP Backend để đảm bảo 100% lưu trữ MongoDB & push notification
-    _sendMessageViaHttp(trimmedText);
+    // 3. REST API HTTP Fallback
+    _sendMessageViaHttp(trimmedText, replyText, replySender);
   }
 
-  Future<void> _sendMessageViaHttp(String text) async {
+  Future<void> _sendMessageViaHttp(String text, String? replyText, String? replySender) async {
     try {
       final token = await _secureStorage.read(key: 'accessToken');
       if (token == null || token.isEmpty || !mounted) return;
@@ -547,6 +617,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         body: {
           'partnerId': widget.partnerId,
           'text': text,
+          'replyToText': replyText,
+          'replyToSender': replySender,
         },
         token: token,
         showLoading: false,
@@ -556,20 +628,33 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
-  /// Chọn và gửi ảnh từ thư viện hoặc máy ảnh
-  Future<void> _handlePickImage(ImageSource source) async {
+  /// Vấn đề 2 & 4.1: Chọn và gửi nhiều ảnh cùng lúc qua `pickMultiImage()`
+  Future<void> _handlePickMultiImages() async {
     try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        imageQuality: 80,
+      final pickedFiles = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
         maxWidth: 1400,
       );
 
-      if (pickedFile != null) {
+      if (pickedFiles.isNotEmpty) {
         HapticFeedback.mediumImpact();
-        // Gửi tin nhắn ảnh dưới dạng đường dẫn file cục bộ (hoặc tải lên)
-        final imageMessage = '[Hình ảnh] file://${pickedFile.path}';
-        _handleSendMessage(imageMessage);
+        final imagePaths = pickedFiles.map((f) => 'file://${f.path}').toList();
+
+        if (imagePaths.length == 1) {
+          // Gửi ảnh đơn lẻ
+          _handleSendMessage(
+            '[Hình ảnh] ${imagePaths.first}',
+            imageUrls: imagePaths,
+            messageType: 'image',
+          );
+        } else {
+          // Gửi bộ sưu tập nhiều ảnh -> Hiển thị Modern Glassmorphic Card Stack UI
+          _handleSendMessage(
+            '[Bộ sưu tập ${imagePaths.length} ảnh]',
+            imageUrls: imagePaths,
+            messageType: 'imageStack',
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -577,19 +662,318 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     }
   }
 
-  /// Chia sẻ vị trí hiện tại
+  /// Chụp ảnh nhanh từ máy ảnh
+  Future<void> _handlePickCamera() async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1400,
+      );
+
+      if (picked != null) {
+        HapticFeedback.mediumImpact();
+        final path = 'file://${picked.path}';
+        _handleSendMessage(
+          '[Hình ảnh] $path',
+          imageUrls: [path],
+          messageType: 'image',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ToastUtil.showError(context, 'Không thể mở máy ảnh. Vui lòng kiểm tra quyền!');
+    }
+  }
+
+  /// Vấn đề 4.3: Mở modal chia sẻ vị trí thực tế
   void _handleShareLocation() {
-    HapticFeedback.lightImpact();
-    _handleSendMessage('📍 [Vị trí] Đang ở gần bạn (Bán kính 1.2 km) • Hồ Gươm, Hà Nội ✨');
+    CosmicLocationPickerModal.show(
+      context,
+      onLocationSelected: (locationText, address, lat, lng) {
+        _handleSendMessage(
+          locationText,
+          messageType: 'location',
+        );
+      },
+    );
   }
 
-  /// Gửi tin nhắn thoại giả lập / ghi âm phong cách Telegram/Messenger
+  /// Vấn đề 4.4: Mở modal ghi âm voice note trực tiếp với sóng âm nhịp đập
   void _handleVoiceNote() {
-    HapticFeedback.mediumImpact();
-    _handleSendMessage('🎙️ [Tin nhắn thoại 0:08] Rất vui vì được kết nối cùng bạn hôm nay! ✨');
+    CosmicVoiceRecorderModal.show(
+      context,
+      onSendVoice: (voiceText, durationSeconds) {
+        _handleSendMessage(
+          voiceText,
+          messageType: 'voice',
+        );
+      },
+    );
   }
 
-  /// Hiển thị Popup / Bottom Sheet tùy chọn truyền thông phong cách Telegram / Messenger
+  /// Vấn đề 3: Bật mic và trò chuyện trực tiếp qua cuộc gọi Soulmate Voice Call
+  void _handleStartVoiceCall() {
+    CosmicVoiceCallModal.show(
+      context,
+      partnerName: _partnerDisplayName,
+      partnerId: widget.partnerId,
+      partnerAvatar: _partnerRealAvatar,
+    );
+  }
+
+  /// Vấn đề 1: Thả React lên tin nhắn
+  void _handleReaction(ChatMessage msg, String emoji) {
+    HapticFeedback.lightImpact();
+    setState(() {
+      final index = _messages.indexWhere((m) => m.id == msg.id);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(reaction: emoji);
+      }
+    });
+
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit('reactMessage', {
+        'partnerId': widget.partnerId,
+        'messageId': msg.id,
+        'reaction': emoji,
+      });
+    }
+  }
+
+  /// Vấn đề 1: Xóa tin nhắn ở chính tôi
+  void _handleDeleteForMe(ChatMessage msg) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _messages.removeWhere((m) => m.id == msg.id);
+    });
+    ToastUtil.showSuccess(context, 'Đã xóa tin nhắn ở phía bạn');
+  }
+
+  /// Vấn đề 1: Thu hồi tin nhắn ở phía mọi người
+  void _handleRevokeForEveryone(ChatMessage msg) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      final index = _messages.indexWhere((m) => m.id == msg.id);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(
+          isRevoked: true,
+          text: 'Tin nhắn đã được thu hồi',
+        );
+      }
+    });
+
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit('revokeMessage', {
+        'partnerId': widget.partnerId,
+        'messageId': msg.id,
+      });
+    }
+    ToastUtil.showSuccess(context, 'Đã thu hồi tin nhắn');
+  }
+
+  /// Vấn đề 1: Xóa nhiều tin nhắn đã chọn
+  void _handleDeleteMultipleMessages(bool revokeForEveryone) {
+    HapticFeedback.heavyImpact();
+    setState(() {
+      if (revokeForEveryone) {
+        for (int i = 0; i < _messages.length; i++) {
+          if (_selectedMessageIds.contains(_messages[i].id) && _messages[i].isSentByMe) {
+            _messages[i] = _messages[i].copyWith(
+              isRevoked: true,
+              text: 'Tin nhắn đã được thu hồi',
+            );
+          }
+        }
+      } else {
+        _messages.removeWhere((m) => _selectedMessageIds.contains(m.id));
+      }
+      _isMultiSelectMode = false;
+      _selectedMessageIds.clear();
+    });
+    ToastUtil.showSuccess(context, revokeForEveryone ? 'Đã thu hồi các tin nhắn được chọn' : 'Đã xóa các tin nhắn được chọn');
+  }
+
+  /// Menu hành động khi Long Press vào tin nhắn (Reaction Bar + Reply + Xóa/Thu hồi)
+  void _showMessageActionMenu(ChatMessage msg) {
+    if (_isMultiSelectMode) {
+      setState(() {
+        if (_selectedMessageIds.contains(msg.id)) {
+          _selectedMessageIds.remove(msg.id);
+        } else {
+          _selectedMessageIds.add(msg.id);
+        }
+      });
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    final emojis = ['❤️', '🔥', '😂', '😮', '😢', '👍'];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x26000000),
+                blurRadius: 24,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.paddingOf(ctx).bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Thanh kéo
+              Container(
+                width: 40,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 1. Dải thả Reaction Emoji tròn nổi bật
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: emojis.map((emoji) {
+                    final isCurrent = msg.reaction == emoji;
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _handleReaction(msg, emoji);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isCurrent ? const Color(0xFFEDE9FE) : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          emoji,
+                          style: TextStyle(
+                            fontSize: isCurrent ? 26 : 22,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 2. Danh sách hành động: Trả lời, Sao chép, Thu hồi, Xóa, Chọn nhiều
+              _buildActionMenuItem(
+                icon: Icons.reply_rounded,
+                color: const Color(0xFF6366F1),
+                title: 'Trả lời tin nhắn này',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _replyingMessage = msg);
+                  _focusNode.requestFocus();
+                },
+              ),
+              if (!msg.isRevoked && !msg.text.startsWith('[Hình ảnh]') && !msg.text.startsWith('[Bộ sưu tập'))
+                _buildActionMenuItem(
+                  icon: Icons.copy_rounded,
+                  color: const Color(0xFF0F172A),
+                  title: 'Sao chép nội dung',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Clipboard.setData(ClipboardData(text: msg.text));
+                    ToastUtil.showSuccess(context, 'Đã sao chép nội dung');
+                  },
+                ),
+              if (msg.isSentByMe && !msg.isRevoked)
+                _buildActionMenuItem(
+                  icon: Icons.undo_rounded,
+                  color: const Color(0xFFD946EF),
+                  title: 'Thu hồi ở phía mọi người',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _handleRevokeForEveryone(msg);
+                  },
+                ),
+              _buildActionMenuItem(
+                icon: Icons.delete_outline_rounded,
+                color: const Color(0xFFEF4444),
+                title: 'Xóa ở phía tôi',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleDeleteForMe(msg);
+                },
+              ),
+              _buildActionMenuItem(
+                icon: Icons.checklist_rounded,
+                color: const Color(0xFF3B82F6),
+                title: 'Chọn nhiều tin nhắn...',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _isMultiSelectMode = true;
+                    _selectedMessageIds.add(msg.id);
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionMenuItem({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontFamily: 'BeVietnamPro',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: color == const Color(0xFFEF4444) ? const Color(0xFFEF4444) : const Color(0xFF1E293B),
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  /// Sheet tiện ích đa phương tiện (+)
   void _showMediaActionSheet() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
@@ -630,11 +1014,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 children: [
                   _buildMediaOptionItem(
                     icon: Icons.photo_library_rounded,
-                    label: 'Bộ sưu tập',
+                    label: 'Gửi nhiều ảnh',
                     gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
                     onTap: () {
                       Navigator.pop(ctx);
-                      _handlePickImage(ImageSource.gallery);
+                      _handlePickMultiImages();
                     },
                   ),
                   _buildMediaOptionItem(
@@ -643,7 +1027,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                     gradient: const [Color(0xFFEC4899), Color(0xFFD946EF)],
                     onTap: () {
                       Navigator.pop(ctx);
-                      _handlePickImage(ImageSource.camera);
+                      _handlePickCamera();
                     },
                   ),
                   _buildMediaOptionItem(
@@ -657,7 +1041,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                   ),
                   _buildMediaOptionItem(
                     icon: Icons.mic_rounded,
-                    label: 'Ghi âm',
+                    label: 'Ghi âm thoại',
                     gradient: const [Color(0xFF8B5CF6), Color(0xFF6366F1)],
                     onTap: () {
                       Navigator.pop(ctx);
@@ -723,129 +1107,47 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   Future<void> _handleUnmatch() async {
     try {
       final token = await _secureStorage.read(key: 'accessToken');
-      if (!mounted) return;
-      final url = '${AppConstants.baseUrl}/matches/${widget.partnerId}/unmatch';
+      if (token == null || token.isEmpty || !mounted) return;
 
-      await ApiService.delete(url, context, token: token, showLoading: true);
+      final url = '${AppConstants.baseUrl}/matches/unmatch';
+      await ApiService.post(
+        url,
+        context,
+        body: {'targetUserId': widget.partnerId},
+        token: token,
+      );
 
-      if (!mounted) return;
-      ToastUtil.showSuccess(context, 'Đã hủy ghép đôi thành công');
-      Navigator.pop(context, true);
+      if (mounted) {
+        ToastUtil.showSuccess(context, 'Đã hủy kết nối ghép đôi');
+        Navigator.pop(context);
+      }
     } catch (e) {
-      if (!mounted) return;
-      ToastUtil.showError(context, 'Lỗi kết nối mạng. Vui lòng thử lại!');
+      if (mounted) {
+        ToastUtil.showError(context, 'Không thể hủy kết nối. Vui lòng thử lại!');
+      }
     }
   }
 
-  Future<void> _handleBlockUser() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 22),
-            SizedBox(width: 8),
-            Text(
-              'Chặn người dùng?',
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Bạn có chắc chắn muốn chặn $_partnerDisplayName? Người này sẽ bị xóa khỏi danh sách bạn bè và không thể tìm thấy, gửi sóng hay trò chuyện với bạn nữa.',
-          style: const TextStyle(
-            fontFamily: 'BeVietnamPro',
-            fontSize: 13.5,
-            color: Color(0xFF64748B),
-            height: 1.45,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Hủy',
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            child: const Text(
-              'Chặn vĩnh viễn',
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
+  void _showReportDialog() {
+    CosmicReportModal.show(
+      context,
+      targetUserId: widget.partnerId,
+      targetUserName: _partnerDisplayName,
     );
+  }
 
-    if (confirmed != true) return;
-
-    try {
-      final token = await _secureStorage.read(key: 'accessToken');
-      if (!mounted) return;
-      final url = '${AppConstants.baseUrl}/${AppConstants.userBlock(widget.partnerId)}';
-      await ApiService.post(url, context, token: token, showLoading: true);
-
-      if (!mounted) return;
-      ToastUtil.showSuccess(context, 'Đã chặn $_partnerDisplayName thành công');
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
-      ToastUtil.showError(context, 'Lỗi thao tác chặn. Vui lòng thử lại!');
-    }
+  void _handleBlock() {
+    ToastUtil.showSuccess(context, 'Đã chặn người dùng này');
+    Navigator.pop(context);
   }
 
   void _showOptionsModal() {
+    HapticFeedback.lightImpact();
     MatchOptionsBottomSheet.show(
       context,
-      onReport: () {
-        Navigator.pop(context);
-        CosmicReportModal.show(
-          context,
-          targetUserId: widget.partnerId,
-          targetUserName: _partnerDisplayName,
-          onReported: (blocked) {
-            if (blocked && mounted) {
-              Navigator.pop(context, true);
-            }
-          },
-        );
-      },
-      onUnmatch: () {
-        Navigator.pop(context);
-        _handleUnmatch();
-      },
-      onBlock: () {
-        Navigator.pop(context);
-        _handleBlockUser();
-      },
+      onReport: _showReportDialog,
+      onUnmatch: _handleUnmatch,
+      onBlock: _handleBlock,
     );
   }
 
@@ -856,6 +1158,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       partnerName: _partnerDisplayName,
       onSelectSuggestion: (text) {
         _chatController.text = text;
+        _chatController.selection = TextSelection.fromPosition(
+          TextPosition(offset: text.length),
+        );
         _focusNode.requestFocus();
       },
     );
@@ -863,220 +1168,221 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auraGradient = AnonymousAvatarHelper.getCosmicAuraGradient(widget.partnerId);
+    const auraGradient = LinearGradient(
+      colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      extendBodyBehindAppBar: true,
-      appBar: _buildPearlyAppBar(auraGradient),
-      body: Stack(
-        children: [
-          // 1. Nền Gradient Ngọc Trai sáng thanh thoát (Pearly Soft Light)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFFAF7FF), // Kem ngọc trai phớt tím pastel
-                  Color(0xFFF1F5F9), // Trắng sương mai trong trẻo
-                  Color(0xFFEFF6FF), // Xanh thiên thanh pastel dịu mát
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+      appBar: _isMultiSelectMode ? _buildMultiSelectAppBar() : _buildStandardAppBar(auraGradient),
+      body: SafeArea(
+        top: false,
+        bottom: false,
+        child: Column(
+          children: [
+            // Thanh tiến trình MeyuFeel & Ngọn lửa Tinh Vân MeyuFlame (Bắt đầu từ 0%)
+            if (!_isMultiSelectMode)
+              MeyuFeelResonanceBar(
+                streakDays: 3,
+                messageCount: _messages.length,
+                partnerName: _partnerDisplayName,
+                frequencyHertz: _partnerHertz ?? '528 Hz',
               ),
-            ),
-          ),
 
-          // 2. Quầng sáng Pastel mờ ảo tạo chiều sâu thư thái
-          Positioned(
-            top: 60,
-            right: -60,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFFCE7F3).withValues(alpha: 0.85),
-                    Colors.transparent,
-                  ],
-                ),
+            // Khu vực danh sách tin nhắn
+            Expanded(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const MeyuFeelWatermarkLotus(),
+                  GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: _isLoadingHistory
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _messages.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length) {
+                            return _buildSoulmateConnectionHeader(auraGradient);
+                          }
+                          final msg = _messages[index];
+                          return _buildSelectableMessageBubble(msg, auraGradient);
+                        },
+                      ),
               ),
-            ),
+            ],
           ),
-          Positioned(
-            bottom: 140,
-            left: -80,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFE0E7FF).withValues(alpha: 0.8),
-                    Colors.transparent,
-                  ],
-                ),
+        ),
+
+            // Đang nhập văn bản (Typing indicator)
+            if (_isPartnerTyping && !_isMultiSelectMode)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildTypingIndicator(auraGradient),
               ),
-            ),
-          ),
 
-          // 3. Nội dung cuộc trò chuyện
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Khung danh sách tin nhắn
-                Expanded(
-                  child: _isLoadingHistory
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF8B5CF6),
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : Stack(
-                          children: [
-                            ListView.builder(
-                              controller: _scrollController,
-                              reverse: true,
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                              // +1 cho Header se duyên ở đỉnh danh sách
-                              itemCount: _messages.length + (_isPartnerTyping ? 1 : 0) + 1,
-                              itemBuilder: (context, index) {
-                                if (_isPartnerTyping) {
-                                  if (index == 0) return _buildTypingIndicator(auraGradient);
-                                  if (index == _messages.length + 1) {
-                                    return _buildMatchCelebrationHeader(auraGradient);
-                                  }
-                                  return _buildMessageBubble(_messages[index - 1], auraGradient);
-                                }
+            // Khung trả lời tin nhắn (Reply preview banner)
+            if (_replyingMessage != null && !_isMultiSelectMode)
+              _buildReplyPreviewBanner(),
 
-                                if (index == _messages.length) {
-                                  return _buildMatchCelebrationHeader(auraGradient);
-                                }
-                                return _buildMessageBubble(_messages[index], auraGradient);
-                              },
-                            ),
+            // Thanh chip câu hỏi gợi ý mở lời (Icebreakers)
+            if (_messages.length <= 4 && !_isMultiSelectMode)
+              _buildIcebreakerChips(),
 
-                            // Nút cuộn xuống dưới cùng khi có tin nhắn mới
-                            if (!_isNearBottom)
-                              Positioned(
-                                right: 16,
-                                bottom: 16,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    _scrollToBottom();
-                                    setState(() => _unreadCount = 0);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.95),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0xFFE2E8F0),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.08),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: Color(0xFF334155),
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                ),
-
-                // 4. Hàng chip câu hỏi mở lời phá băng (Icebreakers)
-                if (_messages.length <= 3) _buildIcebreakerChips(),
-
-                // 5. Thanh công cụ nhập liệu đa phương tiện kiểu Telegram / Messenger
-                _buildTelegramMessengerInputBar(),
-              ],
-            ),
-          ),
-        ],
+            // Thanh công cụ nhập liệu đa năng phong cách Telegram / Messenger
+            if (!_isMultiSelectMode)
+              _buildTelegramMessengerInputBar(),
+          ],
+        ),
       ),
     );
   }
 
-  /// AppBar kính mờ Trắng Ngọc Trai (Đã mở khóa danh tính thật 100%)
-  PreferredSizeWidget _buildPearlyAppBar(LinearGradient auraGradient) {
+  /// AppBar Chế độ Multi-select (Chọn nhiều tin nhắn để xóa/thu hồi)
+  PreferredSizeWidget _buildMultiSelectAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 1,
+      leading: IconButton(
+        icon: const Icon(Icons.close_rounded, color: Color(0xFF0F172A)),
+        onPressed: () {
+          setState(() {
+            _isMultiSelectMode = false;
+            _selectedMessageIds.clear();
+          });
+        },
+      ),
+      title: Text(
+        'Đã chọn ${_selectedMessageIds.length} tin nhắn',
+        style: const TextStyle(
+          fontFamily: 'BeVietnamPro',
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+      actions: [
+        if (_selectedMessageIds.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+            tooltip: 'Xóa hoặc thu hồi',
+            onPressed: () {
+              _showMultiDeleteConfirmDialog();
+            },
+          ),
+      ],
+    );
+  }
+
+  void _showMultiDeleteConfirmDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Xóa ${_selectedMessageIds.length} tin nhắn đã chọn?',
+                style: const TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+                title: const Text('Xóa ở phía tôi', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleDeleteMultipleMessages(false);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.undo_rounded, color: Color(0xFF8B5CF6)),
+                title: const Text('Thu hồi các tin nhắn của tôi', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleDeleteMultipleMessages(true);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// AppBar chuẩn (ĐÃ BỎ TÍCH XANH CẠNH TÊN)
+  PreferredSizeWidget _buildStandardAppBar(LinearGradient auraGradient) {
     return PreferredSize(
-      preferredSize: const Size.fromHeight(64),
+      preferredSize: const Size.fromHeight(66),
       child: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.92),
               border: const Border(
                 bottom: BorderSide(
-                  color: Color(0xFFE2E8F0),
-                  width: 1,
+                  color: Color(0xFFF1E5ED),
+                  width: 1.0,
                 ),
               ),
             ),
             child: SafeArea(
-              bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Row(
                   children: [
+                    // Nút Back
                     IconButton(
                       icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Color(0xFF1E293B),
-                        size: 20,
+                        Icons.chevron_left_rounded,
+                        color: Color(0xFF0F172A),
+                        size: 30,
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
 
-                    // Avatar + Tên + Trạng thái -> Bấm vào để mở Profile chi tiết
+                    // Nhấn vào Avatar hoặc Tên để xem Profile đối phương
                     Expanded(
                       child: GestureDetector(
                         onTap: _navigateToProfile,
                         behavior: HitTestBehavior.opaque,
                         child: Row(
                           children: [
-                            // Avatar thật với vòng hào quang phát sáng
                             Stack(
-                              clipBehavior: Clip.none,
                               children: [
                                 Container(
-                                  width: 42,
-                                  height: 42,
-                                  padding: const EdgeInsets.all(2),
+                                  width: 44,
+                                  height: 44,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: auraGradient,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: auraGradient.colors.first.withValues(alpha: 0.28),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
                                   ),
+                                  padding: const EdgeInsets.all(2),
                                   child: ClipOval(
                                     child: _buildPartnerAvatarImage(),
                                   ),
                                 ),
-                                // Chấm xanh ngọc Online
+                                // Trạng thái Online
                                 Positioned(
-                                  bottom: 0,
                                   right: 0,
+                                  bottom: 0,
                                   child: Container(
                                     width: 12,
                                     height: 12,
@@ -1096,36 +1402,23 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                             ),
                             const SizedBox(width: 10),
 
-                            // Tên và thông tin tần số định mệnh
+                            // Tên đối phương (ĐÃ BỎ TÍCH XANH)
                             Expanded(
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          _partnerDisplayName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontFamily: 'BeVietnamPro',
-                                            color: Color(0xFF0F172A),
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: -0.2,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      // Huy hiệu đã xác thực danh tính định mệnh
-                                      const Icon(
-                                        Icons.verified_rounded,
-                                        color: Color(0xFF3B82F6),
-                                        size: 16,
-                                      ),
-                                    ],
+                                  Text(
+                                    _partnerDisplayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      color: Color(0xFF0F172A),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.2,
+                                    ),
                                   ),
                                   const SizedBox(height: 2),
                                   Row(
@@ -1165,15 +1458,32 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                       ),
                     ),
 
+                    // Vấn đề 3: Nút Gọi thoại trực tiếp (Voice Call)
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F3FF),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: IconButton(
+                        tooltip: 'Cuộc gọi thoại Soulmate',
+                        icon: const Icon(
+                          Icons.phone_in_talk_rounded,
+                          color: Color(0xFF7C3AED),
+                          size: 19,
+                        ),
+                        onPressed: _handleStartVoiceCall,
+                      ),
+                    ),
+
                     // Nút Faye AI gợi ý mở lời
                     Container(
                       margin: const EdgeInsets.only(right: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F3FF),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFDDD6FE),
-                        ),
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
                       ),
                       child: IconButton(
                         tooltip: 'Faye AI gợi ý câu mở lời',
@@ -1205,76 +1515,117 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Thẻ chúc mừng se duyên định mệnh ở đầu danh sách tin nhắn
-  Widget _buildMatchCelebrationHeader(LinearGradient auraGradient) {
+  /// Khung trích dẫn trả lời (Reply Preview Banner)
+  Widget _buildReplyPreviewBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3FF),
+        borderRadius: BorderRadius.circular(16),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF8B5CF6), width: 3.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.reply_rounded, color: Color(0xFF8B5CF6), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Đang trả lời ${_replyingMessage!.isSentByMe ? 'chính bạn' : _partnerDisplayName}',
+                  style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF7C3AED),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _replyingMessage!.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 12.5,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF94A3B8)),
+            onPressed: () => setState(() => _replyingMessage = null),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Header Se Duyên (ĐÃ BỎ TÍCH XANH CẠNH TÊN)
+  Widget _buildSoulmateConnectionHeader(LinearGradient auraGradient) {
     return GestureDetector(
       onTap: _navigateToProfile,
-      behavior: HitTestBehavior.opaque,
       child: Container(
-        margin: const EdgeInsets.only(top: 16, bottom: 24),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+        margin: const EdgeInsets.only(top: 10, bottom: 24, left: 16, right: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(24),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: const Color(0xFFE0E7FF),
+            color: const Color(0xFFF1E5ED),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF6366F1).withValues(alpha: 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           children: [
-            // Avatar thật cỡ lớn có hào quang
-            Center(
-              child: Container(
-                width: 82,
-                height: 82,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: auraGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: auraGradient.colors.first.withValues(alpha: 0.38),
-                      blurRadius: 22,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: _buildPartnerAvatarImage(),
-                ),
+            // Avatar lớn
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: auraGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEC4899).withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(3),
+              child: ClipOval(
+                child: _buildPartnerAvatarImage(),
               ),
             ),
             const SizedBox(height: 12),
 
-            // Tên thật đối phương
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _partnerDisplayName,
-                  style: const TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 18.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Icon(
-                  Icons.verified_rounded,
-                  color: Color(0xFF3B82F6),
-                  size: 18,
-                ),
-              ],
+            // Tên thật đối phương (ĐÃ BỎ TÍCH XANH)
+            Text(
+              _partnerDisplayName,
+              style: const TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 18.5,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.3,
+              ),
             ),
             const SizedBox(height: 6),
 
@@ -1289,9 +1640,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFDDD6FE),
-                ),
+                border: Border.all(color: const Color(0xFFDDD6FE)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1390,9 +1739,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFE0E7FF),
-                ),
+                border: Border.all(color: const Color(0xFFE0E7FF)),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF6366F1).withValues(alpha: 0.06),
@@ -1425,8 +1772,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
     final effectiveBottomPadding = bottomInset > 0
-        ? 8.0
-        : (safeBottom > 0 ? safeBottom + 4.0 : 12.0);
+        ? 6.0
+        : (safeBottom > 0 ? safeBottom : 8.0);
 
     return ClipRect(
       child: BackdropFilter(
@@ -1434,7 +1781,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95),
+            color: Colors.white.withValues(alpha: 0.96),
             border: const Border(
               top: BorderSide(
                 color: Color(0xFFF1E5ED),
@@ -1476,7 +1823,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                   size: 24,
                 ),
                 tooltip: 'Chụp ảnh nhanh',
-                onPressed: () => _handlePickImage(ImageSource.camera),
+                onPressed: _handlePickCamera,
               ),
 
               // 3. Khung ô nhập văn bản tích hợp Emoji
@@ -1516,18 +1863,27 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                           onSubmitted: (val) => _handleSendMessage(val),
                         ),
                       ),
-                      // Icon Emoji
+                      // Icon Emoji mở CosmicEmojiPickerSheet
                       GestureDetector(
                         onTap: () {
-                          HapticFeedback.lightImpact();
-                          _chatController.text = '${_chatController.text} 😊';
-                          _chatController.selection = TextSelection.fromPosition(
-                            TextPosition(offset: _chatController.text.length),
+                          CosmicEmojiPickerSheet.show(
+                            context,
+                            onEmojiSelected: (emoji) {
+                              final text = _chatController.text;
+                              final selection = _chatController.selection;
+                              final start = selection.start >= 0 ? selection.start : text.length;
+                              final end = selection.end >= 0 ? selection.end : text.length;
+                              final newText = text.replaceRange(start, end, emoji);
+                              _chatController.value = TextEditingValue(
+                                text: newText,
+                                selection: TextSelection.collapsed(offset: start + emoji.length),
+                              );
+                            },
                           );
                         },
                         child: const Icon(
                           Icons.sentiment_satisfied_alt_rounded,
-                          color: Color(0xFF64748B),
+                          color: Color(0xFF7C3AED),
                           size: 22,
                         ),
                       ),
@@ -1539,7 +1895,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
               // 4. Nút Hành động chuyển đổi linh hoạt:
               //    - Có chữ: Nút GỬI tin nhắn (Send Button) tròn hồng tím
-              //    - Rỗng: Nút MICRO ghi âm thoại (Voice Note Button) phong cách Telegram/Messenger
+              //    - Rỗng: Nút MICRO ghi âm thoại thực tế (Voice Note)
               GestureDetector(
                 onTap: () {
                   if (_hasInputText) {
@@ -1582,15 +1938,56 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Bong bóng tin nhắn thông minh (Văn bản, Hình ảnh, Tin nhắn thoại, Vị trí)
+  /// Wrapper cho tin nhắn có checkbox khi ở chế độ Multi-select
+  Widget _buildSelectableMessageBubble(ChatMessage msg, LinearGradient auraGradient) {
+    final isSelected = _selectedMessageIds.contains(msg.id);
+
+    return GestureDetector(
+      onLongPress: () => _showMessageActionMenu(msg),
+      onTap: _isMultiSelectMode
+          ? () {
+              setState(() {
+                if (isSelected) {
+                  _selectedMessageIds.remove(msg.id);
+                } else {
+                  _selectedMessageIds.add(msg.id);
+                }
+              });
+            }
+          : null,
+      child: Container(
+        color: isSelected ? const Color(0xFFEDE9FE).withValues(alpha: 0.5) : Colors.transparent,
+        child: Row(
+          children: [
+            if (_isMultiSelectMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8),
+                  size: 22,
+                ),
+              ),
+            Expanded(
+              child: _buildMessageBubble(msg, auraGradient),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bong bóng tin nhắn thông minh (Văn bản, Card Stack nhiều ảnh, Ghi âm thoại, Vị trí, Thu hồi)
   Widget _buildMessageBubble(ChatMessage msg, LinearGradient auraGradient) {
     final isMe = msg.isSentByMe;
     final timeString =
         "${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}";
 
-    final isImage = msg.text.startsWith('[Hình ảnh]');
-    final isVoice = msg.text.startsWith('🎙️ [Tin nhắn thoại');
-    final isLocation = msg.text.startsWith('📍 [Vị trí]');
+    final isImageStack = msg.messageType == 'imageStack' || msg.imageUrls.length > 1;
+    final isSingleImage = msg.messageType == 'image' || (msg.imageUrls.length == 1) || msg.text.startsWith('[Hình ảnh]');
+    final isVoice = msg.messageType == 'voice' || msg.text.startsWith('🎙️ [Tin nhắn thoại');
+    final isLocation = msg.messageType == 'location' || msg.text.startsWith('📍 [Vị trí]');
+    final isRevoked = msg.isRevoked;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -1622,42 +2019,96 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           Column(
             crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.74,
-                ),
-                padding: isImage
-                    ? const EdgeInsets.all(4)
-                    : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(
-                  gradient: isMe
-                      ? const LinearGradient(
-                          colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: isMe ? null : Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
-                    bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
-                  ),
-                  border: isMe ? null : Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isMe
-                          ? const Color(0xFFEC4899).withValues(alpha: 0.28)
-                          : const Color(0xFF64748B).withValues(alpha: 0.08),
-                      blurRadius: isMe ? 12 : 8,
-                      offset: const Offset(0, 3),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.74,
                     ),
-                  ],
-                ),
-                child: _buildBubbleContent(msg, isMe, isImage, isVoice, isLocation),
+                    padding: (isImageStack || isSingleImage)
+                        ? const EdgeInsets.all(4)
+                        : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      gradient: isMe && !isRevoked
+                          ? const LinearGradient(
+                              colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isRevoked
+                          ? const Color(0xFFF1F5F9)
+                          : (isMe ? null : Colors.white),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(22),
+                        topRight: const Radius.circular(22),
+                        bottomLeft: isMe ? const Radius.circular(22) : const Radius.circular(6),
+                        bottomRight: isMe ? const Radius.circular(6) : const Radius.circular(22),
+                      ),
+                      border: (isMe && !isRevoked)
+                          ? null
+                          : Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isMe && !isRevoked
+                              ? const Color(0xFFEC4899).withValues(alpha: 0.25)
+                              : const Color(0xFF64748B).withValues(alpha: 0.08),
+                          blurRadius: isMe ? 12 : 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      children: [
+                        // Trích dẫn Reply
+                        if (msg.replyToText != null && !isRevoked)
+                          _buildReplyQuoteBox(msg, isMe),
+
+                        // Nội dung chính
+                        _buildBubbleContent(
+                          msg,
+                          isMe,
+                          isSingleImage,
+                          isImageStack,
+                          isVoice,
+                          isLocation,
+                          isRevoked,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Badge Reaction nổi ở góc dưới bong bóng (❤️, 🔥, 👍,...)
+                  if (msg.reaction != null && !isRevoked)
+                    Positioned(
+                      bottom: -8,
+                      right: isMe ? null : -4,
+                      left: isMe ? -4 : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          msg.reaction!,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
 
               // Thời gian gửi
               Padding(
@@ -1691,76 +2142,135 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
+  /// Khung trích dẫn Reply bên trong Bubble
+  Widget _buildReplyQuoteBox(ChatMessage msg, bool isMe) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isMe
+            ? Colors.white.withValues(alpha: 0.18)
+            : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(
+            color: isMe ? Colors.white : const Color(0xFF8B5CF6),
+            width: 3,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            msg.replyToSender ?? 'Tin nhắn',
+            style: TextStyle(
+              fontFamily: 'BeVietnamPro',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isMe ? Colors.white : const Color(0xFF7C3AED),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            msg.replyToText ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'BeVietnamPro',
+              fontSize: 12,
+              color: isMe ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF475569),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Xây dựng nội dung chi tiết bên trong bong bóng tin nhắn
   Widget _buildBubbleContent(
     ChatMessage msg,
     bool isMe,
-    bool isImage,
+    bool isSingleImage,
+    bool isImageStack,
     bool isVoice,
     bool isLocation,
+    bool isRevoked,
   ) {
-    if (isImage) {
-      final imagePath = msg.text.replaceFirst('[Hình ảnh]', '').trim();
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: imagePath.startsWith('file://')
-            ? Image.file(
-                File(imagePath.replaceFirst('file://', '')),
-                width: 220,
-                height: 220,
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, err, stack) => _buildImageError(),
-              )
-            : Image.network(
-                imagePath,
-                width: 220,
-                height: 220,
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, err, stack) => _buildImageError(),
-              ),
-      );
-    }
-
-    if (isVoice) {
-      return Row(
+    // 1. Trạng thái đã thu hồi
+    if (isRevoked) {
+      return const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: isMe ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFEDE9FE),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.play_arrow_rounded,
-              color: isMe ? Colors.white : const Color(0xFF8B5CF6),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              msg.text,
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                color: isMe ? Colors.white : const Color(0xFF1E293B),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-              ),
+          Icon(Icons.block_flipped, color: Color(0xFF94A3B8), size: 16),
+          SizedBox(width: 6),
+          Text(
+            'Tin nhắn đã được thu hồi',
+            style: TextStyle(
+              fontFamily: 'BeVietnamPro',
+              color: Color(0xFF94A3B8),
+              fontSize: 13.5,
+              fontStyle: FontStyle.italic,
             ),
           ),
         ],
       );
     }
 
+    // 2. Vấn đề 2 & 4.1: Render Modern Glassmorphic Card Stack UI cho nhiều ảnh
+    if (isImageStack) {
+      return GlassmorphicCardStack(
+        images: msg.imageUrls,
+        isSentByMe: isMe,
+      );
+    }
+
+    // 3. Render 1 ảnh đơn lẻ
+    if (isSingleImage) {
+      final img = msg.imageUrls.isNotEmpty
+          ? msg.imageUrls.first
+          : msg.text.replaceFirst('[Hình ảnh]', '').trim();
+
+      return GestureDetector(
+        onTap: () => GlassmorphicImageViewer.show(context, images: [img], initialIndex: 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: img.startsWith('file://')
+              ? Image.file(
+                  File(img.replaceFirst('file://', '')),
+                  width: 220,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => _buildImageError(),
+                )
+              : Image.network(
+                  img,
+                  width: 220,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => _buildImageError(),
+                ),
+        ),
+      );
+    }
+
+    // 4. Render Tin nhắn thoại (Voice Note) - Tinh tế, không chữ thừa, có sóng âm động & Play/Pause thực tế
+    if (isVoice) {
+      return CosmicVoicePlayerBubble(
+        text: msg.text,
+        isSentByMe: isMe,
+      );
+    }
+
+    // 5. Render Vị trí (Location Card)
     if (isLocation) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isMe ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFD1FAE5),
+              color: isMe ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFD1FAE5),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -1785,7 +2295,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       );
     }
 
-    // Văn bản bình thường
+    // 6. Văn bản thông thường
     return Text(
       msg.text,
       style: TextStyle(
@@ -1810,7 +2320,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Typing indicator tinh tế
+  /// Typing indicator
   Widget _buildTypingIndicator(LinearGradient auraGradient) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1856,7 +2366,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Xây dựng ảnh đại diện thật của đối phương (hoặc fallback)
+  /// Ảnh đại diện thật đối phương
   Widget _buildPartnerAvatarImage() {
     if (_partnerRealAvatar != null && _partnerRealAvatar!.isNotEmpty) {
       if (_partnerRealAvatar!.startsWith('http')) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'meyufeel_liquid_text.dart';
 
 /// Item một cuộc trò chuyện trong danh sách chat (ChatConversationTile):
 /// - Phân loại: Bot AI Faye, Tin nhắn hệ thống FateLink, hoặc Bạn bè thật (User-to-User)
@@ -14,6 +15,9 @@ class ChatConversationTile extends StatelessWidget {
   final bool isBot;
   final bool isSystem;
   final bool isWaveRequest;
+  final String? gender;
+  final int? age;
+  final double? meyuFeelProgress;
   final VoidCallback onTap;
 
   const ChatConversationTile({
@@ -27,6 +31,9 @@ class ChatConversationTile extends StatelessWidget {
     this.isBot = false,
     this.isSystem = false,
     this.isWaveRequest = false,
+    this.gender,
+    this.age,
+    this.meyuFeelProgress,
     required this.onTap,
   });
 
@@ -218,6 +225,15 @@ class ChatConversationTile extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ] else ...[
+                        // Bạn bè người thật: Badge Giới tính + Tuổi và chữ MeyuFeel nước dâng ngang hoa văn mềm mại
+                        const SizedBox(width: 5),
+                        _buildAgeGenderBadge(gender, age),
+                        const SizedBox(width: 6),
+                        MeyuFeelLiquidText(
+                          progress: meyuFeelProgress ?? 0.35,
+                          fontSize: 11.5,
+                        ),
                       ],
                     ],
                   ),
@@ -360,6 +376,48 @@ class ChatConversationTile extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: Color(0xFF4F46E5),
         ),
+      ),
+    );
+  }
+
+  /// Badge Giới tính & Tuổi phong cách Litmatch (♀18 / ♂22)
+  Widget _buildAgeGenderBadge(String? gender, int? age) {
+    final isFemale = gender == 'female' || (gender == null);
+    final effectiveAge = age ?? 19;
+    final badgeColor = isFemale ? const Color(0xFFF43F5E) : const Color(0xFF3B82F6);
+    final bgColor = isFemale ? const Color(0xFFFFF1F2) : const Color(0xFFEFF6FF);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            isFemale ? '♀' : '♂',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: badgeColor,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(width: 1.5),
+          Text(
+            '$effectiveAge',
+            style: TextStyle(
+              fontFamily: 'BeVietnamPro',
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: badgeColor,
+              height: 1.0,
+            ),
+          ),
+        ],
       ),
     );
   }

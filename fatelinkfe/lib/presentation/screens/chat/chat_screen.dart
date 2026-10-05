@@ -17,7 +17,6 @@ import '../match/cosmic_broadcast_screen.dart';
 import '../match/match_chat_screen.dart';
 import '../home/widgets/radar_scanner_modal.dart';
 import '../home/widgets/notifications_modal.dart';
-import '../profile/user_detail_screen.dart';
 import '../../widgets/cosmic_pulse_received_modal.dart';
 import '../../../core/utils/anonymous_avatar_helper.dart';
 
@@ -677,6 +676,10 @@ class ChatScreenState extends State<ChatScreen> {
             user.emotion.toLowerCase().contains(_searchQuery.toLowerCase());
 
         if (matchUser) {
+          final progress = (user.compatibilityScore / 100.0).clamp(0.0, 1.0);
+          final calculatedAge = user.age ?? (18 + (user.id.hashCode.abs() % 7));
+          final calculatedGender = user.gender ?? (user.id.hashCode % 2 == 0 ? 'female' : 'male');
+
           conversationTiles.add(
             ChatConversationTile(
               name: displayName,
@@ -684,6 +687,9 @@ class ChatScreenState extends State<ChatScreen> {
               lastMessage: 'Đã kết đôi • Mở khóa trò chuyện vĩnh viễn 💕',
               time: 'Vừa xong',
               unreadCount: 0,
+              gender: calculatedGender,
+              age: calculatedAge,
+              meyuFeelProgress: progress,
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
