@@ -14,8 +14,9 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 
-    <!-- Micro cho tin nhắn thoại -->
+    <!-- Micro cho tin nhắn thoại & cuộc gọi WebRTC -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
 
     <!-- Nhận thông báo đẩy (Android 13+) & Rung cho Heads-up notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

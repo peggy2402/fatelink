@@ -35,6 +35,13 @@ type ClientToServerEvents = {
   checkUserStatus: (payload: { targetUserId: string }) => void;
   checkUsersStatus: (payload: { targetUserIds: string[] }) => void;
   typing: (payload: { partnerId: string; isTyping: boolean }) => void;
+  startVoiceCall: (payload: { partnerId: string }) => void;
+  acceptVoiceCall: (payload: { callerId: string }) => void;
+  rejectVoiceCall: (payload: { callerId: string; reason?: string }) => void;
+  endVoiceCall: (payload: { partnerId: string }) => void;
+  webrtcOffer: (payload: { partnerId: string; sdp: any }) => void;
+  webrtcAnswer: (payload: { partnerId: string; sdp: any }) => void;
+  iceCandidate: (payload: { partnerId: string; candidate: any }) => void;
 };
 
 type ServerToClientEvents = {
@@ -63,6 +70,20 @@ type ServerToClientEvents = {
   userStatusResult: (payload: { userId: string; isOnline: boolean }) => void;
   usersStatusResult: (payload: Record<string, boolean>) => void;
   receiveTyping: (payload: { senderId: string; isTyping: boolean }) => void;
+  incomingVoiceCall: (payload: {
+    callerId: string;
+    callerName: string;
+    callerAvatar: string | null;
+    timestamp: string;
+  }) => void;
+  voiceCallRinging: (payload: { partnerId: string }) => void;
+  voiceCallUnavailable: (payload: { partnerId: string; reason: string }) => void;
+  voiceCallAccepted: (payload: { partnerId: string }) => void;
+  voiceCallRejected: (payload: { partnerId: string; reason: string }) => void;
+  voiceCallEnded: (payload: { partnerId: string }) => void;
+  webrtcOffer: (payload: { senderId: string; sdp: any }) => void;
+  webrtcAnswer: (payload: { senderId: string; sdp: any }) => void;
+  iceCandidate: (payload: { senderId: string; candidate: any }) => void;
 };
 
 type InterServerEvents = Record<string, never>;
@@ -407,5 +428,193 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         error instanceof Error ? error.stack || error.message : String(error),
       );
     }
+  }
+
+  // ==========================================
+  // --- HỆ THỐNG CUỘC GỌI THOẠI REAL-TIME (VOICE CALL SIGNALING) ---
+  // ==========================================
+
+  /**
+   * Bắt đầu cuộc gọi thoại: Người gọi kích hoạt cuộc gọi tới bạn bè
+   */
+  @SubscribeMessage('startVoiceCall')
+  async handleStartVoiceCall(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId) return;
+
+    try {
+      const { partnerId } = payload;
+      const [caller, partner] = await Promise.all([
+        this.userRepository.findById(senderId),
+        this.userRepository.findById(partnerId),
+      ]);
+
+      const callerName = caller?.name || 'Bạn tâm giao';
+      const callerAvatar = caller?.avatar || null;
+      const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
+
+      if (targetSocketIds.length > 0) {
+        // Đối phương đang mở app -> Bắn sự kiện đổ chuông realtime
+        targetSocketIds.forEach((targetSocketId) => {
+          this.server.to(targetSocketId).emit('incomingVoiceCall', {
+            callerId: senderId,
+            callerName,
+            callerAvatar,
+            timestamp: new Date().toISOString(),
+          });
+        });
+
+        // Báo cho caller biết máy đang đổ chuông
+        client.emit('voiceCallRinging', { partnerId });
+      } else {
+        // Đối phương offline
+        client.emit('voiceCallUnavailable', {
+          partnerId,
+          reason: 'offline',
+        });
+      }
+
+      // Kích hoạt Push Notification FCM để đánh thức máy người nhận kể cả khi chạy nền
+      if (partner?.fcmToken) {
+        await this.firebaseNotificationService.sendPushNotification(
+          partner.fcmToken,
+          {
+            title: `📞 Cuộc gọi thoại từ ${callerName}`,
+            body: 'Đang gọi cho bạn • Chạm để trả lời',
+            data: {
+              type: 'incoming_voice_call',
+              callerId: senderId,
+              callerName,
+              callerAvatar: callerAvatar || '',
+            },
+            badgeCount: 1,
+          },
+        );
+      }
+    } catch (err) {
+      this.logger.error('Lỗi khi bắt đầu cuộc gọi thoại', err);
+      client.emit('errorMessage', { message: 'Không thể kết nối cuộc gọi lúc này' });
+    }
+  }
+
+  /**
+   * Người nhận chấp nhận cuộc gọi
+   */
+  @SubscribeMessage('acceptVoiceCall')
+  handleAcceptVoiceCall(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { callerId: string },
+  ) {
+    const receiverId = client.data.userId;
+    if (!receiverId) return;
+
+    const callerSocketIds = this.chatPresenceService.getSocketIds(payload.callerId);
+    callerSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('voiceCallAccepted', {
+        partnerId: receiverId,
+      });
+    });
+  }
+
+  /**
+   * Người nhận từ chối cuộc gọi
+   */
+  @SubscribeMessage('rejectVoiceCall')
+  handleRejectVoiceCall(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { callerId: string; reason?: string },
+  ) {
+    const receiverId = client.data.userId;
+    if (!receiverId) return;
+
+    const callerSocketIds = this.chatPresenceService.getSocketIds(payload.callerId);
+    callerSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('voiceCallRejected', {
+        partnerId: receiverId,
+        reason: payload.reason || 'declined',
+      });
+    });
+  }
+
+  /**
+   * Một trong hai bên bấm cúp máy kết thúc cuộc gọi
+   */
+  @SubscribeMessage('endVoiceCall')
+  handleEndVoiceCall(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId) return;
+
+    const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
+    targetSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('voiceCallEnded', {
+        partnerId: senderId,
+      });
+    });
+  }
+
+  /**
+   * WebRTC Signaling: Chuyển tiếp SDP Offer
+   */
+  @SubscribeMessage('webrtcOffer')
+  handleWebRtcOffer(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string; sdp: any },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId) return;
+
+    const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
+    targetSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('webrtcOffer', {
+        senderId,
+        sdp: payload.sdp,
+      });
+    });
+  }
+
+  /**
+   * WebRTC Signaling: Chuyển tiếp SDP Answer
+   */
+  @SubscribeMessage('webrtcAnswer')
+  handleWebRtcAnswer(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string; sdp: any },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId) return;
+
+    const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
+    targetSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('webrtcAnswer', {
+        senderId,
+        sdp: payload.sdp,
+      });
+    });
+  }
+
+  /**
+   * WebRTC Signaling: Chuyển tiếp ICE Candidate
+   */
+  @SubscribeMessage('iceCandidate')
+  handleIceCandidate(
+    @ConnectedSocket() client: ChatSocket,
+    @MessageBody() payload: { partnerId: string; candidate: any },
+  ) {
+    const senderId = client.data.userId;
+    if (!senderId) return;
+
+    const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
+    targetSocketIds.forEach((socketId) => {
+      this.server.to(socketId).emit('iceCandidate', {
+        senderId,
+        candidate: payload.candidate,
+      });
+    });
   }
 }

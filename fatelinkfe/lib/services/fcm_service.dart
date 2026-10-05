@@ -119,7 +119,7 @@ class FcmService {
     // Đã mở tin nhắn -> Reset badge icon app
     BadgeService.clearBadge();
 
-    final partnerId = data['partnerId'] ?? data['senderId'];
+    final partnerId = data['callerId'] ?? data['partnerId'] ?? data['senderId'];
     if (partnerId != null && partnerId.toString().isNotEmpty) {
       if (onNavigateToChat != null) {
         onNavigateToChat(partnerId.toString());

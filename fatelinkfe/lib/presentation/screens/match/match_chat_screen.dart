@@ -20,6 +20,7 @@ import '../../../services/badge_service.dart';
 // Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
 import '../profile/user_detail_screen.dart';
+import 'widgets/cosmic_incoming_call_modal.dart';
 import 'widgets/cosmic_location_modal.dart';
 import 'widgets/cosmic_voice_call_modal.dart';
 import 'widgets/cosmic_voice_recorder_modal.dart';
@@ -93,10 +94,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   bool _isSyncing = false;
   bool _isEmojiPickerVisible = false;
 
-  // Trạng thái Reply & Multi-select
+  // Trạng thái Reply & Multi-select & Cuộc gọi
   ChatMessage? _replyingMessage;
   bool _isMultiSelectMode = false;
   final Set<String> _selectedMessageIds = {};
+  dynamic _pendingOfferSdp;
 
   // Thông tin thực tế đối phương nạp từ API Profile
   late String _partnerDisplayName;
@@ -369,6 +371,31 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           setState(() {
             _isPartnerOnline = data['isOnline'] == true;
           });
+        }
+      });
+
+      // Lắng nghe tín hiệu cuộc gọi thoại WebRTC Real-time
+      _socket!.on('webrtcOffer', (data) {
+        if (data is Map && data['sdp'] != null) {
+          _pendingOfferSdp = data['sdp'];
+        }
+      });
+
+      _socket!.on('incomingVoiceCall', (data) {
+        if (!mounted) return;
+        if (data is Map) {
+          final callerId = data['callerId']?.toString() ?? '';
+          final callerName = data['callerName']?.toString() ?? _partnerDisplayName;
+          final callerAvatar = data['callerAvatar']?.toString() ?? _partnerRealAvatar;
+
+          CosmicIncomingCallModal.show(
+            context,
+            callerId: callerId,
+            callerName: callerName,
+            callerAvatar: callerAvatar,
+            socket: _socket!,
+            offerSdp: _pendingOfferSdp,
+          );
         }
       });
 
@@ -883,13 +910,19 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Vấn đề 3: Bật mic và trò chuyện trực tiếp qua cuộc gọi Soulmate Voice Call
+  /// Vấn đề 3: Bật mic và trò chuyện trực tiếp qua cuộc gọi Soulmate Voice Call (WebRTC)
   void _handleStartVoiceCall() {
+    if (_socket == null || !_socket!.connected) {
+      ToastUtil.showError(context, 'Chưa kết nối máy chủ realtime, đang thử kết nối lại...');
+      _socket?.connect();
+      return;
+    }
     CosmicVoiceCallModal.show(
       context,
       partnerName: _partnerDisplayName,
       partnerId: widget.partnerId,
       partnerAvatar: _partnerRealAvatar,
+      socket: _socket!,
     );
   }
 
