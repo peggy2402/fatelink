@@ -17,8 +17,10 @@
     <!-- Micro cho tin nhắn thoại -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
-    <!-- Nhận thông báo đẩy (Android 13+) -->
+    <!-- Nhận thông báo đẩy (Android 13+) & Rung cho Heads-up notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:label="Meyu"
@@ -95,6 +97,14 @@
         <meta-data
             android:name="com.zing.zalo.zalosdk.appID"
             android:value="@string/appID" />
+
+        <!-- Cấu hình mặc định cho FCM Android: Kênh ưu tiên cao hiển thị màn hình khóa & icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="fatelink_high_importance_channel" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -6,7 +6,6 @@ void main() {
       (tester) async {
     final scrollController = ScrollController();
     bool isNearBottom = true;
-    int unreadCount = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -43,7 +42,6 @@ void main() {
                             scrollController.jumpTo(0.0);
                             setState(() {
                               isNearBottom = true;
-                              unreadCount = 0;
                             });
                           },
                           child: Container(

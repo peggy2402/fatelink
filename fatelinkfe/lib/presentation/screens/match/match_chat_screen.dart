@@ -15,6 +15,7 @@ import '../../../data/models/chat_message.dart';
 import '../../../data/models/match_user.dart';
 import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
+import '../../../services/badge_service.dart';
 
 // Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
@@ -129,6 +130,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _focusNode.addListener(_onFocusChanged);
     _scrollController.addListener(_scrollListener);
     _chatController.addListener(_onTextChanged);
+
+    // Khi người dùng vào xem phòng chat, xóa sạch badge icon app
+    BadgeService.clearBadge();
 
     // Tin nhắn mở đầu se duyên mặc định
     _messages.add(

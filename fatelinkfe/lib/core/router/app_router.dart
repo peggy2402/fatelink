@@ -8,6 +8,10 @@ import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/main_screen.dart';
 
 class AppRouter {
+  // Global Navigator Key để điều hướng từ FCM/Notification Background & Foreground
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   // Private constructor để ngăn việc khởi tạo object AppRouter()
   AppRouter._();
 

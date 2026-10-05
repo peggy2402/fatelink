@@ -16,6 +16,9 @@ import type { CreateDirectChatMessageUseCase } from '@contexts/chat/application/
 import type { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
 import type { HandleRealtimeChatMessageUseCase } from '@contexts/chat/application/usecases/handle-realtime-chat-message.usecase';
 import type { ValidateUserTokenUseCase } from '@contexts/auth/application/usecases/validate-user-token.usecase';
+import { USER_REPOSITORY } from '@shared/kernel/injection-tokens';
+import type { UserRepository } from '@contexts/users/domain/repositories/user.repository';
+import { FirebaseNotificationService } from '@shared/infrastructure/notifications/firebase-notification.service';
 
 const websocketCorsOrigins = (
   process.env.WEBSOCKET_CORS_ORIGINS ||
@@ -99,6 +102,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @Inject(CHAT_APPLICATION_TOKENS.getDirectHistory)
     private readonly getDirectChatHistoryUseCase: GetDirectChatHistoryUseCase,
     private readonly chatPresenceService: ChatPresenceService,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: UserRepository,
+    private readonly firebaseNotificationService: FirebaseNotificationService,
   ) {}
 
   async handleConnection(client: ChatSocket) {
@@ -241,9 +247,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           });
         });
       } else {
-        // Đối phương đang tắt app hoặc chạy nền -> Kích hoạt Push Notification
         this.logger.log(`Direct message target offline: ${partnerId}`);
       }
+
+      // Kích hoạt Push Notification (Heads-Up trên màn hình chính/khóa & badge icon)
+      void this.notifyDirectMessage(senderId, partnerId, text);
     } catch (error: unknown) {
       this.logger.error(
         'Failed to handle direct websocket message',
@@ -270,8 +278,46 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           });
         });
       }
+
+      // Kích hoạt Push Notification cho HTTP
+      void this.notifyDirectMessage(senderId, partnerId, text);
     } catch (error) {
       this.logger.error('Failed to broadcast direct message from HTTP', error);
+    }
+  }
+
+  /**
+   * Bắn thông báo đẩy FCM tới thiết bị Android của người nhận
+   */
+  private async notifyDirectMessage(
+    senderId: string,
+    partnerId: string,
+    text: string,
+  ): Promise<void> {
+    try {
+      const [partner, sender] = await Promise.all([
+        this.userRepository.findById(partnerId),
+        this.userRepository.findById(senderId),
+      ]);
+
+      if (partner?.fcmToken) {
+        const senderName = sender?.name || 'Bạn mới trên FateLink';
+        await this.firebaseNotificationService.sendPushNotification(
+          partner.fcmToken,
+          {
+            title: senderName,
+            body: text,
+            data: {
+              partnerId: senderId,
+              senderName,
+              type: 'direct_chat',
+            },
+            badgeCount: 1,
+          },
+        );
+      }
+    } catch (pushErr) {
+      this.logger.warn(`Push notification trigger failed: ${pushErr}`);
     }
   }
 

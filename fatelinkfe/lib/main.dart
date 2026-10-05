@@ -137,6 +137,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<SplashBloc>(create: (context) => SplashBloc()),
         ],
         child: MaterialApp(
+          navigatorKey: AppRouter.navigatorKey,
           title: 'Meyu',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(

@@ -4,10 +4,17 @@ import { ChatAiController } from '@contexts/chat/presentation/http/controllers/c
 import { ChatHistoryController } from '@contexts/chat/presentation/http/controllers/chat-history.controller';
 import { ChatGateway } from '@contexts/chat/presentation/websocket/gateways/chat.gateway';
 import { ChatPresenceService } from '@contexts/chat/presentation/websocket/services/chat-presence.service';
+import { UsersPersistenceModule } from '@contexts/users/infrastructure/users-persistence.module';
+import { NotificationsModule } from '@shared/infrastructure/notifications/notifications.module';
 import { ChatApplicationModule } from './chat-application.module';
 
 @Module({
-  imports: [ChatApplicationModule, AuthApplicationModule],
+  imports: [
+    ChatApplicationModule,
+    AuthApplicationModule,
+    UsersPersistenceModule,
+    NotificationsModule,
+  ],
   controllers: [ChatAiController, ChatHistoryController],
   providers: [ChatGateway, ChatPresenceService],
 })
