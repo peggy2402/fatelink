@@ -1,12 +1,36 @@
-import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Inject,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import type { GetAiChatHistoryUseCase } from '@contexts/chat/application/usecases/get-ai-chat-history.usecase';
+import type { GetDirectChatHistoryUseCase } from '@contexts/chat/application/usecases/get-direct-chat-history.usecase';
+import type { CreateDirectChatMessageUseCase } from '@contexts/chat/application/usecases/create-direct-chat-message.usecase';
 import { CHAT_APPLICATION_TOKENS } from '@contexts/chat/composition/chat.tokens';
+import { JwtAuthGuard } from '@contexts/auth/presentation/http/guards/jwt-auth.guard';
+import { ChatGateway } from '@contexts/chat/presentation/websocket/gateways/chat.gateway';
+import type { AuthenticatedUser } from '@shared/contracts/authenticated-user';
+
+type GuardRequest = Request & { user?: AuthenticatedUser };
 
 @Controller('messages')
 export class ChatHistoryController {
   constructor(
     @Inject(CHAT_APPLICATION_TOKENS.getHistory)
     private readonly getAiChatHistoryUseCase: GetAiChatHistoryUseCase,
+    @Inject(CHAT_APPLICATION_TOKENS.getDirectHistory)
+    private readonly getDirectChatHistoryUseCase: GetDirectChatHistoryUseCase,
+    @Inject(CHAT_APPLICATION_TOKENS.createDirectMessage)
+    private readonly createDirectChatMessageUseCase: CreateDirectChatMessageUseCase,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   @Get(':userId')
@@ -16,4 +40,55 @@ export class ChatHistoryController {
   ) {
     return this.getAiChatHistoryUseCase.execute({ userId, limit });
   }
+
+  @Get('direct/:partnerId')
+  @UseGuards(JwtAuthGuard)
+  async getDirectHistory(
+    @Req() req: GuardRequest,
+    @Param('partnerId') partnerId: string,
+    @Query('limit') limit: number = 50,
+  ) {
+    const userId = req.user?.sub;
+    if (!userId) {
+      throw new UnauthorizedException('User không xác định');
+    }
+
+    return this.getDirectChatHistoryUseCase.execute({
+      userId,
+      partnerId,
+      limit: Number(limit) || 50,
+    });
+  }
+
+  @Post('direct')
+  @UseGuards(JwtAuthGuard)
+  async sendDirectMessage(
+    @Req() req: GuardRequest,
+    @Body() body: { partnerId: string; text: string },
+  ) {
+    const senderId = req.user?.sub;
+    if (!senderId) {
+      throw new UnauthorizedException('User không xác định');
+    }
+
+    const { partnerId, text } = body;
+    if (!partnerId || !text || text.trim().length === 0) {
+      throw new UnauthorizedException('partnerId và text là bắt buộc');
+    }
+
+    const message = await this.createDirectChatMessageUseCase.execute({
+      senderId,
+      partnerId,
+      text: text.trim(),
+    });
+
+    // Phát tin nhắn realtime qua Socket.IO tới đối phương nếu đang online
+    this.chatGateway.sendDirectMessageToUser(senderId, partnerId, text.trim());
+
+    return {
+      success: true,
+      message,
+    };
+  }
 }
+

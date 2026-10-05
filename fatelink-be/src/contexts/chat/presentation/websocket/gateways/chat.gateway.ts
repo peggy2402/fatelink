@@ -102,11 +102,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: ChatSocket) {
     try {
-      // Lấy token từ handshake auth do Flutter gửi lên
+      // 1. Lấy token linh hoạt từ handshake auth, headers, hoặc query
       const auth = client.handshake.auth as { token?: string } | undefined;
-      const token = auth?.token;
+      let token = auth?.token;
+
+      if (!token && client.handshake.headers?.authorization) {
+        token = client.handshake.headers.authorization;
+      }
+
+      if (!token && client.handshake.query?.token) {
+        token = String(client.handshake.query.token);
+      }
+
       if (!token) {
         throw new Error('Missing websocket auth token');
+      }
+
+      // 2. Chuẩn hóa token: xóa tiền tố 'Bearer ' và khoảng trắng
+      if (token.startsWith('Bearer ')) {
+        token = token.slice(7).trim();
+      } else {
+        token = token.trim();
       }
 
       const decoded = await this.validateUserTokenUseCase.execute({ token });
@@ -118,13 +134,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       this.chatPresenceService.markOnline(userId, client.id);
 
-      // TỐI ƯU: Broadcast cho toàn bộ client biết user này vừa online
+      // Broadcast cho toàn bộ client biết user này vừa online
       this.server.emit('userStatusChanged', {
         userId,
         isOnline: true,
       });
-    } catch {
-      this.logger.warn(`Rejected websocket connection: ${client.id}`);
+    } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Rejected websocket connection: ${client.id}. Reason: ${reason}`);
       client.disconnect(); // Ngắt kết nối ngay nếu không xác thực được
     }
   }
@@ -233,6 +250,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('errorMessage', {
         message: 'Khong the gui tin nhan luc nay, ban thu lai sau nhe!',
       });
+    }
+  }
+
+  /**
+   * Phát tin nhắn trực tiếp qua socket khi tin nhắn được gửi từ HTTP REST Controller
+   */
+  sendDirectMessageToUser(senderId: string, partnerId: string, text: string) {
+    try {
+      const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
+      if (targetSocketIds.length > 0 && this.server) {
+        targetSocketIds.forEach((targetSocketId) => {
+          this.server.to(targetSocketId).emit('receiveDirectMessage', {
+            senderId,
+            text,
+            timestamp: new Date().toISOString(),
+          });
+        });
+      }
+    } catch (error) {
+      this.logger.error('Failed to broadcast direct message from HTTP', error);
     }
   }
 
