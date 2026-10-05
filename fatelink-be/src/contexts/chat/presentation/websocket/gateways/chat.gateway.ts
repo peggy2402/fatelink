@@ -35,6 +35,7 @@ type ClientToServerEvents = {
 };
 
 type ServerToClientEvents = {
+  authError: (payload: { message: string }) => void;
   userStatusChanged: (payload: { userId: string; isOnline: boolean }) => void;
   receiveMessage: (payload: {
     text: string;
