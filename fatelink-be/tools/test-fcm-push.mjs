@@ -83,7 +83,7 @@ async function run() {
   const message = {
     token: target.token,
     notification: {
-      title: '✨ FateLink Cosmic Soulmate',
+      title: '✨ Meyu Match',
       body: 'Có một người bạn định mệnh vừa gửi tín hiệu tần số đến bạn! 💕',
     },
     data: {
