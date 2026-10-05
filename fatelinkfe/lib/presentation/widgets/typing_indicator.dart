@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class TypingIndicator extends StatefulWidget {
-  const TypingIndicator({super.key});
+  final Color? color;
+  const TypingIndicator({super.key, this.color});
 
   @override
   State<TypingIndicator> createState() => _TypingIndicatorState();
@@ -43,11 +44,14 @@ class _TypingIndicatorState extends State<TypingIndicator>
               ),
             ),
           ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2.0),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
             child: Text(
               '●',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(
+                color: widget.color ?? Colors.white70,
+                fontSize: 14,
+              ),
             ),
           ),
         );

@@ -21,7 +21,7 @@ class MatchOptionsBottomSheet extends StatelessWidget {
   }) {
     return showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF131526),
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -39,20 +39,28 @@ class MatchOptionsBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Container(
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: const Color(0xFFCBD5E1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(height: 16),
           ListTile(
-            leading: const Icon(
-              Icons.flag_outlined,
-              color: Color(0xFFF59E0B),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.flag_outlined,
+                color: Color(0xFFD97706),
+                size: 20,
+              ),
             ),
             title: const Text(
               'Báo cáo vi phạm',
@@ -60,7 +68,7 @@ class MatchOptionsBottomSheet extends StatelessWidget {
                 fontFamily: 'BeVietnamPro',
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: Color(0xFF0F172A),
               ),
             ),
             subtitle: const Text(
@@ -68,15 +76,23 @@ class MatchOptionsBottomSheet extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 fontSize: 11.5,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF64748B),
               ),
             ),
             onTap: onReport,
           ),
           ListTile(
-            leading: const Icon(
-              Icons.heart_broken_outlined,
-              color: Color(0xFFF43F5E),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE4E6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.heart_broken_outlined,
+                color: Color(0xFFE11D48),
+                size: 20,
+              ),
             ),
             title: const Text(
               'Hủy ghép đôi (Unmatch / Bỏ thích)',
@@ -84,7 +100,7 @@ class MatchOptionsBottomSheet extends StatelessWidget {
                 fontFamily: 'BeVietnamPro',
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFFDA4AF),
+                color: Color(0xFFBE123C),
               ),
             ),
             subtitle: const Text(
@@ -92,15 +108,23 @@ class MatchOptionsBottomSheet extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 fontSize: 11.5,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF64748B),
               ),
             ),
             onTap: onUnmatch,
           ),
           ListTile(
-            leading: const Icon(
-              Icons.block_rounded,
-              color: Color(0xFFEF4444),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.block_rounded,
+                color: Color(0xFFDC2626),
+                size: 20,
+              ),
             ),
             title: const Text(
               'Chặn người dùng này',
@@ -108,7 +132,7 @@ class MatchOptionsBottomSheet extends StatelessWidget {
                 fontFamily: 'BeVietnamPro',
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFFEF4444),
+                color: Color(0xFFDC2626),
               ),
             ),
             subtitle: const Text(
@@ -116,7 +140,7 @@ class MatchOptionsBottomSheet extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 fontSize: 11.5,
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF64748B),
               ),
             ),
             onTap: onBlock,
