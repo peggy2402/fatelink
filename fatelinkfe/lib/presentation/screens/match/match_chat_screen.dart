@@ -328,8 +328,13 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 messageType: messageType,
               ),
             );
+            if (!_isNearBottom) {
+              _unreadCount++;
+            }
           });
-          _scrollToBottom();
+          if (_isNearBottom) {
+            _scrollToBottom();
+          }
         }
       });
 
@@ -556,6 +561,110 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  /// Nút mũi tên nổi cuộn xuống tin nhắn mới nhất phong cách Messenger / Telegram
+  Widget _buildScrollToBottomButton() {
+    return Positioned(
+      bottom: 12,
+      right: 16,
+      child: AnimatedScale(
+        scale: !_isNearBottom ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        child: AnimatedOpacity(
+          opacity: !_isNearBottom ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 180),
+          child: IgnorePointer(
+            ignoring: _isNearBottom,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.96),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(21),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _scrollToBottom();
+                        if (_unreadCount > 0) {
+                          setState(() => _unreadCount = 0);
+                        }
+                      },
+                      child: const Center(
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6366F1),
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_unreadCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Center(
+                        child: Text(
+                          _unreadCount > 99 ? '99+' : '$_unreadCount',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -1301,6 +1410,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                         },
                       ),
               ),
+              // Nút mũi tên cuộn xuống tin nhắn mới nhất (Scroll to Bottom Messenger style)
+              _buildScrollToBottomButton(),
             ],
           ),
         ),
