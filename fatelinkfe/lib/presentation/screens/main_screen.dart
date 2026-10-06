@@ -14,6 +14,7 @@ import 'package:fatelinkfe/presentation/widgets/menu.dart';
 import 'package:fatelinkfe/presentation/screens/match/cosmic_broadcast_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fatelinkfe/presentation/widgets/onboarding_modal.dart';
+import '../../services/app_socket_service.dart';
 import '../../logic/blocs/main/main_bloc.dart';
 import '../../logic/blocs/main/main_event.dart';
 import '../../logic/blocs/main/main_state.dart';
@@ -71,6 +72,7 @@ class _MainScreenState extends State<MainScreen>
       curve: Curves.easeOutCubic,
     ));
     _checkFirstTime();
+    AppSocketService().initialize();
   }
 
   void _openMenu() {
@@ -267,26 +269,35 @@ class _MainScreenState extends State<MainScreen>
                                 }
                               },
                             )
-                          : CustomBottomNavBar(
-                              key: const ValueKey('navBar'),
-                              currentIndex: currentIndex,
-                              avatarUrl: _avatarUrl,
-                              onTap: (index) {
-                                context.read<MainBloc>().add(ChangeTabEvent(index));
-                                setState(() {
-                                  _isPopupOpen = false;
-                                  if (index == 2) _hasUnreadMessages = false;
-                                });
-                              },
-                              onHeartTap: () {
-                                Navigator.of(context).push(
-                                  PageRouteBuilder(
-                                    transitionDuration: const Duration(milliseconds: 400),
-                                    pageBuilder: (context, anim1, anim2) => const CosmicBroadcastScreen(),
-                                    transitionsBuilder: (context, anim1, anim2, child) {
-                                      return FadeTransition(opacity: anim1, child: child);
-                                    },
-                                  ),
+                          : ValueListenableBuilder<int>(
+                              valueListenable: AppSocketService().totalUnreadCount,
+                              builder: (context, unreadCount, _) {
+                                return CustomBottomNavBar(
+                                  key: const ValueKey('navBar'),
+                                  currentIndex: currentIndex,
+                                  avatarUrl: _avatarUrl,
+                                  unreadChatCount: unreadCount,
+                                  onTap: (index) {
+                                    context.read<MainBloc>().add(ChangeTabEvent(index));
+                                    setState(() {
+                                      _isPopupOpen = false;
+                                      if (index == 2) {
+                                        _hasUnreadMessages = false;
+                                        AppSocketService().totalUnreadCount.value = 0;
+                                      }
+                                    });
+                                  },
+                                  onHeartTap: () {
+                                    Navigator.of(context).push(
+                                      PageRouteBuilder(
+                                        transitionDuration: const Duration(milliseconds: 400),
+                                        pageBuilder: (context, anim1, anim2) => const CosmicBroadcastScreen(),
+                                        transitionsBuilder: (context, anim1, anim2, child) {
+                                          return FadeTransition(opacity: anim1, child: child);
+                                        },
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             ),

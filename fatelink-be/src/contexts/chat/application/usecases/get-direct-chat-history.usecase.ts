@@ -3,13 +3,19 @@ import type { ChatMessageRepository } from '@contexts/chat/domain/repositories/c
 export class GetDirectChatHistoryUseCase {
   constructor(private readonly chatMessageRepository: ChatMessageRepository) {}
 
-  async execute(input: { userId: string; partnerId: string; limit?: number }) {
+  async execute(input: {
+    userId: string;
+    partnerId: string;
+    limit?: number;
+    after?: string;
+  }) {
     const conversationId = [input.userId, input.partnerId].sort().join(':');
     const messages =
       await this.chatMessageRepository.getDirectHistoryForConversation(
         input.userId,
         conversationId,
         input.limit || 50,
+        input.after,
       );
 
     return messages.reverse().map((msg) => {

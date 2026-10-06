@@ -64,6 +64,7 @@ export class ChatHistoryController {
     @Req() req: GuardRequest,
     @Param('partnerId') partnerId: string,
     @Query('limit') limit: number = 50,
+    @Query('after') after?: string,
   ) {
     const userId = req.user?.sub;
     if (!userId) {
@@ -74,6 +75,7 @@ export class ChatHistoryController {
       userId,
       partnerId,
       limit: Number(limit) || 50,
+      after,
     });
   }
 

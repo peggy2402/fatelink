@@ -32,6 +32,7 @@ export interface ChatMessageRepository {
     viewerUserId: string,
     conversationId: string,
     limit: number,
+    after?: string,
   ): Promise<Message[]>;
   getRecentConversations(userId: string): Promise<RecentConversationItem[]>;
 }

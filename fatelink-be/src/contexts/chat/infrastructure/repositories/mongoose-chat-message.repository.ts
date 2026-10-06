@@ -135,13 +135,23 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
     viewerUserId: string,
     conversationId: string,
     limit: number,
+    after?: string,
   ): Promise<DomainMessage[]> {
+    const filter: Record<string, any> = {
+      userId: viewerUserId,
+      conversationType: 'direct',
+      conversationId,
+    };
+
+    if (after) {
+      const date = new Date(after);
+      if (!isNaN(date.getTime())) {
+        filter.createdAt = { $gt: date };
+      }
+    }
+
     const messages = await this.messageModel
-      .find({
-        userId: viewerUserId,
-        conversationType: 'direct',
-        conversationId,
-      })
+      .find(filter)
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();

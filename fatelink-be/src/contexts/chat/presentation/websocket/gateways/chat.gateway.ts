@@ -30,17 +30,26 @@ const websocketCorsOrigins = (
 
 type ClientToServerEvents = {
   sendMessage: (payload: { text: string }) => void;
-  sendDirectMessage: (payload: {
-    partnerId: string;
-    text: string;
-    messageType?: string;
-    mediaUrl?: string;
-    durationMs?: number;
-    waveform?: number[];
-    imageUrls?: string[];
-    clientMessageId?: string;
-  }) => void;
-  loadDirectHistory: (payload: { partnerId: string; limit?: number }) => void;
+  sendDirectMessage: (
+    payload: {
+      partnerId: string;
+      text: string;
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
+    },
+    callback?: (ack: {
+      success: boolean;
+      id?: string;
+      clientMessageId?: string;
+      timestamp?: string;
+      error?: string;
+    }) => void,
+  ) => void;
+  loadDirectHistory: (payload: { partnerId: string; limit?: number; after?: string }) => void;
   checkUserStatus: (payload: { targetUserId: string }) => void;
   checkUsersStatus: (payload: { targetUserIds: string[] }) => void;
   typing: (payload: { partnerId: string; isTyping: boolean }) => void;
@@ -179,11 +188,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const decoded = await this.validateUserTokenUseCase.execute({ token });
       const userId = decoded.sub;
 
+      const machineId = process.env.FLY_MACHINE_ID || process.env.HOSTNAME || 'local';
       // Gắn userId vào client data để dùng cho các luồng nhắn tin sau này
       client.data.userId = userId;
-      this.logger.log(`Client connected: ${client.id} (User: ${userId})`);
+      // Join room định danh user:{userId} cho room-based routing
+      client.join(`user:${userId}`);
 
       this.chatPresenceService.markOnline(userId, client.id);
+      const activeCount = this.chatPresenceService.getSocketIds(userId).length;
+
+      this.logger.log(
+        `[Socket Connect] machine=${machineId}, socketId=${client.id}, userId=${userId}, activeSockets=${activeCount}`,
+      );
 
       // Broadcast cho toàn bộ client biết user này vừa online
       this.server.emit('userStatusChanged', {
@@ -199,7 +215,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: ChatSocket) {
+    const machineId = process.env.FLY_MACHINE_ID || process.env.HOSTNAME || 'local';
     if (client.data.userId) {
+      client.leave(`user:${client.data.userId}`);
       const isFullyOffline = this.chatPresenceService.markOffline(
         client.data.userId,
         client.id,
@@ -212,8 +230,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           isOnline: false,
         });
       }
+
+      this.logger.log(
+        `[Socket Disconnect] machine=${machineId}, socketId=${client.id}, userId=${client.data.userId}, isFullyOffline=${isFullyOffline}`,
+      );
+    } else {
+      this.logger.log(`[Socket Disconnect] machine=${machineId}, socketId=${client.id} (no userId)`);
     }
-    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('sendMessage')
@@ -274,24 +297,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       clientMessageId?: string;
     },
   ) {
+    const machineId = process.env.FLY_MACHINE_ID || process.env.HOSTNAME || 'local';
+    const senderId = client.data.userId;
+    const {
+      partnerId,
+      text,
+      messageType,
+      mediaUrl,
+      durationMs,
+      waveform,
+      imageUrls,
+      clientMessageId,
+    } = payload;
+
+    this.logger.log(
+      `[Socket sendDirectMessage:START] machine=${machineId}, senderId=${senderId}, partnerId=${partnerId}, clientMessageId=${clientMessageId}, messageType=${messageType || 'text'}`,
+    );
+
+    if (!senderId) {
+      client.emit('errorMessage', { message: 'User không xác định' });
+      return { success: false, error: 'User không xác định' };
+    }
+
     try {
-      const senderId = client.data.userId;
-      const {
-        partnerId,
-        text,
-        messageType,
-        mediaUrl,
-        durationMs,
-        waveform,
-        imageUrls,
-        clientMessageId,
-      } = payload;
-
-      if (!senderId) {
-        client.emit('errorMessage', { message: 'User không xác định' });
-        return;
-      }
-
       const savedMessage = await this.createDirectChatMessageUseCase.execute({
         senderId,
         partnerId,
@@ -304,38 +332,63 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         clientMessageId,
       });
 
+      const messageTimestamp = (savedMessage?.createdAt ?? new Date()).toISOString();
+      const messageId = savedMessage?.id;
       const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
 
-      if (targetSocketIds.length > 0) {
-        // Đối phương đang mở app -> Bắn sự kiện realtime
-        targetSocketIds.forEach((targetSocketId) => {
-          this.server.to(targetSocketId).emit('receiveDirectMessage', {
-            id: savedMessage?.id,
-            senderId,
-            text,
-            messageType: savedMessage?.messageType || messageType,
-            mediaUrl: savedMessage?.mediaUrl ?? mediaUrl,
-            durationMs: savedMessage?.durationMs ?? durationMs,
-            waveform: savedMessage?.waveform ?? waveform,
-            imageUrls: savedMessage?.imageUrls ?? imageUrls,
-            clientMessageId: savedMessage?.clientMessageId ?? clientMessageId,
-            timestamp: (savedMessage?.createdAt ?? new Date()).toISOString(),
-          });
-        });
-      } else {
-        this.logger.log(`Direct message target offline: ${partnerId}`);
-      }
+      this.logger.log(
+        `[Socket sendDirectMessage:SAVED] machine=${machineId}, senderId=${senderId}, partnerId=${partnerId}, messageId=${messageId}, clientMessageId=${clientMessageId}, dbSaved=true, targetSocketIdsCount=${targetSocketIds.length}`,
+      );
+
+      const messagePayload = {
+        id: messageId,
+        senderId,
+        text,
+        messageType: savedMessage?.messageType || messageType,
+        mediaUrl: savedMessage?.mediaUrl ?? mediaUrl,
+        durationMs: savedMessage?.durationMs ?? durationMs,
+        waveform: savedMessage?.waveform ?? waveform,
+        imageUrls: savedMessage?.imageUrls ?? imageUrls,
+        clientMessageId: savedMessage?.clientMessageId ?? clientMessageId,
+        timestamp: messageTimestamp,
+      };
+
+      // 1. Phát tới room 'user:${partnerId}' (chuẩn đa máy + Redis adapter)
+      this.server.to(`user:${partnerId}`).emit('receiveDirectMessage', messagePayload);
+
+      // 2. Fallback trực tiếp cho từng socket ID trên RAM máy hiện tại
+      targetSocketIds.forEach((targetSocketId) => {
+        this.server.to(targetSocketId).emit('receiveDirectMessage', messagePayload);
+      });
+
+      this.logger.log(
+        `[Socket sendDirectMessage:EMITTED] machine=${machineId}, partnerId=${partnerId}, targetRoom=user:${partnerId}, socketsNotified=${targetSocketIds.length}`,
+      );
 
       // Kích hoạt Push Notification (Heads-Up trên màn hình chính/khóa & badge icon)
       void this.notifyDirectMessage(senderId, partnerId, text);
+
+      // Trả về ack cho client (NestJS tự động chuyển giá trị return thành ack response)
+      return {
+        success: true,
+        id: messageId,
+        clientMessageId: savedMessage?.clientMessageId ?? clientMessageId,
+        timestamp: messageTimestamp,
+      };
     } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        'Failed to handle direct websocket message',
-        error instanceof Error ? error.stack || error.message : String(error),
+        `[Socket sendDirectMessage:ERROR] machine=${machineId}, senderId=${senderId}, partnerId=${partnerId}, error=${errorMsg}`,
+        error instanceof Error ? error.stack : undefined,
       );
       client.emit('errorMessage', {
         message: 'Khong the gui tin nhan luc nay, ban thu lai sau nhe!',
       });
+      return {
+        success: false,
+        error: errorMsg,
+        clientMessageId,
+      };
     }
   }
 
@@ -358,23 +411,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
   ) {
     try {
+      const machineId = process.env.FLY_MACHINE_ID || process.env.HOSTNAME || 'local';
       const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
-      if (targetSocketIds.length > 0 && this.server) {
+      const messagePayload = {
+        id: options?.id,
+        senderId,
+        text,
+        timestamp: options?.timestamp || new Date().toISOString(),
+        messageType: options?.messageType,
+        mediaUrl: options?.mediaUrl,
+        durationMs: options?.durationMs,
+        waveform: options?.waveform,
+        imageUrls: options?.imageUrls,
+        clientMessageId: options?.clientMessageId,
+      };
+
+      if (this.server) {
+        // Emit tới room
+        this.server.to(`user:${partnerId}`).emit('receiveDirectMessage', messagePayload);
+        // Fallback tới RAM socket IDs
         targetSocketIds.forEach((targetSocketId) => {
-          this.server.to(targetSocketId).emit('receiveDirectMessage', {
-            id: options?.id,
-            senderId,
-            text,
-            timestamp: options?.timestamp || new Date().toISOString(),
-            messageType: options?.messageType,
-            mediaUrl: options?.mediaUrl,
-            durationMs: options?.durationMs,
-            waveform: options?.waveform,
-            imageUrls: options?.imageUrls,
-            clientMessageId: options?.clientMessageId,
-          });
+          this.server.to(targetSocketId).emit('receiveDirectMessage', messagePayload);
         });
       }
+
+      this.logger.log(
+        `[HTTP sendDirectMessage:EMITTED] machine=${machineId}, partnerId=${partnerId}, sockets=${targetSocketIds.length}`,
+      );
 
       // Kích hoạt Push Notification cho HTTP
       void this.notifyDirectMessage(senderId, partnerId, text);
@@ -426,6 +489,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             badgeCount: 1,
           },
         );
+      } else {
+        this.logger.warn(
+          `[FCM Notification Skipped] Partner ${partnerId} does not have an fcmToken`,
+        );
       }
     } catch (pushErr) {
       this.logger.warn(`Push notification trigger failed: ${pushErr}`);
@@ -470,6 +537,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    this.server.to(`user:${payload.partnerId}`).emit('receiveTyping', {
+      senderId,
+      isTyping: payload.isTyping,
+    });
+
     const targetSocketIds = this.chatPresenceService.getSocketIds(
       payload.partnerId,
     );
@@ -485,7 +557,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('loadDirectHistory')
   async handleLoadDirectHistory(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string; limit?: number },
+    @MessageBody() payload: { partnerId: string; limit?: number; after?: string },
   ) {
     const userId = client.data.userId;
     if (!userId) {
@@ -497,6 +569,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId,
         partnerId: payload.partnerId,
         limit: payload.limit || 50,
+        after: payload.after,
       });
 
       client.emit('directHistoryResult', {
@@ -537,25 +610,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const callerAvatar = caller?.avatar || null;
       const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
 
+      const callPayload = {
+        callerId: senderId,
+        callerName,
+        callerAvatar,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Broadcast tới room user:{partnerId}
+      this.server.to(`user:${partnerId}`).emit('incomingVoiceCall', callPayload);
+
       if (targetSocketIds.length > 0) {
-        // Đối phương đang mở app -> Bắn sự kiện đổ chuông realtime
+        // Đối phương đang mở app trên máy này -> Bắn sự kiện đổ chuông realtime
         targetSocketIds.forEach((targetSocketId) => {
-          this.server.to(targetSocketId).emit('incomingVoiceCall', {
-            callerId: senderId,
-            callerName,
-            callerAvatar,
-            timestamp: new Date().toISOString(),
-          });
+          this.server.to(targetSocketId).emit('incomingVoiceCall', callPayload);
         });
 
         // Báo cho caller biết máy đang đổ chuông
         client.emit('voiceCallRinging', { partnerId });
       } else {
-        // Đối phương offline
-        client.emit('voiceCallUnavailable', {
-          partnerId,
-          reason: 'offline',
-        });
+        // Kiểm tra xem user có online hay không
+        client.emit('voiceCallRinging', { partnerId });
       }
 
       // Kích hoạt Push Notification FCM để đánh thức máy người nhận kể cả khi chạy nền
@@ -592,6 +667,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const receiverId = client.data.userId;
     if (!receiverId) return;
 
+    this.server.to(`user:${payload.callerId}`).emit('voiceCallAccepted', {
+      partnerId: receiverId,
+    });
     const callerSocketIds = this.chatPresenceService.getSocketIds(payload.callerId);
     callerSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('voiceCallAccepted', {
@@ -611,6 +689,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const receiverId = client.data.userId;
     if (!receiverId) return;
 
+    this.server.to(`user:${payload.callerId}`).emit('voiceCallRejected', {
+      partnerId: receiverId,
+      reason: payload.reason || 'declined',
+    });
     const callerSocketIds = this.chatPresenceService.getSocketIds(payload.callerId);
     callerSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('voiceCallRejected', {
@@ -631,6 +713,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const senderId = client.data.userId;
     if (!senderId) return;
 
+    this.server.to(`user:${payload.partnerId}`).emit('voiceCallEnded', {
+      partnerId: senderId,
+    });
     const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
     targetSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('voiceCallEnded', {
@@ -650,6 +735,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const senderId = client.data.userId;
     if (!senderId) return;
 
+    this.server.to(`user:${payload.partnerId}`).emit('webrtcOffer', {
+      senderId,
+      sdp: payload.sdp,
+    });
     const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
     targetSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('webrtcOffer', {
@@ -670,6 +759,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const senderId = client.data.userId;
     if (!senderId) return;
 
+    this.server.to(`user:${payload.partnerId}`).emit('webrtcAnswer', {
+      senderId,
+      sdp: payload.sdp,
+    });
     const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
     targetSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('webrtcAnswer', {
@@ -690,6 +783,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const senderId = client.data.userId;
     if (!senderId) return;
 
+    this.server.to(`user:${payload.partnerId}`).emit('iceCandidate', {
+      senderId,
+      candidate: payload.candidate,
+    });
     const targetSocketIds = this.chatPresenceService.getSocketIds(payload.partnerId);
     targetSocketIds.forEach((socketId) => {
       this.server.to(socketId).emit('iceCandidate', {

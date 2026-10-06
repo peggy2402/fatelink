@@ -9,6 +9,7 @@ class CustomBottomNavBar extends StatefulWidget {
   final Function(int) onTap;
   final String? avatarUrl;
   final VoidCallback? onHeartTap;
+  final int unreadChatCount;
 
   const CustomBottomNavBar({
     super.key,
@@ -16,6 +17,7 @@ class CustomBottomNavBar extends StatefulWidget {
     required this.onTap,
     this.avatarUrl,
     this.onHeartTap,
+    this.unreadChatCount = 0,
   });
 
   @override
@@ -105,7 +107,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                           label: 'Trò chuyện',
                           unselectedIcon: CupertinoIcons.bubble_left_bubble_right,
                           selectedIcon: CupertinoIcons.bubble_left_bubble_right_fill,
-                          hasBadge: true,
+                          hasBadge: widget.unreadChatCount > 0,
+                          unreadCount: widget.unreadChatCount,
                         ),
                         _buildNavItem(
                           index: 3,
@@ -170,6 +173,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
     required IconData unselectedIcon,
     required IconData selectedIcon,
     bool hasBadge = false,
+    int unreadCount = 0,
     bool isProfile = false,
   }) {
     final isSelected = widget.currentIndex == index;
@@ -229,19 +233,41 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                       size: 24,
                     ),
 
-                  // Chấm đỏ thông báo tin nhắn chưa đọc
-                  if (hasBadge)
+                  // Huy hiệu số đếm thông báo tin nhắn chưa đọc (5+ nếu > 5)
+                  if (hasBadge && unreadCount > 0)
                     Positioned(
-                      right: -3,
-                      top: -2,
+                      right: -10,
+                      top: -6,
                       child: Container(
-                        padding: const EdgeInsets.all(3.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF3B30),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF3B30), Color(0xFFFF2A6D)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF2A6D).withValues(alpha: 0.45),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
-                        child: const SizedBox(width: 4, height: 4),
+                        child: Center(
+                          child: Text(
+                            unreadCount > 5 ? '5+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              height: 1.0,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                 ],

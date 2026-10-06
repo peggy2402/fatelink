@@ -18,6 +18,7 @@ import '../../../data/models/match_user.dart';
 import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
 import '../../../services/badge_service.dart';
+import '../../../services/app_socket_service.dart';
 
 // Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
@@ -88,6 +89,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   Timer? _typingDebounce;
   Timer? _historyTimeoutTimer;
   Timer? _pollingFallbackTimer;
+  StreamSubscription? _directMessageSub;
+  StreamSubscription? _reconnectSub;
 
   bool _isPartnerTyping = false;
   bool _isPartnerOnline = false;
@@ -137,6 +140,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _focusNode.addListener(_onFocusChanged);
     _scrollController.addListener(_scrollListener);
     _chatController.addListener(_onTextChanged);
+
+    // Đánh dấu người dùng đang mở phòng chat với partnerId này (để không tăng unread badge)
+    AppSocketService().setActiveChatPartner(widget.partnerId);
 
     // Khi người dùng vào xem phòng chat, xóa sạch badge icon app
     BadgeService.clearBadge();
@@ -235,87 +241,22 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   /// Khởi tạo kết nối Socket và nạp tin nhắn
   Future<void> _initSocketAndLoadHistory() async {
     try {
-      var token = await _secureStorage.read(key: 'accessToken');
-      if (token == null || _isTokenExpired(token)) {
-        token = await ApiService.tryRefreshToken();
-      }
+      // 1. Đảm bảo AppSocketService đã kết nối
+      await AppSocketService().initialize();
+      _socket = AppSocketService().socket;
 
-      if (token == null || token.isEmpty) {
-        if (mounted) setState(() => _isLoadingHistory = false);
-        return;
-      }
-
-      final cleanToken = token.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
-
-      _socket = IO.io(
-        AppConstants.serverUrl,
-        IO.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
-            .disableAutoConnect()
-            .setAuth({'token': cleanToken})
-            .setExtraHeaders({'Authorization': 'Bearer $cleanToken'})
-            .build(),
-      );
-
-      _socket!.off('connect');
-      _socket!.off('directHistoryResult');
-      _socket!.off('receiveDirectMessage');
-      _socket!.off('receiveTyping');
-      _socket!.off('userStatusResult');
-      _socket!.off('userStatusChanged');
-      _socket!.off('webrtcOffer');
-      _socket!.off('incomingVoiceCall');
-      _socket!.off('disconnect');
-      _socket!.off('authError');
-      _socket!.off('connect_error');
-      _socket!.off('error');
-
-      _socket!.connect();
-
-      _socket!.onConnect((_) {
-        debugPrint('✅ [MatchChatSocket] Đã kết nối socket thành công');
-        _socket!.emit('loadDirectHistory', {
-          'partnerId': widget.partnerId,
-          'limit': 50,
-        });
-
-        _socket!.emit('checkUserStatus', {
-          'targetUserId': widget.partnerId,
-        });
-      });
-
-      _socket!.on('directHistoryResult', (data) {
+      // 2. Lắng nghe tin nhắn trực tiếp từ AppSocketService
+      _directMessageSub?.cancel();
+      _directMessageSub = AppSocketService().directMessageStream.listen((data) {
         if (!mounted) return;
-        _historyTimeoutTimer?.cancel();
-
-        if (data is Map && data['partnerId'] == widget.partnerId) {
-          final rawMessages = data['messages'] as List? ?? [];
-          final List<ChatMessage> loaded = [];
-
-          for (final item in rawMessages) {
-            if (item is Map) {
-              final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(item));
-              loaded.add(chatMsg);
-            }
-          }
-
-          setState(() {
-            if (loaded.isNotEmpty) {
-              _messages.clear();
-              _messages.addAll(loaded.reversed);
-            }
-            _isLoadingHistory = false;
-          });
-        } else {
-          setState(() => _isLoadingHistory = false);
-        }
-      });
-
-      _socket!.on('receiveDirectMessage', (data) {
-        if (!mounted) return;
-        if (data is Map && data['senderId'] == widget.partnerId) {
+        if (data['senderId'] == widget.partnerId) {
           HapticFeedback.lightImpact();
           final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
+
+          final senderId = data['senderId']?.toString() ?? '';
+          debugPrint(
+            '📩 [Socket Receive] bên nhận: receiveDirectMessage: id=${chatMsg.id}, senderId=$senderId, text=${chatMsg.text.length > 30 ? chatMsg.text.substring(0, 30) : chatMsg.text}',
+          );
 
           setState(() {
             _isPartnerTyping = false;
@@ -337,100 +278,169 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      _socket!.on('receiveTyping', (data) {
-        if (!mounted) return;
-        if (data is Map && data['senderId'] == widget.partnerId) {
-          setState(() {
-            _isPartnerTyping = data['isTyping'] == true;
-          });
-          if (_isPartnerTyping) {
-            _scrollToBottom();
-          }
-        }
+      // 3. Lắng nghe Reconnect để đồng bộ tin nhắn đã lỡ
+      _reconnectSub?.cancel();
+      _reconnectSub = AppSocketService().reconnectStream.listen((_) {
+        debugPrint('🔄 [MatchChat] Socket reconnect -> Thực hiện đồng bộ tin nhắn đã lỡ');
+        _syncMissedMessages();
       });
 
-      _socket!.on('userStatusResult', (data) {
-        if (!mounted) return;
-        if (data is Map && data['userId'] == widget.partnerId) {
-          setState(() {
-            _isPartnerOnline = data['isOnline'] == true;
-          });
-        }
-      });
+      if (_socket != null) {
+        _socket!.off('directHistoryResult');
+        _socket!.off('receiveTyping');
+        _socket!.off('userStatusResult');
+        _socket!.off('userStatusChanged');
+        _socket!.off('webrtcOffer');
+        _socket!.off('incomingVoiceCall');
 
-      _socket!.on('userStatusChanged', (data) {
-        if (!mounted) return;
-        if (data is Map && data['userId'] == widget.partnerId) {
-          setState(() {
-            _isPartnerOnline = data['isOnline'] == true;
-          });
-        }
-      });
+        _socket!.on('directHistoryResult', (data) {
+          if (!mounted) return;
+          _historyTimeoutTimer?.cancel();
 
-      // Lắng nghe tín hiệu cuộc gọi thoại WebRTC Real-time
-      _socket!.on('webrtcOffer', (data) {
-        if (data is Map && data['sdp'] != null) {
-          _pendingOfferSdp = data['sdp'];
-        }
-      });
+          if (data is Map && data['partnerId'] == widget.partnerId) {
+            final rawMessages = data['messages'] as List? ?? [];
+            final List<ChatMessage> loaded = [];
 
-      _socket!.on('incomingVoiceCall', (data) {
-        if (!mounted) return;
-        if (data is Map) {
-          final callerId = data['callerId']?.toString() ?? '';
-          final callerName = data['callerName']?.toString() ?? _partnerDisplayName;
-          final callerAvatar = data['callerAvatar']?.toString() ?? _partnerRealAvatar;
+            for (final item in rawMessages) {
+              if (item is Map) {
+                final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(item));
+                loaded.add(chatMsg);
+              }
+            }
 
-          CosmicIncomingCallModal.show(
-            context,
-            callerId: callerId,
-            callerName: callerName,
-            callerAvatar: callerAvatar,
-            socket: _socket!,
-            offerSdp: _pendingOfferSdp,
-          );
-        }
-      });
-
-      _socket!.onDisconnect((_) {
-        debugPrint('❌ [MatchChatSocket] Socket ngắt kết nối');
-        if (mounted && _isLoadingHistory) {
-          setState(() => _isLoadingHistory = false);
-        }
-      });
-
-      _socket!.on('authError', (data) async {
-        debugPrint('⚠️ [MatchChatSocket] Lỗi xác thực token socket: $data');
-        final refreshedToken = await ApiService.tryRefreshToken();
-        if (refreshedToken != null && mounted) {
-          final clean = refreshedToken.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
-          _socket!.io.options?['auth'] = {'token': clean};
-          _socket!.io.options?['extraHeaders'] = {'Authorization': 'Bearer $clean'};
-          _socket!.connect();
-        }
-      });
-
-      _socket!.onConnectError((err) {
-        debugPrint('⚠️ [MatchChatSocket] Lỗi kết nối socket: $err');
-        if (mounted) {
-          if (_isLoadingHistory) {
+            setState(() {
+              if (loaded.isNotEmpty) {
+                _messages.clear();
+                _messages.addAll(loaded.reversed);
+              }
+              _isLoadingHistory = false;
+            });
+          } else {
             setState(() => _isLoadingHistory = false);
           }
-          _syncMessagesViaHttp();
-        }
-      });
+        });
 
-      _socket!.onError((err) {
-        debugPrint('⚠️ [MatchChatSocket] Socket gặp sự cố: $err');
-        if (mounted && _isLoadingHistory) {
-          setState(() => _isLoadingHistory = false);
+        _socket!.on('receiveTyping', (data) {
+          if (!mounted) return;
+          if (data is Map && data['senderId'] == widget.partnerId) {
+            setState(() {
+              _isPartnerTyping = data['isTyping'] == true;
+            });
+            if (_isPartnerTyping) {
+              _scrollToBottom();
+            }
+          }
+        });
+
+        _socket!.on('userStatusResult', (data) {
+          if (!mounted) return;
+          if (data is Map && data['userId'] == widget.partnerId) {
+            setState(() {
+              _isPartnerOnline = data['isOnline'] == true;
+            });
+          }
+        });
+
+        _socket!.on('userStatusChanged', (data) {
+          if (!mounted) return;
+          if (data is Map && data['userId'] == widget.partnerId) {
+            setState(() {
+              _isPartnerOnline = data['isOnline'] == true;
+            });
+          }
+        });
+
+        // Lắng nghe tín hiệu cuộc gọi thoại WebRTC Real-time
+        _socket!.on('webrtcOffer', (data) {
+          if (data is Map && data['sdp'] != null) {
+            _pendingOfferSdp = data['sdp'];
+          }
+        });
+
+        _socket!.on('incomingVoiceCall', (data) {
+          if (!mounted) return;
+          if (data is Map) {
+            final callerId = data['callerId']?.toString() ?? '';
+            final callerName = data['callerName']?.toString() ?? _partnerDisplayName;
+            final callerAvatar = data['callerAvatar']?.toString() ?? _partnerRealAvatar;
+
+            CosmicIncomingCallModal.show(
+              context,
+              callerId: callerId,
+              callerName: callerName,
+              callerAvatar: callerAvatar,
+              socket: _socket!,
+              offerSdp: _pendingOfferSdp,
+            );
+          }
+        });
+
+        if (_socket!.connected) {
+          _socket!.emit('loadDirectHistory', {
+            'partnerId': widget.partnerId,
+            'limit': 50,
+          });
+
+          _socket!.emit('checkUserStatus', {
+            'targetUserId': widget.partnerId,
+          });
         }
-      });
+      }
     } catch (e) {
       debugPrint('⚠️ [MatchChatSocket] Lỗi khởi tạo socket: $e');
       if (mounted) {
         setState(() => _isLoadingHistory = false);
       }
+    }
+  }
+
+  /// Đồng bộ tin nhắn bị lỡ khi socket reconnect
+  Future<void> _syncMissedMessages() async {
+    if (!mounted) return;
+    try {
+      final token = await _secureStorage.read(key: 'accessToken');
+      if (token == null || token.isEmpty) return;
+
+      DateTime? latestTimestamp;
+      for (final m in _messages) {
+        if (latestTimestamp == null || m.timestamp.isAfter(latestTimestamp)) {
+          latestTimestamp = m.timestamp;
+        }
+      }
+
+      final queryParam = latestTimestamp != null
+          ? '?after=${Uri.encodeComponent(latestTimestamp.toUtc().toIso8601String())}'
+          : '';
+      final url = '${AppConstants.baseUrl}/messages/direct/${widget.partnerId}$queryParam';
+      debugPrint('🔄 [MatchChat Sync] Gọi incremental sync: GET $url');
+      final res = await ApiService.get(url, context, token: token, showLoading: false);
+
+      if (res is List && mounted) {
+        final List<ChatMessage> newOnes = [];
+        for (final item in res) {
+          if (item is Map) {
+            final msg = ChatMessage.fromJson(Map<String, dynamic>.from(item));
+            final exists = _messages.any((m) =>
+                m.id == msg.id ||
+                (m.text == msg.text &&
+                    m.isSentByMe == msg.isSentByMe &&
+                    m.timestamp.difference(msg.timestamp).abs().inSeconds < 5));
+            if (!exists) {
+              newOnes.add(msg);
+            }
+          }
+        }
+        if (newOnes.isNotEmpty) {
+          debugPrint('✅ [MatchChat Sync] Đã nhận ${newOnes.length} tin nhắn bị lỡ');
+          setState(() {
+            for (final msg in newOnes) {
+              _messages.insert(0, msg);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [MatchChat Sync] Lỗi sync reconnect: $e');
     }
   }
 
@@ -681,9 +691,14 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _historyTimeoutTimer?.cancel();
     _typingDebounce?.cancel();
     _pollingFallbackTimer?.cancel();
+    _directMessageSub?.cancel();
+    _reconnectSub?.cancel();
     _focusNode.removeListener(_onFocusChanged);
     _scrollController.removeListener(_scrollListener);
     _chatController.removeListener(_onTextChanged);
+
+    // Bỏ đăng ký phòng chat đang mở
+    AppSocketService().setActiveChatPartner(null);
 
     // Dừng phát âm thanh và hủy ghi âm nếu màn hình bị đóng
     VoicePlayerManager().stopAll();
@@ -694,7 +709,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         'partnerId': widget.partnerId,
         'isTyping': false,
       });
-      _socket!.dispose();
     }
 
     _chatController.dispose();
@@ -745,6 +759,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
     final clientMsgId = '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
     final newMessage = ChatMessage(
+      id: clientMsgId,
       text: trimmedText,
       isSentByMe: true,
       timestamp: DateTime.now(),
@@ -752,9 +767,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       replyToSender: replySender,
       imageUrls: imageUrls ?? const [],
       messageType: messageType ?? (imageUrls != null && imageUrls.length > 1 ? 'imageStack' : 'text'),
+      isSending: true,
+      isSendError: false,
     );
 
-    // 1. Thêm tin nhắn của mình vào UI tức thời (0ms Latency)
+    // 1. Thêm tin nhắn của mình vào UI tức thời (0ms Latency) với trạng thái ĐANG GỬI
     setState(() {
       _messages.insert(0, newMessage);
       _replyingMessage = null; // Clear reply sau khi gửi
@@ -763,32 +780,91 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _chatController.clear();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-    // 2. Gửi qua WebSocket nếu đang kết nối
-    if (_socket != null && _socket!.connected) {
-      _socket!.emit('sendDirectMessage', {
-        'partnerId': widget.partnerId,
-        'text': trimmedText,
-        'replyToText': replyText,
-        'replyToSender': replySender,
-        'imageUrls': imageUrls,
-        'messageType': newMessage.messageType,
-        'clientMessageId': clientMsgId,
-      });
+    // 2. Gửi qua Socket có Ack callback và Timeout 8s
+    _dispatchSendMessage(
+      newMessage,
+      clientMsgId,
+      trimmedText,
+      replyText,
+      replySender,
+      imageUrls,
+    );
+  }
 
-      _socket!.emit('typing', {
-        'partnerId': widget.partnerId,
-        'isTyping': false,
-      });
-    } else {
-      _socket?.connect();
-      // 3. REST API Fallback CHỈ GỌI KHI SOCKET MẤT KẾT NỐI (Tránh lưu trùng)
-      _sendMessageViaHttp(
-        trimmedText,
-        replyText,
-        replySender,
+  /// Thực thi gửi tin nhắn qua WebSocket Ack callback (với fallback HTTP nếu socket ngắt hẳn)
+  Future<void> _dispatchSendMessage(
+    ChatMessage msg,
+    String clientMsgId,
+    String text,
+    String? replyText,
+    String? replySender,
+    List<String>? imageUrls,
+  ) async {
+    try {
+      final ack = await AppSocketService().sendDirectMessageWithAck(
+        partnerId: widget.partnerId,
+        text: text,
+        messageType: msg.messageType,
         imageUrls: imageUrls,
-        messageType: newMessage.messageType,
         clientMessageId: clientMsgId,
+      );
+
+      debugPrint(
+        '📥 [Socket Ack] nhận được (id server: ${ack['id']}, clientMsgId: ${ack['clientMessageId']})',
+      );
+
+      if (mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == clientMsgId);
+          if (idx != -1) {
+            _messages[idx] = _messages[idx].copyWith(
+              id: ack['id']?.toString() ?? clientMsgId,
+              isSending: false,
+              isSendError: false,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ [Socket Send Error] Lỗi hoặc timeout sau 8s: $e');
+      if (mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == clientMsgId);
+          if (idx != -1) {
+            _messages[idx] = _messages[idx].copyWith(
+              isSending: false,
+              isSendError: true,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  /// Thử lại gửi tin nhắn khi bị lỗi (cùng clientMessageId cũ)
+  void _retrySendMessage(ChatMessage msg) {
+    HapticFeedback.lightImpact();
+    if (msg.isVoice) {
+      _retrySendVoiceMessage(msg);
+    } else if (msg.messageType == 'image' || msg.messageType == 'imageStack') {
+      _retrySendImageMessage(msg);
+    } else {
+      setState(() {
+        final idx = _messages.indexWhere((m) => m.id == msg.id);
+        if (idx != -1) {
+          _messages[idx] = _messages[idx].copyWith(
+            isSending: true,
+            isSendError: false,
+          );
+        }
+      });
+      _dispatchSendMessage(
+        msg,
+        msg.id,
+        msg.text,
+        msg.replyToText,
+        msg.replyToSender,
+        msg.imageUrls.isNotEmpty ? msg.imageUrls : null,
       );
     }
   }
@@ -944,29 +1020,51 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             text: textContent,
             imageUrls: uploadedUrls,
             messageType: msgType,
-            isSending: false,
+            isSending: true,
             isSendError: false,
           );
         }
       });
 
-      if (_socket != null && _socket!.connected) {
-        _socket!.emit('sendDirectMessage', {
-          'partnerId': widget.partnerId,
-          'text': textContent,
-          'imageUrls': uploadedUrls,
-          'messageType': msgType,
-          'clientMessageId': clientMsgId,
-        });
-      } else {
-        _sendMessageViaHttp(
-          textContent,
-          null,
-          null,
+      try {
+        final ack = await AppSocketService().sendDirectMessageWithAck(
+          partnerId: widget.partnerId,
+          text: textContent,
           imageUrls: uploadedUrls,
           messageType: msgType,
           clientMessageId: clientMsgId,
         );
+
+        debugPrint(
+          '📥 [Socket Ack] nhận được (id server: ${ack['id']}, clientMsgId: ${ack['clientMessageId']})',
+        );
+
+        if (mounted) {
+          setState(() {
+            final idx = _messages.indexWhere((m) => m.id == msg.id || m.id == clientMsgId);
+            if (idx != -1) {
+              _messages[idx] = _messages[idx].copyWith(
+                id: ack['id']?.toString() ?? msg.id,
+                isSending: false,
+                isSendError: false,
+              );
+            }
+          });
+        }
+      } catch (err) {
+        debugPrint('❌ [Image Socket Error] Gửi ảnh thất bại hoặc timeout sau 8s: $err');
+        if (mounted) {
+          setState(() {
+            final idx = _messages.indexWhere((m) => m.id == msg.id);
+            if (idx != -1) {
+              _messages[idx] = _messages[idx].copyWith(
+                isSending: false,
+                isSendError: true,
+              );
+            }
+          });
+          ToastUtil.showError(context, 'Tải ảnh lên thất bại. Chạm vào ảnh để thử lại!');
+        }
       }
     } catch (e) {
       debugPrint('❌ [ChatImages] Lỗi upload ảnh: $e');
@@ -1049,7 +1147,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _uploadAndSendVoiceMessage(newMessage);
   }
 
-  /// Upload file ghi âm qua multipart và gửi qua Socket + HTTP
+  /// Upload file ghi âm qua multipart và gửi qua Socket có Ack callback
   Future<void> _uploadAndSendVoiceMessage(ChatMessage msg) async {
     final filePath = msg.localFilePath;
     if (filePath == null || filePath.isEmpty) {
@@ -1081,44 +1179,55 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         'waveform': msg.effectiveWaveform,
       });
 
-      // Cập nhật trạng thái thành công trong UI
+      // Cập nhật URL trong UI nhưng VẪN GIỮ isSending: true (chờ ack socket)
       setState(() {
         final index = _messages.indexWhere((m) => m.id == msg.id);
         if (index != -1) {
           _messages[index] = _messages[index].copyWith(
             text: voicePayload,
             mediaUrl: cloudUrl,
-            isSending: false,
+            isSending: true,
             isSendError: false,
           );
         }
       });
 
-      final clientMsgId = '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
-      // Gửi qua WebSocket nếu đang kết nối
-      if (_socket != null && _socket!.connected) {
-        _socket!.emit('sendDirectMessage', {
-          'partnerId': widget.partnerId,
-          'text': voicePayload,
-          'messageType': 'voice',
-          'mediaUrl': cloudUrl,
-          'durationMs': msg.durationMs,
-          'waveform': msg.effectiveWaveform,
-          'clientMessageId': clientMsgId,
-        });
-      } else {
-        _socket?.connect();
-        // REST API Fallback CHỈ GỌI KHI SOCKET MẤT KẾT NỐI (Tránh lưu trùng)
-        _sendMessageViaHttp(
-          voicePayload,
-          null,
-          null,
+      final clientMsgId = msg.id.startsWith('temp_voice_')
+          ? msg.id
+          : '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
+
+      try {
+        final ack = await AppSocketService().sendDirectMessageWithAck(
+          partnerId: widget.partnerId,
+          text: voicePayload,
+          messageType: 'voice',
           mediaUrl: cloudUrl,
           durationMs: msg.durationMs,
           waveform: msg.effectiveWaveform,
-          messageType: 'voice',
           clientMessageId: clientMsgId,
         );
+
+        debugPrint(
+          '📥 [Socket Ack] nhận được (id server: ${ack['id']}, clientMsgId: ${ack['clientMessageId']})',
+        );
+
+        if (mounted) {
+          setState(() {
+            final index = _messages.indexWhere((m) => m.id == msg.id || m.id == clientMsgId);
+            if (index != -1) {
+              _messages[index] = _messages[index].copyWith(
+                id: ack['id']?.toString() ?? msg.id,
+                isSending: false,
+                isSendError: false,
+              );
+            }
+          });
+        }
+      } catch (err) {
+        debugPrint('❌ [VoiceNote Socket Error] Gửi tin voice thất bại hoặc timeout sau 8s: $err');
+        if (mounted) {
+          _markVoiceMessageError(msg.id);
+        }
       }
     } catch (e) {
       debugPrint('❌ [VoiceNote] Ngoại lệ khi upload voice note: $e');
@@ -2600,11 +2709,41 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                     ),
                     if (isMe) ...[
                       const SizedBox(width: 4),
-                      const Icon(
-                        Icons.done_all_rounded,
-                        color: Color(0xFF6366F1),
-                        size: 13,
-                      ),
+                      if (msg.isSending)
+                        const SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF94A3B8)),
+                          ),
+                        )
+                      else if (msg.isSendError)
+                        GestureDetector(
+                          onTap: () => _retrySendMessage(msg),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.error_outline_rounded, color: Color(0xFFFF3B30), size: 13),
+                              SizedBox(width: 2),
+                              Text(
+                                'Thử lại',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  color: Color(0xFFFF3B30),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.done_all_rounded,
+                          color: Color(0xFF6366F1),
+                          size: 13,
+                        ),
                     ],
                   ],
                 ),
