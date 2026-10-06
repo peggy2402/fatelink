@@ -31,33 +31,86 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
     senderId: string,
     partnerId: string,
     text: string,
+    options?: {
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
+    },
   ): Promise<DomainMessage> {
     const conversationId = this.getDirectConversationId(senderId, partnerId);
-    const senderMessage = new this.messageModel({
-      userId: senderId,
-      partnerId,
-      conversationType: 'direct',
-      conversationId,
-      senderId,
-      recipientId: partnerId,
-      text,
-      isSentByMe: true,
-      isDirect: true,
-    });
-    const recipientMessage = new this.messageModel({
-      userId: partnerId,
-      partnerId: senderId,
-      conversationType: 'direct',
-      conversationId,
-      senderId,
-      recipientId: partnerId,
-      text,
-      isSentByMe: false,
-      isDirect: true,
-    });
 
-    await recipientMessage.save();
-    return this.toDomainMessage(await senderMessage.save());
+    // 1. Kiểm tra Idempotency: Nếu tin nhắn đã có clientMessageId từ sender này, trả về tin cũ
+    if (options?.clientMessageId) {
+      const existing = await this.messageModel.findOne({
+        senderId,
+        clientMessageId: options.clientMessageId,
+      });
+      if (existing) {
+        return this.toDomainMessage(existing);
+      }
+    }
+
+    const messageType = options?.messageType || 'text';
+    const mediaUrl = options?.mediaUrl;
+    const durationMs = options?.durationMs;
+    const waveform = options?.waveform;
+    const imageUrls = options?.imageUrls;
+    const clientMessageId = options?.clientMessageId;
+
+    try {
+      const senderMessage = new this.messageModel({
+        userId: senderId,
+        partnerId,
+        conversationType: 'direct',
+        conversationId,
+        senderId,
+        recipientId: partnerId,
+        text,
+        isSentByMe: true,
+        isDirect: true,
+        messageType,
+        mediaUrl,
+        durationMs,
+        waveform,
+        imageUrls,
+        clientMessageId,
+      });
+
+      const recipientMessage = new this.messageModel({
+        userId: partnerId,
+        partnerId: senderId,
+        conversationType: 'direct',
+        conversationId,
+        senderId,
+        recipientId: partnerId,
+        text,
+        isSentByMe: false,
+        isDirect: true,
+        messageType,
+        mediaUrl,
+        durationMs,
+        waveform,
+        imageUrls,
+      });
+
+      await recipientMessage.save();
+      return this.toDomainMessage(await senderMessage.save());
+    } catch (error: any) {
+      // Bắt lỗi trùng khóa unique (E11000) nếu hai request đến cùng mili-giây
+      if (error?.code === 11000 && clientMessageId) {
+        const existing = await this.messageModel.findOne({
+          senderId,
+          clientMessageId,
+        });
+        if (existing) {
+          return this.toDomainMessage(existing);
+        }
+      }
+      throw error;
+    }
   }
 
   async getAiHistoryForUser(
@@ -146,6 +199,12 @@ export class MongooseChatMessageRepository implements ChatMessageRepositoryPort 
     message.conversationId = plainMessage.conversationId;
     message.senderId = plainMessage.senderId;
     message.recipientId = plainMessage.recipientId;
+    message.messageType = plainMessage.messageType || 'text';
+    message.mediaUrl = plainMessage.mediaUrl;
+    message.durationMs = plainMessage.durationMs;
+    message.waveform = plainMessage.waveform;
+    message.imageUrls = plainMessage.imageUrls;
+    message.clientMessageId = plainMessage.clientMessageId;
     message.createdAt = plainMessage.createdAt;
     message.updatedAt = plainMessage.updatedAt;
     return message;

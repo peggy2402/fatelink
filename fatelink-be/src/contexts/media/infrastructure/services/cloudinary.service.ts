@@ -58,6 +58,48 @@ export class CloudinaryService {
   }
 
   /**
+   * Upload ảnh từ Buffer (Multipart file) lên Cloudinary
+   */
+  async uploadImageBuffer(
+    buffer: Buffer,
+    folder: string = 'fatelink/vibes',
+    filename?: string,
+  ): Promise<{ url: string; publicId: string; format: string; bytes: number }> {
+    return new Promise((resolve, reject) => {
+      const uploadOptions: Record<string, any> = {
+        folder,
+        resource_type: 'image',
+        transformation: [
+          { quality: 'auto:good' },
+          { fetch_format: 'auto' },
+        ],
+      };
+      if (filename) {
+        uploadOptions.public_id = filename.replace(/\.[^/.]+$/, '');
+      }
+
+      const stream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error || !result) {
+            this.logger.error('Failed to upload image buffer to Cloudinary', error);
+            return reject(error || new Error('Upload image buffer failed'));
+          }
+
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+            format: result.format,
+            bytes: result.bytes,
+          });
+        },
+      );
+
+      stream.end(buffer);
+    });
+  }
+
+  /**
    * Upload tin nhắn thoại Voice Note từ Buffer (Multipart file) lên Cloudinary
    */
   async uploadAudioBuffer(

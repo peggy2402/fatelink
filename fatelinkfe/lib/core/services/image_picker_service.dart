@@ -237,6 +237,31 @@ class ImagePickerService {
     try {
       final token = await SecureStorageHelper.read('accessToken');
       final url = '${AppConstants.baseUrl}/${AppConstants.uploadImage}';
+
+      String cleanPath = imageSource;
+      if (cleanPath.startsWith('file://')) {
+        cleanPath = cleanPath.replaceFirst('file://', '');
+      }
+
+      if (File(cleanPath).existsSync()) {
+        final res = await ApiService.uploadFile(
+          url,
+          cleanPath,
+          fieldName: 'file',
+          fields: {'folder': folder},
+          token: token,
+          showLoading: showLoading,
+          context: context,
+        );
+        if (res != null && res is Map) {
+          final data = res['data'];
+          if (data != null && data['url'] != null) {
+            return data['url'].toString();
+          }
+        }
+        return null;
+      }
+
       if (!context.mounted) return null;
       final response = await ApiService.post(
         url,
@@ -253,7 +278,8 @@ class ImagePickerService {
         }
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('⚠️ [ImagePickerService] Lỗi uploadToCloudinary: $e');
       return null;
     }
   }

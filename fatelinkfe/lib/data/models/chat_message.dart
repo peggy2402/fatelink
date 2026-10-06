@@ -52,6 +52,12 @@ class ChatMessage {
       waveform = (json['waveform'] as List).map((e) => (int.tryParse(e.toString()) ?? 8).clamp(0, 31)).toList();
     }
 
+    if (mediaUrl != null && mediaUrl.isNotEmpty && (messageType == 'text' || messageType.isEmpty)) {
+      messageType = 'voice';
+    } else if (imageUrls.isNotEmpty && (messageType == 'text' || messageType.isEmpty)) {
+      messageType = imageUrls.length > 1 ? 'imageStack' : 'image';
+    }
+
     if (text.startsWith('{') && text.endsWith('}')) {
       try {
         final decoded = jsonDecode(text);

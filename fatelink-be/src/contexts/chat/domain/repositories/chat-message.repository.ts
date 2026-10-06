@@ -18,6 +18,14 @@ export interface ChatMessageRepository {
     senderId: string,
     partnerId: string,
     text: string,
+    options?: {
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
+    },
   ): Promise<Message>;
   getAiHistoryForUser(userId: string, limit: number): Promise<Message[]>;
   getDirectHistoryForConversation(

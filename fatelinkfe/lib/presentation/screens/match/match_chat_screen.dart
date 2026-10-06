@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import '../../../core/services/image_picker_service.dart';
 
 import '../../../core/utils/anonymous_avatar_helper.dart';
 import '../../../core/utils/constants.dart';
@@ -255,6 +257,19 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             .build(),
       );
 
+      _socket!.off('connect');
+      _socket!.off('directHistoryResult');
+      _socket!.off('receiveDirectMessage');
+      _socket!.off('receiveTyping');
+      _socket!.off('userStatusResult');
+      _socket!.off('userStatusChanged');
+      _socket!.off('webrtcOffer');
+      _socket!.off('incomingVoiceCall');
+      _socket!.off('disconnect');
+      _socket!.off('authError');
+      _socket!.off('connect_error');
+      _socket!.off('error');
+
       _socket!.connect();
 
       _socket!.onConnect((_) {
@@ -304,9 +319,16 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
           setState(() {
             _isPartnerTyping = false;
-            _messages.insert(0, chatMsg);
-            if (!_isNearBottom) {
-              _unreadCount++;
+            final isDuplicate = _messages.any((m) =>
+                (chatMsg.id.isNotEmpty && m.id == chatMsg.id) ||
+                (m.text == chatMsg.text &&
+                    m.isSentByMe == chatMsg.isSentByMe &&
+                    m.timestamp.difference(chatMsg.timestamp).abs().inSeconds < 5));
+            if (!isDuplicate) {
+              _messages.insert(0, chatMsg);
+              if (!_isNearBottom) {
+                _unreadCount++;
+              }
             }
           });
           if (_isNearBottom) {
@@ -390,8 +412,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
       _socket!.onConnectError((err) {
         debugPrint('⚠️ [MatchChatSocket] Lỗi kết nối socket: $err');
-        if (mounted && _isLoadingHistory) {
-          setState(() => _isLoadingHistory = false);
+        if (mounted) {
+          if (_isLoadingHistory) {
+            setState(() => _isLoadingHistory = false);
+          }
+          _syncMessagesViaHttp();
         }
       });
 
@@ -401,8 +426,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           setState(() => _isLoadingHistory = false);
         }
       });
-
-      _syncMessagesViaHttp();
     } catch (e) {
       debugPrint('⚠️ [MatchChatSocket] Lỗi khởi tạo socket: $e');
       if (mounted) {
@@ -720,6 +743,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         ? (_replyingMessage!.isSentByMe ? 'Chính bạn' : _partnerDisplayName)
         : null;
 
+    final clientMsgId = '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
     final newMessage = ChatMessage(
       text: trimmedText,
       isSentByMe: true,
@@ -739,7 +763,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _chatController.clear();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-    // 2. Gửi qua WebSocket
+    // 2. Gửi qua WebSocket nếu đang kết nối
     if (_socket != null && _socket!.connected) {
       _socket!.emit('sendDirectMessage', {
         'partnerId': widget.partnerId,
@@ -748,6 +772,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         'replyToSender': replySender,
         'imageUrls': imageUrls,
         'messageType': newMessage.messageType,
+        'clientMessageId': clientMsgId,
       });
 
       _socket!.emit('typing', {
@@ -756,27 +781,51 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       });
     } else {
       _socket?.connect();
+      // 3. REST API Fallback CHỈ GỌI KHI SOCKET MẤT KẾT NỐI (Tránh lưu trùng)
+      _sendMessageViaHttp(
+        trimmedText,
+        replyText,
+        replySender,
+        imageUrls: imageUrls,
+        messageType: newMessage.messageType,
+        clientMessageId: clientMsgId,
+      );
     }
-
-    // 3. REST API HTTP Fallback
-    _sendMessageViaHttp(trimmedText, replyText, replySender);
   }
 
-  Future<void> _sendMessageViaHttp(String text, String? replyText, String? replySender) async {
+  Future<void> _sendMessageViaHttp(
+    String text,
+    String? replyText,
+    String? replySender, {
+    List<String>? imageUrls,
+    String? messageType,
+    String? mediaUrl,
+    int? durationMs,
+    List<int>? waveform,
+    String? clientMessageId,
+  }) async {
     try {
       final token = await _secureStorage.read(key: 'accessToken');
       if (token == null || token.isEmpty || !mounted) return;
 
       final url = '${AppConstants.baseUrl}/messages/direct';
+      final body = <String, dynamic>{
+        'partnerId': widget.partnerId,
+        'text': text,
+        if (replyText != null) 'replyToText': replyText,
+        if (replySender != null) 'replyToSender': replySender,
+        if (imageUrls != null && imageUrls.isNotEmpty) 'imageUrls': imageUrls,
+        if (messageType != null) 'messageType': messageType,
+        if (mediaUrl != null) 'mediaUrl': mediaUrl,
+        if (durationMs != null) 'durationMs': durationMs,
+        if (waveform != null && waveform.isNotEmpty) 'waveform': waveform,
+        if (clientMessageId != null) 'clientMessageId': clientMessageId,
+      };
+
       await ApiService.post(
         url,
         context,
-        body: {
-          'partnerId': widget.partnerId,
-          'text': text,
-          'replyToText': replyText,
-          'replyToSender': replySender,
-        },
+        body: body,
         token: token,
         showLoading: false,
       );
@@ -795,23 +844,29 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
       if (pickedFiles.isNotEmpty) {
         HapticFeedback.mediumImpact();
-        final imagePaths = pickedFiles.map((f) => 'file://${f.path}').toList();
+        final rawPaths = pickedFiles.map((f) => f.path).toList();
+        final previewPaths = pickedFiles.map((f) => 'file://${f.path}').toList();
+        final isStack = rawPaths.length > 1;
 
-        if (imagePaths.length == 1) {
-          // Gửi ảnh đơn lẻ
-          _handleSendMessage(
-            '[Hình ảnh] ${imagePaths.first}',
-            imageUrls: imagePaths,
-            messageType: 'image',
-          );
-        } else {
-          // Gửi bộ sưu tập nhiều ảnh -> Hiển thị Modern Glassmorphic Card Stack UI
-          _handleSendMessage(
-            '[Bộ sưu tập ${imagePaths.length} ảnh]',
-            imageUrls: imagePaths,
-            messageType: 'imageStack',
-          );
-        }
+        final tempId = 'temp_img_${DateTime.now().millisecondsSinceEpoch}';
+        final newMessage = ChatMessage(
+          id: tempId,
+          text: isStack ? '[Bộ sưu tập ${rawPaths.length} ảnh]' : '[Hình ảnh]',
+          isSentByMe: true,
+          timestamp: DateTime.now(),
+          imageUrls: previewPaths,
+          messageType: isStack ? 'imageStack' : 'image',
+          localFilePath: rawPaths.join('|'),
+          isSending: true,
+          isSendError: false,
+        );
+
+        setState(() {
+          _messages.insert(0, newMessage);
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+        _uploadAndSendImageMessage(newMessage, rawPaths);
       }
     } catch (e) {
       if (!mounted) return;
@@ -830,17 +885,122 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
       if (picked != null) {
         HapticFeedback.mediumImpact();
-        final path = 'file://${picked.path}';
-        _handleSendMessage(
-          '[Hình ảnh] $path',
-          imageUrls: [path],
+        final rawPath = picked.path;
+        final previewPath = 'file://${picked.path}';
+
+        final tempId = 'temp_img_${DateTime.now().millisecondsSinceEpoch}';
+        final newMessage = ChatMessage(
+          id: tempId,
+          text: '[Hình ảnh]',
+          isSentByMe: true,
+          timestamp: DateTime.now(),
+          imageUrls: [previewPath],
           messageType: 'image',
+          localFilePath: rawPath,
+          isSending: true,
+          isSendError: false,
         );
+
+        setState(() {
+          _messages.insert(0, newMessage);
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+        _uploadAndSendImageMessage(newMessage, [rawPath]);
       }
     } catch (e) {
       if (!mounted) return;
       ToastUtil.showError(context, 'Không thể mở máy ảnh. Vui lòng kiểm tra quyền!');
     }
+  }
+
+  /// Tải ảnh lên Cloudinary trước, có HTTPS URL mới gửi tin nhắn (Không gửi đường dẫn file://)
+  Future<void> _uploadAndSendImageMessage(ChatMessage msg, List<String> rawPaths) async {
+    try {
+      final List<String> uploadedUrls = [];
+      for (final path in rawPaths) {
+        final cloudUrl = await ImagePickerService.uploadToCloudinary(
+          context,
+          path,
+          folder: 'fatelink/chat_images',
+        );
+        if (cloudUrl == null || cloudUrl.isEmpty) {
+          throw Exception('Upload ảnh thất bại: $path');
+        }
+        uploadedUrls.add(cloudUrl);
+      }
+
+      if (!mounted) return;
+
+      final isStack = uploadedUrls.length > 1;
+      final textContent = isStack ? '[Bộ sưu tập ${uploadedUrls.length} ảnh]' : '[Hình ảnh]';
+      final msgType = isStack ? 'imageStack' : 'image';
+      final clientMsgId = '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
+
+      setState(() {
+        final idx = _messages.indexWhere((m) => m.id == msg.id);
+        if (idx != -1) {
+          _messages[idx] = _messages[idx].copyWith(
+            text: textContent,
+            imageUrls: uploadedUrls,
+            messageType: msgType,
+            isSending: false,
+            isSendError: false,
+          );
+        }
+      });
+
+      if (_socket != null && _socket!.connected) {
+        _socket!.emit('sendDirectMessage', {
+          'partnerId': widget.partnerId,
+          'text': textContent,
+          'imageUrls': uploadedUrls,
+          'messageType': msgType,
+          'clientMessageId': clientMsgId,
+        });
+      } else {
+        _sendMessageViaHttp(
+          textContent,
+          null,
+          null,
+          imageUrls: uploadedUrls,
+          messageType: msgType,
+          clientMessageId: clientMsgId,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ [ChatImages] Lỗi upload ảnh: $e');
+      if (mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == msg.id);
+          if (idx != -1) {
+            _messages[idx] = _messages[idx].copyWith(
+              isSending: false,
+              isSendError: true,
+            );
+          }
+        });
+        ToastUtil.showError(context, 'Tải ảnh lên thất bại. Chạm vào ảnh để thử lại!');
+      }
+    }
+  }
+
+  void _retrySendImageMessage(ChatMessage msg) {
+    if (msg.localFilePath == null || msg.localFilePath!.isEmpty) {
+      ToastUtil.showError(context, 'Tệp gốc không còn tồn tại trên máy!');
+      return;
+    }
+    final paths = msg.localFilePath!.split('|');
+    setState(() {
+      final idx = _messages.indexWhere((m) => m.id == msg.id);
+      if (idx != -1) {
+        _messages[idx] = _messages[idx].copyWith(
+          isSending: true,
+          isSendError: false,
+        );
+      }
+    });
+    _uploadAndSendImageMessage(msg, paths);
   }
 
   /// Vấn đề 4.3: Mở modal chia sẻ vị trí thực tế
@@ -934,7 +1094,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         }
       });
 
-      // Gửi qua WebSocket
+      final clientMsgId = '${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000000)}';
+      // Gửi qua WebSocket nếu đang kết nối
       if (_socket != null && _socket!.connected) {
         _socket!.emit('sendDirectMessage', {
           'partnerId': widget.partnerId,
@@ -943,13 +1104,22 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           'mediaUrl': cloudUrl,
           'durationMs': msg.durationMs,
           'waveform': msg.effectiveWaveform,
+          'clientMessageId': clientMsgId,
         });
       } else {
         _socket?.connect();
+        // REST API Fallback CHỈ GỌI KHI SOCKET MẤT KẾT NỐI (Tránh lưu trùng)
+        _sendMessageViaHttp(
+          voicePayload,
+          null,
+          null,
+          mediaUrl: cloudUrl,
+          durationMs: msg.durationMs,
+          waveform: msg.effectiveWaveform,
+          messageType: 'voice',
+          clientMessageId: clientMsgId,
+        );
       }
-
-      // REST API Fallback
-      _sendMessageViaHttp(voicePayload, null, null);
     } catch (e) {
       debugPrint('❌ [VoiceNote] Ngoại lệ khi upload voice note: $e');
       if (mounted) {
@@ -2523,9 +2693,17 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
     // 2. Vấn đề 2 & 4.1: Render Modern Glassmorphic Card Stack UI cho nhiều ảnh
     if (isImageStack) {
-      return GlassmorphicCardStack(
-        images: msg.imageUrls,
-        isSentByMe: isMe,
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          GlassmorphicCardStack(
+            images: msg.imageUrls,
+            isSentByMe: isMe,
+          ),
+          if (msg.isSending) _buildImageLoadingOverlay(),
+          if (msg.isSendError)
+            _buildImageErrorOverlay(() => _retrySendImageMessage(msg)),
+        ],
       );
     }
 
@@ -2535,26 +2713,40 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           ? msg.imageUrls.first
           : msg.text.replaceFirst('[Hình ảnh]', '').trim();
 
-      return GestureDetector(
-        onTap: () => GlassmorphicImageViewer.show(context, images: [img], initialIndex: 0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: img.startsWith('file://')
-              ? Image.file(
-                  File(img.replaceFirst('file://', '')),
-                  width: 220,
-                  height: 220,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => _buildImageError(),
-                )
-              : Image.network(
-                  img,
-                  width: 220,
-                  height: 220,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => _buildImageError(),
-                ),
-        ),
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          GestureDetector(
+            onTap: () {
+              if (msg.isSendError) {
+                _retrySendImageMessage(msg);
+              } else if (!msg.isSending) {
+                GlassmorphicImageViewer.show(context, images: [img], initialIndex: 0);
+              }
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: img.startsWith('file://')
+                  ? Image.file(
+                      File(img.replaceFirst('file://', '')),
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, stack) => _buildImageError(),
+                    )
+                  : Image.network(
+                      img,
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, stack) => _buildImageError(),
+                    ),
+            ),
+          ),
+          if (msg.isSending) _buildImageLoadingOverlay(),
+          if (msg.isSendError)
+            _buildImageErrorOverlay(() => _retrySendImageMessage(msg)),
+        ],
       );
     }
 
@@ -2621,6 +2813,66 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       color: const Color(0xFFF1F5F9),
       child: const Center(
         child: Icon(Icons.broken_image_rounded, color: Color(0xFF94A3B8), size: 36),
+      ),
+    );
+  }
+
+  Widget _buildImageLoadingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageErrorOverlay(VoidCallback onRetry) {
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: onRetry,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Chạm để thử lại',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

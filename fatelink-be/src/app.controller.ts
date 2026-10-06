@@ -17,6 +17,18 @@ export class AppController {
     return 'Fatelink API is running';
   }
 
+  @Get('health')
+  @ApiOperation({ summary: 'Kiểm tra phiên bản & trạng thái Server' })
+  getHealth() {
+    return {
+      status: 'ok',
+      version: process.env.APP_VERSION || '2.2.0',
+      commit: process.env.GIT_COMMIT || '3c46c42',
+      builtAt: process.env.BUILD_TIME || new Date().toISOString(),
+      uptime: process.uptime(),
+    };
+  }
+
   @Get('.well-known/assetlinks.json')
   @Header('Content-Type', 'application/json; charset=utf-8')
   getAssetLinks(): string {

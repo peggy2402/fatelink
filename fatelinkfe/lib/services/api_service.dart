@@ -579,7 +579,7 @@ class ApiService {
         }
       } else {
         final err = _extractErrorMessage(response);
-        debugPrint('⚠️ [ApiService] Upload file thất bại: ${response.statusCode} - $err');
+        debugPrint('❌ [ApiService] Upload file thất bại: ${response.statusCode} - $err | Body: ${response.body}');
         return null;
       }
     } catch (e) {

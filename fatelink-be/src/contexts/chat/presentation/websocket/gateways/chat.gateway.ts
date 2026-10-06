@@ -37,6 +37,8 @@ type ClientToServerEvents = {
     mediaUrl?: string;
     durationMs?: number;
     waveform?: number[];
+    imageUrls?: string[];
+    clientMessageId?: string;
   }) => void;
   loadDirectHistory: (payload: { partnerId: string; limit?: number }) => void;
   checkUserStatus: (payload: { targetUserId: string }) => void;
@@ -62,20 +64,30 @@ type ServerToClientEvents = {
   matchReady: (payload: { message: string }) => void;
   errorMessage: (payload: { message: string }) => void;
   receiveDirectMessage: (payload: {
+    id?: string;
     senderId: string;
     text: string;
     timestamp: string;
     messageType?: string;
-    mediaUrl?: string;
-    durationMs?: number;
-    waveform?: number[];
+    mediaUrl?: string | null;
+    durationMs?: number | null;
+    waveform?: number[] | null;
+    imageUrls?: string[] | null;
+    clientMessageId?: string | null;
   }) => void;
   directHistoryResult: (payload: {
     partnerId: string;
     messages: Array<{
+      id?: string;
       text: string;
       isSentByMe: boolean;
       timestamp: string;
+      messageType?: string;
+      mediaUrl?: string | null;
+      durationMs?: number | null;
+      waveform?: number[] | null;
+      imageUrls?: string[] | null;
+      clientMessageId?: string | null;
     }>;
   }) => void;
   userStatusResult: (payload: { userId: string; isOnline: boolean }) => void;
@@ -258,21 +270,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       mediaUrl?: string;
       durationMs?: number;
       waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
     },
   ) {
     try {
       const senderId = client.data.userId;
-      const { partnerId, text, messageType, mediaUrl, durationMs, waveform } = payload;
+      const {
+        partnerId,
+        text,
+        messageType,
+        mediaUrl,
+        durationMs,
+        waveform,
+        imageUrls,
+        clientMessageId,
+      } = payload;
 
       if (!senderId) {
         client.emit('errorMessage', { message: 'User không xác định' });
         return;
       }
 
-      await this.createDirectChatMessageUseCase.execute({
+      const savedMessage = await this.createDirectChatMessageUseCase.execute({
         senderId,
         partnerId,
         text,
+        messageType,
+        mediaUrl,
+        durationMs,
+        waveform,
+        imageUrls,
+        clientMessageId,
       });
 
       const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
@@ -281,13 +310,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // Đối phương đang mở app -> Bắn sự kiện realtime
         targetSocketIds.forEach((targetSocketId) => {
           this.server.to(targetSocketId).emit('receiveDirectMessage', {
+            id: savedMessage?.id,
             senderId,
             text,
-            messageType,
-            mediaUrl,
-            durationMs,
-            waveform,
-            timestamp: new Date().toISOString(),
+            messageType: savedMessage?.messageType || messageType,
+            mediaUrl: savedMessage?.mediaUrl ?? mediaUrl,
+            durationMs: savedMessage?.durationMs ?? durationMs,
+            waveform: savedMessage?.waveform ?? waveform,
+            imageUrls: savedMessage?.imageUrls ?? imageUrls,
+            clientMessageId: savedMessage?.clientMessageId ?? clientMessageId,
+            timestamp: (savedMessage?.createdAt ?? new Date()).toISOString(),
           });
         });
       } else {
@@ -310,15 +342,36 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Phát tin nhắn trực tiếp qua socket khi tin nhắn được gửi từ HTTP REST Controller
    */
-  sendDirectMessageToUser(senderId: string, partnerId: string, text: string) {
+  sendDirectMessageToUser(
+    senderId: string,
+    partnerId: string,
+    text: string,
+    options?: {
+      id?: string;
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
+      timestamp?: string;
+    },
+  ) {
     try {
       const targetSocketIds = this.chatPresenceService.getSocketIds(partnerId);
       if (targetSocketIds.length > 0 && this.server) {
         targetSocketIds.forEach((targetSocketId) => {
           this.server.to(targetSocketId).emit('receiveDirectMessage', {
+            id: options?.id,
             senderId,
             text,
-            timestamp: new Date().toISOString(),
+            timestamp: options?.timestamp || new Date().toISOString(),
+            messageType: options?.messageType,
+            mediaUrl: options?.mediaUrl,
+            durationMs: options?.durationMs,
+            waveform: options?.waveform,
+            imageUrls: options?.imageUrls,
+            clientMessageId: options?.clientMessageId,
           });
         });
       }

@@ -81,14 +81,33 @@ export class ChatHistoryController {
   @UseGuards(JwtAuthGuard)
   async sendDirectMessage(
     @Req() req: GuardRequest,
-    @Body() body: { partnerId: string; text: string },
+    @Body()
+    body: {
+      partnerId: string;
+      text: string;
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+      imageUrls?: string[];
+      clientMessageId?: string;
+    },
   ) {
     const senderId = req.user?.sub;
     if (!senderId) {
       throw new UnauthorizedException('User không xác định');
     }
 
-    const { partnerId, text } = body;
+    const {
+      partnerId,
+      text,
+      messageType,
+      mediaUrl,
+      durationMs,
+      waveform,
+      imageUrls,
+      clientMessageId,
+    } = body;
     if (!partnerId || !text || text.trim().length === 0) {
       throw new UnauthorizedException('partnerId và text là bắt buộc');
     }
@@ -97,10 +116,25 @@ export class ChatHistoryController {
       senderId,
       partnerId,
       text: text.trim(),
+      messageType,
+      mediaUrl,
+      durationMs,
+      waveform,
+      imageUrls,
+      clientMessageId,
     });
 
     // Phát tin nhắn realtime qua Socket.IO tới đối phương nếu đang online
-    this.chatGateway.sendDirectMessageToUser(senderId, partnerId, text.trim());
+    this.chatGateway.sendDirectMessageToUser(senderId, partnerId, text.trim(), {
+      id: message.id,
+      messageType: message.messageType,
+      mediaUrl: message.mediaUrl,
+      durationMs: message.durationMs,
+      waveform: message.waveform,
+      imageUrls: message.imageUrls,
+      clientMessageId: message.clientMessageId,
+      timestamp: (message.createdAt ?? new Date()).toISOString(),
+    });
 
     return {
       success: true,
