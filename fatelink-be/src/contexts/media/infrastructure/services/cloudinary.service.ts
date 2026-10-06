@@ -58,7 +58,46 @@ export class CloudinaryService {
   }
 
   /**
-   * Upload tin nhắn thoại Voice Note (hỗ trợ Base64 Data URI) lên Cloudinary
+   * Upload tin nhắn thoại Voice Note từ Buffer (Multipart file) lên Cloudinary
+   */
+  async uploadAudioBuffer(
+    buffer: Buffer,
+    folder: string = 'fatelink/voice_notes',
+    filename?: string,
+  ): Promise<{ url: string; publicId: string; format: string; duration?: number; bytes: number }> {
+    return new Promise((resolve, reject) => {
+      const uploadOptions: Record<string, any> = {
+        folder,
+        resource_type: 'video', // Cloudinary quản lý âm thanh (.m4a, .mp3, .aac) trong container 'video'
+      };
+      if (filename) {
+        uploadOptions.public_id = filename.replace(/\.[^/.]+$/, '');
+      }
+
+      const stream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error || !result) {
+            this.logger.error('Failed to upload audio buffer to Cloudinary', error);
+            return reject(error || new Error('Upload audio buffer failed'));
+          }
+
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+            format: result.format,
+            duration: result.duration,
+            bytes: result.bytes,
+          });
+        },
+      );
+
+      stream.end(buffer);
+    });
+  }
+
+  /**
+   * Upload tin nhắn thoại Voice Note (hỗ trợ Base64 Data URI hoặc URL) lên Cloudinary
    */
   async uploadAudio(
     fileSource: string,

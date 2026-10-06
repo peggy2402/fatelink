@@ -30,7 +30,14 @@ const websocketCorsOrigins = (
 
 type ClientToServerEvents = {
   sendMessage: (payload: { text: string }) => void;
-  sendDirectMessage: (payload: { partnerId: string; text: string }) => void;
+  sendDirectMessage: (payload: {
+    partnerId: string;
+    text: string;
+    messageType?: string;
+    mediaUrl?: string;
+    durationMs?: number;
+    waveform?: number[];
+  }) => void;
   loadDirectHistory: (payload: { partnerId: string; limit?: number }) => void;
   checkUserStatus: (payload: { targetUserId: string }) => void;
   checkUsersStatus: (payload: { targetUserIds: string[] }) => void;
@@ -58,6 +65,10 @@ type ServerToClientEvents = {
     senderId: string;
     text: string;
     timestamp: string;
+    messageType?: string;
+    mediaUrl?: string;
+    durationMs?: number;
+    waveform?: number[];
   }) => void;
   directHistoryResult: (payload: {
     partnerId: string;
@@ -239,11 +250,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendDirectMessage')
   async handleDirectMessage(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string; text: string },
+    @MessageBody()
+    payload: {
+      partnerId: string;
+      text: string;
+      messageType?: string;
+      mediaUrl?: string;
+      durationMs?: number;
+      waveform?: number[];
+    },
   ) {
     try {
       const senderId = client.data.userId;
-      const { partnerId, text } = payload;
+      const { partnerId, text, messageType, mediaUrl, durationMs, waveform } = payload;
 
       if (!senderId) {
         client.emit('errorMessage', { message: 'User không xác định' });
@@ -264,6 +283,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           this.server.to(targetSocketId).emit('receiveDirectMessage', {
             senderId,
             text,
+            messageType,
+            mediaUrl,
+            durationMs,
+            waveform,
             timestamp: new Date().toISOString(),
           });
         });
@@ -324,8 +347,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (partner?.fcmToken) {
         const senderName = sender?.name || 'Bạn mới trên FateLink';
         let displayBody = text;
-        if (text.startsWith('🎙️') || text.includes('[voice:')) {
-          displayBody = '🎙️ [Tin nhắn thoại]';
+        if (
+          text.startsWith('🎙️') ||
+          text.includes('[voice:') ||
+          text.includes('"type":"voice"') ||
+          text.includes('"voice"')
+        ) {
+          displayBody = '🎙️ Tin nhắn thoại';
         } else if (text.startsWith('[Hình ảnh]')) {
           displayBody = '📷 [Hình ảnh]';
         } else if (text.startsWith('📍 [Vị trí]')) {

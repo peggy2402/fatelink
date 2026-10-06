@@ -1,209 +1,306 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
-import 'package:audioplayers/audioplayers.dart';
 import '../utils/constants.dart';
-import '../utils/secure_storage_helper.dart';
+import '../utils/toast_utils.dart';
 import '../../services/api_service.dart';
+import 'voice_player_manager.dart';
 
-/// Dịch vụ quản lý Ghi âm và Phát tin nhắn thoại thực tế (VoiceNoteService):
-/// - Sử dụng phần cứng Microphone với thư viện `record` (AAC LC .m4a chất lượng cao)
-/// - Upload file âm thanh lên Cloudinary CDN qua Backend API `/upload/voice`
-/// - Phát âm thanh qua loa / tai nghe với thư viện `audioplayers`
+/// Kết quả sau khi ghi âm hoàn tất
+class VoiceRecordResult {
+  final String localPath;
+  final int durationMs;
+  final List<int> waveform; // Mảng 40 số từ 0 đến 31
+  final int fileSizeBytes;
+
+  const VoiceRecordResult({
+    required this.localPath,
+    required this.durationMs,
+    required this.waveform,
+    required this.fileSizeBytes,
+  });
+}
+
+/// Dịch vụ quản lý Ghi âm Microphone thực tế (chuẩn Telegram)
+/// - Xin quyền Micro qua `permission_handler`
+/// - Dừng mọi audio phát trước khi ghi
+/// - Đo thời gian bằng Stopwatch chuẩn mili-giây
+/// - Thu thập biên độ thật (decibels) qua `onAmplitudeChanged` -> chuẩn hóa về 40 cột
+/// - Upload tệp qua Multipart/Form-Data lên Cloudinary CDN
 class VoiceNoteService {
   static final VoiceNoteService _instance = VoiceNoteService._internal();
   factory VoiceNoteService() => _instance;
   VoiceNoteService._internal();
 
   final AudioRecorder _recorder = AudioRecorder();
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final Stopwatch _stopwatch = Stopwatch();
 
-  String? _currentLocalRecordingPath;
-  String? _currentlyPlayingUrl;
+  StreamSubscription? _amplitudeSub;
+  final List<double> _amplitudeSamples = []; // Lưu các giá trị dB thật
+  String? _currentLocalPath;
+  bool _isRecording = false;
 
-  AudioPlayer get player => _audioPlayer;
-  String? get currentlyPlayingUrl => _currentlyPlayingUrl;
+  bool get isRecording => _isRecording;
+  int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
 
-  /// Kiểm tra và yêu cầu cấp quyền Microphone thực tế
-  Future<bool> hasPermission() async {
+  /// 1. Kiểm tra và yêu cầu cấp quyền Microphone thực tế
+  Future<bool> checkAndRequestPermission(BuildContext? context) async {
     try {
-      return await _recorder.hasPermission();
+      debugPrint('🎙️ [VoiceNoteService] 1. Kiểm tra quyền Microphone qua permission_handler');
+      var status = await Permission.microphone.status;
+      if (!status.isGranted) {
+        status = await Permission.microphone.request();
+      }
+
+      if (status.isGranted) {
+        debugPrint('✅ [VoiceNoteService] Quyền Microphone đã được cấp!');
+        return true;
+      }
+
+      if (status.isPermanentlyDenied && context != null && context.mounted) {
+        debugPrint('⚠️ [VoiceNoteService] Quyền Microphone bị từ chối vĩnh viễn -> Gợi ý mở Settings');
+        ToastUtil.showError(context, 'Vui lòng mở Cài đặt ứng dụng để cấp quyền Microphone.');
+        await openAppSettings();
+        return false;
+      }
+
+      if (context != null && context.mounted) {
+        ToastUtil.showError(context, 'Ứng dụng cần quyền Microphone để gửi tin nhắn thoại.');
+      }
+      return false;
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi kiểm tra quyền micro: $e');
+      debugPrint('⚠️ [VoiceNoteService] Lỗi xin quyền micro: $e');
       return false;
     }
   }
 
-  /// Bắt đầu ghi âm file .m4a vào thư mục tạm của thiết bị
-  Future<String?> startRecording() async {
+  /// 2. Bắt đầu ghi âm với âm thanh chất lượng cao AAC LC .m4a
+  Future<bool> startRecording(BuildContext? context) async {
     try {
-      final hasGranted = await hasPermission();
-      if (!hasGranted) {
-        debugPrint('⚠️ [VoiceNoteService] Quyền micro bị từ chối');
-        return null;
-      }
+      // Dừng mọi âm thanh đang phát để tránh tiếng micro bị dội
+      await VoicePlayerManager().stopAll();
+
+      final hasPermission = await checkAndRequestPermission(context);
+      if (!hasPermission) return false;
+
+      // Hủy phiên ghi cũ nếu có sót
+      await cancelRecording();
 
       final tempDir = await getTemporaryDirectory();
       final fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      final filePath = '${tempDir.path}/$fileName';
-      _currentLocalRecordingPath = filePath;
+      _currentLocalPath = '${tempDir.path}/$fileName';
+      _amplitudeSamples.clear();
 
+      debugPrint('🎙️ [VoiceNoteService] 2. Khởi động bộ ghi âm tại: $_currentLocalPath');
       await _recorder.start(
         const RecordConfig(
           encoder: AudioEncoder.aacLc,
           bitRate: 64000,
           sampleRate: 44100,
         ),
-        path: filePath,
+        path: _currentLocalPath!,
       );
 
-      debugPrint('🎙️ [VoiceNoteService] Đang ghi âm tại: $filePath');
-      return filePath;
+      _stopwatch.reset();
+      _stopwatch.start();
+      _isRecording = true;
+
+      // Lắng nghe biên độ âm thanh thật cứ mỗi 100ms
+      _amplitudeSub = _recorder.onAmplitudeChanged(const Duration(milliseconds: 100)).listen((amp) {
+        // amp.current là giá trị dB (từ -60dB đến 0dB)
+        _amplitudeSamples.add(amp.current);
+      });
+
+      return true;
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi bắt đầu ghi âm: $e');
-      return null;
+      debugPrint('⚠️ [VoiceNoteService] Lỗi khi startRecording: $e');
+      _isRecording = false;
+      return false;
     }
   }
 
-  /// Tạm dừng ghi âm
+  /// 3. Tạm dừng ghi âm (khi ở chế độ Lock)
   Future<void> pauseRecording() async {
     try {
       if (await _recorder.isRecording()) {
         await _recorder.pause();
+        _stopwatch.stop();
+        debugPrint('⏸️ [VoiceNoteService] Đã tạm dừng ghi âm');
       }
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi pause ghi âm: $e');
+      debugPrint('⚠️ [VoiceNoteService] Lỗi pauseRecording: $e');
     }
   }
 
-  /// Tiếp tục ghi âm
+  /// 4. Tiếp tục ghi âm (khi ở chế độ Lock)
   Future<void> resumeRecording() async {
     try {
       if (await _recorder.isPaused()) {
         await _recorder.resume();
+        _stopwatch.start();
+        debugPrint('▶️ [VoiceNoteService] Đã tiếp tục ghi âm');
       }
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi resume ghi âm: $e');
+      debugPrint('⚠️ [VoiceNoteService] Lỗi resumeRecording: $e');
     }
   }
 
-  /// Dừng ghi âm và trả về đường dẫn file .m4a thực tế
-  Future<String?> stopRecording() async {
+  /// 5. Dừng ghi âm và trả về VoiceRecordResult với waveform 40 cột
+  Future<VoiceRecordResult?> stopRecording() async {
     try {
+      if (!_isRecording) return null;
+
+      _stopwatch.stop();
+      final durationMs = _stopwatch.elapsedMilliseconds;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
       final path = await _recorder.stop();
-      debugPrint('🎙️ [VoiceNoteService] Đã dừng ghi âm, file lưu tại: $path');
-      return path ?? _currentLocalRecordingPath;
+      _isRecording = false;
+      final effectivePath = path ?? _currentLocalPath;
+
+      if (effectivePath == null) {
+        debugPrint('⚠️ [VoiceNoteService] Không tìm thấy file âm thanh sau khi stop');
+        return null;
+      }
+
+      final file = File(effectivePath);
+      final exists = await file.exists();
+      if (!exists) {
+        debugPrint('⚠️ [VoiceNoteService] File ghi âm không tồn tại trên đĩa');
+        return null;
+      }
+
+      final fileBytes = await file.length();
+      debugPrint('🎙️ [VoiceNoteService] 3. Đã dừng ghi. Thời lượng: ${durationMs}ms, Size: $fileBytes bytes, Path: $effectivePath');
+
+      // Chuẩn hóa biên độ thành 40 cột sóng âm (0 - 31)
+      final normalizedWaveform = _generateNormalizedWaveform(_amplitudeSamples, 40);
+
+      return VoiceRecordResult(
+        localPath: effectivePath,
+        durationMs: durationMs,
+        waveform: normalizedWaveform,
+        fileSizeBytes: fileBytes,
+      );
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi dừng ghi âm: $e');
-      return _currentLocalRecordingPath;
+      debugPrint('⚠️ [VoiceNoteService] Lỗi stopRecording: $e');
+      _isRecording = false;
+      return null;
     }
   }
 
-  /// Hủy bản ghi âm và xóa file tạm
+  /// 6. Hủy bản ghi âm và xóa file tạm
   Future<void> cancelRecording() async {
     try {
-      await _recorder.cancel();
-      if (_currentLocalRecordingPath != null) {
-        final file = File(_currentLocalRecordingPath!);
+      _stopwatch.stop();
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+      _isRecording = false;
+
+      if (await _recorder.isRecording() || await _recorder.isPaused()) {
+        await _recorder.cancel();
+      }
+
+      if (_currentLocalPath != null) {
+        final file = File(_currentLocalPath!);
         if (await file.exists()) {
           await file.delete();
+          debugPrint('🗑️ [VoiceNoteService] Đã xóa file ghi âm tạm: $_currentLocalPath');
         }
-        _currentLocalRecordingPath = null;
+        _currentLocalPath = null;
       }
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi hủy ghi âm: $e');
+      debugPrint('⚠️ [VoiceNoteService] Lỗi cancelRecording: $e');
     }
   }
 
-  /// Upload file âm thanh lên Cloudinary CDN thông qua Backend NestJS
+  /// 7. Upload tệp âm thanh lên Cloudinary CDN qua Multipart/Form-Data
+  /// TUYỆT ĐỐI KHÔNG trả về local file path nếu lỗi! Nếu lỗi trả về null.
+  Future<String?> uploadVoiceNote(
+    String localPath, {
+    BuildContext? context,
+  }) =>
+      uploadVoiceFile(context: context, localPath: localPath);
+
   Future<String?> uploadVoiceFile({
-    required BuildContext context,
+    required BuildContext? context,
     required String localPath,
   }) async {
     try {
       final file = File(localPath);
       if (!await file.exists()) {
-        debugPrint('⚠️ [VoiceNoteService] File ghi âm không tồn tại: $localPath');
+        debugPrint('⚠️ [VoiceNoteService] File không tồn tại để upload: $localPath');
         return null;
       }
 
-      final bytes = await file.readAsBytes();
-      final base64Audio = 'data:audio/m4a;base64,${base64Encode(bytes)}';
-
-      final token = await SecureStorageHelper.read('accessToken');
-      if (token == null) {
-        debugPrint('⚠️ [VoiceNoteService] Không tìm thấy accessToken');
-        return null;
-      }
+      final fileSize = await file.length();
+      debugPrint('☁️ [VoiceNoteService] 4. Bắt đầu upload multipart Cloudinary: $localPath ($fileSize bytes)');
 
       final url = '${AppConstants.baseUrl}/${AppConstants.uploadVoice}';
-      if (!context.mounted) return null;
-
-      final res = await ApiService.post(
+      final res = await ApiService.uploadFile(
         url,
-        context,
-        token: token,
-        body: {
-          'audio': base64Audio,
-          'folder': 'fatelink/voice_notes',
-        },
-        showLoading: false,
+        localPath,
+        context: context,
+        fieldName: 'file',
+        fields: {'folder': 'fatelink/voice_notes'},
       );
 
       if (res != null && res['data'] != null && res['data']['url'] != null) {
         final cloudUrl = res['data']['url'].toString();
-        debugPrint('☁️ [VoiceNoteService] Upload voice note thành công: $cloudUrl');
+        debugPrint('✅ [VoiceNoteService] 5. Upload Cloudinary thành công: $cloudUrl');
         return cloudUrl;
       }
+
+      debugPrint('⚠️ [VoiceNoteService] Upload trả về dữ liệu rỗng hoặc lỗi từ server');
+      return null;
     } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi upload voice file: $e');
-    }
-    return null;
-  }
-
-  /// Phát âm thanh từ URL hoặc đường dẫn file cục bộ
-  Future<void> playAudio({
-    required String audioSource,
-    VoidCallback? onComplete,
-  }) async {
-    try {
-      if (_currentlyPlayingUrl == audioSource && _audioPlayer.state == PlayerState.playing) {
-        await _audioPlayer.pause();
-        return;
-      }
-
-      _currentlyPlayingUrl = audioSource;
-      await _audioPlayer.stop();
-
-      if (audioSource.startsWith('http://') || audioSource.startsWith('https://')) {
-        await _audioPlayer.play(UrlSource(audioSource));
-      } else {
-        await _audioPlayer.play(DeviceFileSource(audioSource));
-      }
-
-      _audioPlayer.onPlayerComplete.listen((_) {
-        _currentlyPlayingUrl = null;
-        onComplete?.call();
-      });
-    } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi phát âm thanh: $e');
+      debugPrint('⚠️ [VoiceNoteService] Lỗi uploadVoiceFile: $e');
+      return null;
     }
   }
 
-  /// Tạm dừng hoặc dừng hẳn phát âm thanh
-  Future<void> stopAudio() async {
-    try {
-      await _audioPlayer.stop();
-      _currentlyPlayingUrl = null;
-    } catch (e) {
-      debugPrint('⚠️ [VoiceNoteService] Lỗi dừng phát âm thanh: $e');
+  /// Chuẩn hóa mảng mẫu biên độ dB thành mảng đúng [count] cột có giá trị 0..31
+  List<int> _generateNormalizedWaveform(List<double> rawSamples, int count) {
+    if (rawSamples.isEmpty) {
+      return List<int>.generate(count, (i) => 4 + (i % 6));
     }
+
+    // Chuyển dB (thường từ -60dB đến 0dB) thành thang 0.0 - 1.0
+    final linear = rawSamples.map((db) {
+      if (db.isNaN || db.isInfinite) return 0.05;
+      final clamped = db.clamp(-55.0, 0.0);
+      return (clamped + 55.0) / 55.0; // 0.0 -> 1.0
+    }).toList();
+
+    // Rút gọn hoặc nội suy thành đúng [count] điểm
+    final result = <int>[];
+    final chunkSize = linear.length / count;
+
+    for (int i = 0; i < count; i++) {
+      final startIdx = (i * chunkSize).floor().clamp(0, linear.length - 1);
+      final endIdx = ((i + 1) * chunkSize).ceil().clamp(startIdx + 1, linear.length);
+      final chunk = linear.sublist(startIdx, min(endIdx, linear.length));
+
+      double avg = 0.05;
+      if (chunk.isNotEmpty) {
+        avg = chunk.reduce((a, b) => a + b) / chunk.length;
+      }
+
+      // Map vào khoảng 2 - 31 (giữ tối thiểu 2dp để cột không bị biến mất)
+      final barHeightInt = (avg * 31).round().clamp(2, 31);
+      result.add(barHeightInt);
+    }
+
+    return result;
   }
 
   void dispose() {
+    _amplitudeSub?.cancel();
     _recorder.dispose();
-    _audioPlayer.dispose();
   }
 }

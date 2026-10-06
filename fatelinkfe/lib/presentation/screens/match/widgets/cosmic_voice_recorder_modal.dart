@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,19 +54,9 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
   }
 
   Future<void> _initAndStartRecording() async {
-    final hasPermission = await VoiceNoteService().hasPermission();
-    if (!hasPermission) {
+    final started = await VoiceNoteService().startRecording(context);
+    if (!started) {
       if (mounted) {
-        ToastUtil.showError(context, 'Vui lòng cấp quyền Microphone để ghi âm giọng nói');
-        Navigator.pop(context);
-      }
-      return;
-    }
-
-    final filePath = await VoiceNoteService().startRecording();
-    if (filePath == null) {
-      if (mounted) {
-        ToastUtil.showError(context, 'Không thể khởi động bộ ghi âm trên thiết bị');
         Navigator.pop(context);
       }
       return;
@@ -85,6 +76,7 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
   void dispose() {
     _timer?.cancel();
     _animController.dispose();
+    VoiceNoteService().cancelRecording();
     super.dispose();
   }
 
@@ -120,10 +112,10 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
     HapticFeedback.mediumImpact();
     setState(() => _isUploading = true);
 
-    // 1. Dừng ghi âm và nhận đường dẫn file .m4a thực tế
-    final localPath = await VoiceNoteService().stopRecording();
+    // 1. Dừng ghi âm và nhận kết quả thu âm thực tế
+    final result = await VoiceNoteService().stopRecording();
 
-    if (localPath == null) {
+    if (result == null) {
       if (mounted) {
         ToastUtil.showError(context, 'Ghi âm thất bại, vui lòng thử lại');
         Navigator.pop(context);
@@ -133,16 +125,27 @@ class _CosmicVoiceRecorderModalState extends State<CosmicVoiceRecorderModal>
 
     // 2. Upload file lên Cloudinary CDN
     if (!mounted) return;
-    final cloudUrl = await VoiceNoteService().uploadVoiceFile(
+    final cloudUrl = await VoiceNoteService().uploadVoiceNote(
+      result.localPath,
       context: context,
-      localPath: localPath,
     );
+
+    if (cloudUrl == null) {
+      if (mounted) {
+        setState(() => _isUploading = false);
+        ToastUtil.showError(context, 'Tải lên ghi âm thất bại. Vui lòng kiểm tra kết nối.');
+      }
+      return;
+    }
 
     // 3. Tạo payload tin nhắn thoại hoàn chỉnh
     final durationSeconds = _seconds;
-    final formattedTime = _formatDuration(durationSeconds);
-    final voiceUrl = cloudUrl ?? localPath;
-    final voicePayload = '🎙️ [voice:$voiceUrl|duration:$durationSeconds|time:$formattedTime]';
+    final voicePayload = jsonEncode({
+      'type': 'voice',
+      'url': cloudUrl,
+      'durationMs': result.durationMs,
+      'waveform': result.waveform,
+    });
 
     widget.onSendVoice(voicePayload, durationSeconds);
 

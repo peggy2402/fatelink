@@ -530,4 +530,65 @@ class ApiService {
       if (showLoading && context.mounted) _hideLoadingDialog(context);
     }
   }
+
+  /// Tải tệp lên Server qua Multipart/Form-Data (Voice Note, Hình ảnh)
+  static Future<dynamic> uploadFile(
+    String url,
+    String filePath, {
+    BuildContext? context,
+    String fieldName = 'file',
+    Map<String, String>? fields,
+    String? token,
+    bool showLoading = false,
+  }) async {
+    if (showLoading && context != null && context.mounted) {
+      _showLoadingDialog(context);
+    }
+
+    try {
+      final effectiveToken = token ?? await _secureStorage.read(key: 'accessToken');
+      final uri = Uri.parse(url);
+      final request = http.MultipartRequest('POST', uri);
+
+      if (effectiveToken != null && effectiveToken.isNotEmpty) {
+        final clean = effectiveToken.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
+        request.headers['Authorization'] = 'Bearer $clean';
+      }
+
+      final deviceId = await DeviceIdHelper.getOrCreateDeviceId();
+      request.headers['X-Device-Id'] = deviceId;
+
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+
+      final multipartFile = await http.MultipartFile.fromPath(fieldName, filePath);
+      request.files.add(multipartFile);
+
+      debugPrint('🚀 [ApiService] Bắt đầu upload multipart tới $url (file: $filePath, size: ${multipartFile.length} bytes)');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      debugPrint('📥 [ApiService] Upload response status: ${response.statusCode}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.body.isEmpty) return null;
+        try {
+          return jsonDecode(response.body);
+        } catch (_) {
+          return response.body;
+        }
+      } else {
+        final err = _extractErrorMessage(response);
+        debugPrint('⚠️ [ApiService] Upload file thất bại: ${response.statusCode} - $err');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ApiService] Ngoại lệ khi uploadFile: $e');
+      return null;
+    } finally {
+      if (showLoading && context != null && context.mounted) {
+        _hideLoadingDialog(context);
+      }
+    }
+  }
 }

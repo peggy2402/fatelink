@@ -53,9 +53,14 @@ class ChatConversationTile extends StatelessWidget {
   });
 
   String _formatSnippet(String raw) {
-    if (raw.contains('[voice:')) {
-      final isMe = raw.startsWith('Bạn: ');
-      return isMe ? 'Bạn: 🎙️ [Tin nhắn thoại]' : '🎙️ [Tin nhắn thoại]';
+    final isMe = raw.startsWith('Bạn: ');
+    final content = isMe ? raw.substring(5).trim() : raw.trim();
+
+    if (content.contains('[voice:') ||
+        content.startsWith('🎙️') ||
+        content.startsWith('{"type":"voice"') ||
+        content.contains('"type":"voice"')) {
+      return isMe ? 'Bạn: 🎙️ Tin nhắn thoại' : '🎙️ Tin nhắn thoại';
     }
     return raw;
   }

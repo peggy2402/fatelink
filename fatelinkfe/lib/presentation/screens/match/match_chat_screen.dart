@@ -23,15 +23,17 @@ import '../profile/user_detail_screen.dart';
 import 'widgets/cosmic_incoming_call_modal.dart';
 import 'widgets/cosmic_location_modal.dart';
 import 'widgets/cosmic_voice_call_modal.dart';
-import 'widgets/cosmic_voice_recorder_modal.dart';
 import 'widgets/glassmorphic_card_stack.dart';
 import 'widgets/glassmorphic_image_viewer.dart';
 import 'widgets/match_ai_suggestion_sheet.dart';
 import 'widgets/match_options_bottom_sheet.dart';
 import 'widgets/cosmic_emoji_picker_sheet.dart';
 import 'widgets/cosmic_voice_player_bubble.dart';
+import 'widgets/telegram_voice_recorder_bar.dart';
 import 'widgets/meyufeel_resonance_bar.dart';
 import 'widgets/meyufeel_watermark_lotus.dart';
+import '../../../core/services/voice_note_service.dart';
+import '../../../core/services/voice_player_manager.dart';
 
 /// Màn hình trò chuyện ghép đôi FateLink (MatchChatScreen):
 /// - Vấn đề 1: Thả react (❤️, 🔥, 😂, 😮, 😢, 👍), Trả lời trích dẫn (Reply/Quote),
@@ -93,6 +95,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   bool _hasInputText = false;
   bool _isSyncing = false;
   bool _isEmojiPickerVisible = false;
+  bool _isRecordingVoice = false;
 
   // Trạng thái Reply & Multi-select & Cuộc gọi
   ChatMessage? _replyingMessage;
@@ -276,24 +279,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
           for (final item in rawMessages) {
             if (item is Map) {
-              final text = item['text'] ?? '';
-              final imageUrls = (item['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
-              final messageType = item['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
-
-              loaded.add(
-                ChatMessage(
-                  id: item['id']?.toString(),
-                  text: text,
-                  isSentByMe: item['isSentByMe'] == true,
-                  timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
-                  reaction: item['reaction'],
-                  replyToText: item['replyToText'],
-                  replyToSender: item['replyToSender'],
-                  isRevoked: item['isRevoked'] == true,
-                  imageUrls: imageUrls,
-                  messageType: messageType,
-                ),
-              );
+              final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(item));
+              loaded.add(chatMsg);
             }
           }
 
@@ -313,27 +300,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         if (!mounted) return;
         if (data is Map && data['senderId'] == widget.partnerId) {
           HapticFeedback.lightImpact();
-          final text = data['text'] ?? '';
-          final imageUrls = (data['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          final messageType = data['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
+          final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
 
           setState(() {
             _isPartnerTyping = false;
-            _messages.insert(
-              0,
-              ChatMessage(
-                id: data['id']?.toString(),
-                text: text,
-                isSentByMe: false,
-                timestamp: DateTime.tryParse(data['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
-                reaction: data['reaction'],
-                replyToText: data['replyToText'],
-                replyToSender: data['replyToSender'],
-                isRevoked: data['isRevoked'] == true,
-                imageUrls: imageUrls,
-                messageType: messageType,
-              ),
-            );
+            _messages.insert(0, chatMsg);
             if (!_isNearBottom) {
               _unreadCount++;
             }
@@ -456,24 +427,8 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         final List<ChatMessage> loaded = [];
         for (final item in res) {
           if (item is Map) {
-            final text = item['text'] ?? '';
-            final imageUrls = (item['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
-            final messageType = item['messageType'] ?? (imageUrls.length > 1 ? 'imageStack' : (text.startsWith('[Hình ảnh]') ? 'image' : 'text'));
-
-            loaded.add(
-              ChatMessage(
-                id: item['id']?.toString(),
-                text: text,
-                isSentByMe: item['isSentByMe'] == true,
-                timestamp: DateTime.tryParse(item['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
-                reaction: item['reaction'],
-                replyToText: item['replyToText'],
-                replyToSender: item['replyToSender'],
-                isRevoked: item['isRevoked'] == true,
-                imageUrls: imageUrls,
-                messageType: messageType,
-              ),
-            );
+            final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(item));
+            loaded.add(chatMsg);
           }
         }
 
@@ -707,6 +662,10 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     _scrollController.removeListener(_scrollListener);
     _chatController.removeListener(_onTextChanged);
 
+    // Dừng phát âm thanh và hủy ghi âm nếu màn hình bị đóng
+    VoicePlayerManager().stopAll();
+    VoiceNoteService().cancelRecording();
+
     if (_socket != null && _socket!.connected) {
       _socket!.emit('typing', {
         'partnerId': widget.partnerId,
@@ -897,17 +856,133 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
     );
   }
 
-  /// Vấn đề 4.4: Mở modal ghi âm voice note trực tiếp với sóng âm nhịp đập
+  /// Kích hoạt chế độ ghi âm Telegram Voice Note
   void _handleVoiceNote() {
-    CosmicVoiceRecorderModal.show(
-      context,
-      onSendVoice: (voiceText, durationSeconds) {
-        _handleSendMessage(
-          voiceText,
-          messageType: 'voice',
-        );
-      },
+    setState(() => _isRecordingVoice = true);
+  }
+
+  /// Xử lý khi thu âm hoàn tất từ Telegram Voice Recorder Bar
+  void _handleVoiceRecordComplete(VoiceRecordResult result) {
+    HapticFeedback.lightImpact();
+    final tempId = 'temp_voice_${DateTime.now().millisecondsSinceEpoch}';
+    final newMessage = ChatMessage(
+      id: tempId,
+      text: '🎙️ Tin nhắn thoại',
+      isSentByMe: true,
+      timestamp: DateTime.now(),
+      messageType: 'voice',
+      durationMs: result.durationMs,
+      waveform: result.waveform,
+      localFilePath: result.localPath,
+      isSending: true,
+      isSendError: false,
     );
+
+    setState(() {
+      _isRecordingVoice = false;
+      _messages.insert(0, newMessage);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+    // Bắt đầu upload và gửi nền
+    _uploadAndSendVoiceMessage(newMessage);
+  }
+
+  /// Upload file ghi âm qua multipart và gửi qua Socket + HTTP
+  Future<void> _uploadAndSendVoiceMessage(ChatMessage msg) async {
+    final filePath = msg.localFilePath;
+    if (filePath == null || filePath.isEmpty) {
+      debugPrint('⚠️ [VoiceNote] Không tìm thấy file ghi âm cục bộ để upload');
+      _markVoiceMessageError(msg.id);
+      return;
+    }
+
+    debugPrint('🎙️ [VoiceNote] Bắt đầu tải lên: $filePath (${msg.durationMs}ms)');
+    try {
+      final cloudUrl = await VoiceNoteService().uploadVoiceNote(
+        filePath,
+        context: context,
+      );
+
+      if (!mounted) return;
+
+      if (cloudUrl == null || cloudUrl.isEmpty) {
+        debugPrint('❌ [VoiceNote] Upload thất bại -> Không gửi tin, giữ file cục bộ và chờ thử lại');
+        _markVoiceMessageError(msg.id);
+        return;
+      }
+
+      debugPrint('✅ [VoiceNote] Upload thành công Cloudinary: $cloudUrl');
+      final voicePayload = jsonEncode({
+        'type': 'voice',
+        'url': cloudUrl,
+        'durationMs': msg.durationMs ?? 3000,
+        'waveform': msg.effectiveWaveform,
+      });
+
+      // Cập nhật trạng thái thành công trong UI
+      setState(() {
+        final index = _messages.indexWhere((m) => m.id == msg.id);
+        if (index != -1) {
+          _messages[index] = _messages[index].copyWith(
+            text: voicePayload,
+            mediaUrl: cloudUrl,
+            isSending: false,
+            isSendError: false,
+          );
+        }
+      });
+
+      // Gửi qua WebSocket
+      if (_socket != null && _socket!.connected) {
+        _socket!.emit('sendDirectMessage', {
+          'partnerId': widget.partnerId,
+          'text': voicePayload,
+          'messageType': 'voice',
+          'mediaUrl': cloudUrl,
+          'durationMs': msg.durationMs,
+          'waveform': msg.effectiveWaveform,
+        });
+      } else {
+        _socket?.connect();
+      }
+
+      // REST API Fallback
+      _sendMessageViaHttp(voicePayload, null, null);
+    } catch (e) {
+      debugPrint('❌ [VoiceNote] Ngoại lệ khi upload voice note: $e');
+      if (mounted) {
+        _markVoiceMessageError(msg.id);
+      }
+    }
+  }
+
+  void _markVoiceMessageError(String messageId) {
+    setState(() {
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(
+          isSending: false,
+          isSendError: true,
+        );
+      }
+    });
+    ToastUtil.showError(context, 'Tải lên tin nhắn thoại thất bại. Chạm vào tin nhắn để thử lại.');
+  }
+
+  void _retrySendVoiceMessage(ChatMessage msg) {
+    debugPrint('🔄 [VoiceNote] Thử lại gửi tin nhắn thoại: ${msg.id}');
+    setState(() {
+      final index = _messages.indexWhere((m) => m.id == msg.id);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(
+          isSending: true,
+          isSendError: false,
+        );
+      }
+    });
+    _uploadAndSendVoiceMessage(msg);
   }
 
   /// Vấn đề 3: Bật mic và trò chuyện trực tiếp qua cuộc gọi Soulmate Voice Call (WebRTC)
@@ -2016,138 +2091,150 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             top: 8,
             bottom: effectiveBottomPadding,
           ),
-          child: Row(
-            children: [
-              // 1. Nút '+' mở Popup/Sheet đa tiện ích
-              IconButton(
-                icon: const Icon(
-                  Icons.add_circle_outline_rounded,
-                  color: Color(0xFF6366F1),
-                  size: 26,
-                ),
-                tooltip: 'Chia sẻ ảnh, vị trí, voice note',
-                onPressed: _showMediaActionSheet,
-              ),
-
-              // 2. Nút Camera chụp nhanh (phong cách Telegram / Messenger)
-              IconButton(
-                icon: const Icon(
-                  Icons.camera_alt_outlined,
-                  color: Color(0xFF64748B),
-                  size: 24,
-                ),
-                tooltip: 'Chụp ảnh nhanh',
-                onPressed: _handlePickCamera,
-              ),
-
-              // 3. Khung ô nhập văn bản tích hợp Emoji
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
+          child: _isRecordingVoice
+              ? TelegramVoiceRecorderBar(
+                  onRecordComplete: _handleVoiceRecordComplete,
+                  onRecordCancel: () {
+                    setState(() => _isRecordingVoice = false);
+                  },
+                )
+              : Row(
+                  children: [
+                    // 1. Nút '+' mở Popup/Sheet đa tiện ích
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: Color(0xFF6366F1),
+                        size: 26,
+                      ),
+                      tooltip: 'Chia sẻ ảnh, vị trí, voice note',
+                      onPressed: _showMediaActionSheet,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _chatController,
-                          focusNode: _focusNode,
-                          style: const TextStyle(
-                            fontFamily: 'BeVietnamPro',
-                            fontSize: 14.5,
-                            color: Color(0xFF0F172A),
+
+                    // 2. Nút Camera chụp nhanh (phong cách Telegram / Messenger)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: Color(0xFF64748B),
+                        size: 24,
+                      ),
+                      tooltip: 'Chụp ảnh nhanh',
+                      onPressed: _handlePickCamera,
+                    ),
+
+                    // 3. Khung ô nhập văn bản tích hợp Emoji
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: const Color(0xFFE2E8F0),
                           ),
-                          decoration: InputDecoration(
-                            hintText: 'Nhắn tin cho $_partnerDisplayName...',
-                            hintStyle: const TextStyle(
-                              fontFamily: 'BeVietnamPro',
-                              fontSize: 14,
-                              color: Color(0xFF94A3B8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _chatController,
+                                focusNode: _focusNode,
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 14.5,
+                                  color: Color(0xFF0F172A),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Nhắn tin cho $_partnerDisplayName...',
+                                  hintStyle: const TextStyle(
+                                    fontFamily: 'BeVietnamPro',
+                                    fontSize: 14,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (val) => _handleSendMessage(val),
+                              ),
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (val) => _handleSendMessage(val),
+                            // Icon Faye AI gợi ý trả lời (đặt cạnh icon emoji, chỉ icon thuần túy)
+                            GestureDetector(
+                              onTap: _showAiSuggestionModal,
+                              behavior: HitTestBehavior.opaque,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                                child: Icon(
+                                  Icons.auto_awesome_rounded,
+                                  color: Color(0xFF8B5CF6),
+                                  size: 21,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            // Icon Emoji chuyển đổi giữa Bàn phím & Bảng chọn Emoji inline
+                            GestureDetector(
+                              onTap: _toggleEmojiPicker,
+                              child: Icon(
+                                _isEmojiPickerVisible
+                                    ? Icons.keyboard_alt_outlined
+                                    : Icons.sentiment_satisfied_alt_rounded,
+                                color: const Color(0xFF7C3AED),
+                                size: 22,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      // Icon Faye AI gợi ý trả lời (đặt cạnh icon emoji, chỉ icon thuần túy)
-                      GestureDetector(
-                        onTap: _showAiSuggestionModal,
-                        behavior: HitTestBehavior.opaque,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Color(0xFF8B5CF6),
-                            size: 21,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      // Icon Emoji chuyển đổi giữa Bàn phím & Bảng chọn Emoji inline
-                      GestureDetector(
-                        onTap: _toggleEmojiPicker,
-                        child: Icon(
-                          _isEmojiPickerVisible
-                              ? Icons.keyboard_alt_outlined
-                              : Icons.sentiment_satisfied_alt_rounded,
-                          color: const Color(0xFF7C3AED),
-                          size: 22,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
+                    ),
+                    const SizedBox(width: 6),
 
-              // 4. Nút Hành động chuyển đổi linh hoạt:
-              //    - Có chữ: Nút GỬI tin nhắn (Send Button) tròn hồng tím
-              //    - Rỗng: Nút MICRO ghi âm thoại thực tế (Voice Note)
-              GestureDetector(
-                onTap: () {
-                  if (_hasInputText) {
-                    _handleSendMessage(_chatController.text);
-                  } else {
-                    _handleVoiceNote();
-                  }
-                },
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFEC4899).withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
+                    // 4. Nút Hành động chuyển đổi linh hoạt:
+                    //    - Có chữ: Nút GỬI tin nhắn (Send Button) tròn hồng tím
+                    //    - Rỗng: Nút MICRO ghi âm thoại Telegram (chạm/giữ để ghi)
+                    GestureDetector(
+                      onTap: () {
+                        if (_hasInputText) {
+                          _handleSendMessage(_chatController.text);
+                        } else {
+                          setState(() => _isRecordingVoice = true);
+                        }
+                      },
+                      onLongPress: () {
+                        if (!_hasInputText) {
+                          setState(() => _isRecordingVoice = true);
+                        }
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFEC4899).withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            _hasInputText ? Icons.arrow_upward_rounded : Icons.mic_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      _hasInputText ? Icons.arrow_upward_rounded : Icons.mic_rounded,
-                      color: Colors.white,
-                      size: 22,
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -2200,7 +2287,7 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
     final isImageStack = msg.messageType == 'imageStack' || msg.imageUrls.length > 1;
     final isSingleImage = msg.messageType == 'image' || (msg.imageUrls.length == 1) || msg.text.startsWith('[Hình ảnh]');
-    final isVoice = msg.messageType == 'voice' || msg.text.startsWith('🎙️');
+    final isVoice = msg.isVoice;
     final isLocation = msg.messageType == 'location' || msg.text.startsWith('📍 [Vị trí]');
     final isRevoked = msg.isRevoked;
 
@@ -2243,7 +2330,9 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                     ),
                     padding: (isImageStack || isSingleImage)
                         ? const EdgeInsets.all(4)
-                        : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        : (isVoice
+                            ? const EdgeInsets.symmetric(vertical: 4, horizontal: 8)
+                            : const EdgeInsets.symmetric(vertical: 12, horizontal: 16)),
                     decoration: BoxDecoration(
                       gradient: isMe && !isRevoked
                           ? const LinearGradient(
@@ -2469,11 +2558,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       );
     }
 
-    // 4. Render Tin nhắn thoại (Voice Note) - Tinh tế, không chữ thừa, có sóng âm động & Play/Pause thực tế
+    // 4. Render Tin nhắn thoại (Voice Note) - Chuẩn Telegram, sóng âm tĩnh tô tiến trình, không rung lắc
     if (isVoice) {
       return CosmicVoicePlayerBubble(
-        text: msg.text,
+        message: msg,
         isSentByMe: isMe,
+        onRetrySend: msg.isSendError ? () => _retrySendVoiceMessage(msg) : null,
       );
     }
 
