@@ -35,6 +35,9 @@ class BadgeService {
     }
   }
 
+  /// Alias tương thích cập nhật badge count
+  static Future<void> updateBadgeCount(int count) => setBadge(count);
+
   /// Tăng số đếm badge khi có tin nhắn hoặc thông báo mới
   static Future<void> increment({int step = 1}) async {
     await setBadge(_badgeCount + step);

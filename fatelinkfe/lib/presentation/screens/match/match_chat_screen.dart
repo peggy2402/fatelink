@@ -19,6 +19,7 @@ import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
 import '../../../services/badge_service.dart';
 import '../../../services/app_socket_service.dart';
+import '../../../services/call_manager.dart';
 
 // Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
@@ -290,8 +291,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         _socket!.off('receiveTyping');
         _socket!.off('userStatusResult');
         _socket!.off('userStatusChanged');
-        _socket!.off('webrtcOffer');
-        _socket!.off('incomingVoiceCall');
 
         _socket!.on('directHistoryResult', (data) {
           if (!mounted) return;
@@ -347,31 +346,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             setState(() {
               _isPartnerOnline = data['isOnline'] == true;
             });
-          }
-        });
-
-        // Lắng nghe tín hiệu cuộc gọi thoại WebRTC Real-time
-        _socket!.on('webrtcOffer', (data) {
-          if (data is Map && data['sdp'] != null) {
-            _pendingOfferSdp = data['sdp'];
-          }
-        });
-
-        _socket!.on('incomingVoiceCall', (data) {
-          if (!mounted) return;
-          if (data is Map) {
-            final callerId = data['callerId']?.toString() ?? '';
-            final callerName = data['callerName']?.toString() ?? _partnerDisplayName;
-            final callerAvatar = data['callerAvatar']?.toString() ?? _partnerRealAvatar;
-
-            CosmicIncomingCallModal.show(
-              context,
-              callerId: callerId,
-              callerName: callerName,
-              callerAvatar: callerAvatar,
-              socket: _socket!,
-              offerSdp: _pendingOfferSdp,
-            );
           }
         });
 
@@ -1266,17 +1240,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
 
   /// Vấn đề 3: Bật mic và trò chuyện trực tiếp qua cuộc gọi Soulmate Voice Call (WebRTC)
   void _handleStartVoiceCall() {
-    if (_socket == null || !_socket!.connected) {
-      ToastUtil.showError(context, 'Chưa kết nối máy chủ realtime, đang thử kết nối lại...');
-      _socket?.connect();
-      return;
-    }
-    CosmicVoiceCallModal.show(
-      context,
-      partnerName: _partnerDisplayName,
+    VoicePlayerManager().stopAll();
+    VoiceNoteService().cancelRecording();
+    CallManager.instance.startOutgoingCall(
       partnerId: widget.partnerId,
+      partnerName: _partnerDisplayName,
       partnerAvatar: _partnerRealAvatar,
-      socket: _socket!,
     );
   }
 
@@ -2477,11 +2446,19 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                         if (_hasInputText) {
                           _handleSendMessage(_chatController.text);
                         } else {
+                          if (CallManager.instance.isInCall) {
+                            ToastUtil.showInfo(context, 'Không thể ghi âm khi đang trong cuộc gọi');
+                            return;
+                          }
                           setState(() => _isRecordingVoice = true);
                         }
                       },
                       onLongPress: () {
                         if (!_hasInputText) {
+                          if (CallManager.instance.isInCall) {
+                            ToastUtil.showInfo(context, 'Không thể ghi âm khi đang trong cuộc gọi');
+                            return;
+                          }
                           setState(() => _isRecordingVoice = true);
                         }
                       },

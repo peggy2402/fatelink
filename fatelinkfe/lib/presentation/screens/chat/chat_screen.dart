@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../services/app_socket_service.dart';
+import '../../../services/badge_service.dart';
 import '../../../logic/blocs/chat/chat_bloc.dart';
 import '../../../logic/blocs/chat/chat_event.dart';
 import '../../../logic/blocs/chat/chat_state.dart';
 import '../../../logic/blocs/home/home_bloc.dart';
+import '../../../logic/blocs/home/home_event.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/chat_conversation_tile.dart';
+import 'widgets/chat_conversation_options_modal.dart';
 import 'widgets/chat_message_bubble.dart';
 import 'widgets/chat_online_stories.dart';
 import 'widgets/chat_room_app_bar.dart';
@@ -77,6 +83,11 @@ class ChatScreenState extends State<ChatScreen> {
   Map<String, DirectConversationMeta> _recentConversations = {};
   NotificationItem? _latestSystemNotification;
   int _systemUnreadCount = 0;
+  StreamSubscription? _socketSub;
+
+  // Cấu hình cá nhân: Ghim hội thoại & Tắt thông báo
+  Set<String> _pinnedUserIds = {};
+  Map<String, DateTime?> _mutedUntilMap = {};
 
   @override
   void initState() {
@@ -88,8 +99,229 @@ class ChatScreenState extends State<ChatScreen> {
       });
     });
     _loadUserFrequency();
+    _loadChatPreferences();
     _fetchDirectConversationsAndNotifications();
     context.read<ChatBloc>().add(ChatInitializeEvent(context));
+
+    // Lắng nghe tin nhắn mới thời gian thực từ AppSocketService để cập nhật danh sách
+    _socketSub = AppSocketService.instance.messageStream.listen((event) {
+      if (!mounted) return;
+      final senderId = event['senderId']?.toString() ?? '';
+      final text = event['text']?.toString() ?? '';
+      final msgType = event['messageType']?.toString() ?? 'text';
+      final displayContent = msgType == 'voice' ? '🎤 Tin nhắn thoại' : text;
+      if (senderId.isNotEmpty) {
+        setState(() {
+          _recentConversations[senderId] = DirectConversationMeta(
+            partnerId: senderId,
+            lastMessage: displayContent,
+            lastMessageTime: DateTime.now(),
+            isSentByMe: false,
+            unreadCount: (_recentConversations[senderId]?.unreadCount ?? 0) + 1,
+          );
+        });
+        _recalcTotalUnread();
+      }
+    });
+  }
+
+  /// Nạp danh sách ghim và tắt thông báo từ SharedPreferences
+  Future<void> _loadChatPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pinned = prefs.getStringList('chat_pinned_ids') ?? [];
+      final mutedKeys = prefs.getKeys().where((k) => k.startsWith('chat_muted_until_')).toList();
+      final Map<String, DateTime?> muted = {};
+      final now = DateTime.now();
+      for (final key in mutedKeys) {
+        final uId = key.replaceFirst('chat_muted_until_', '');
+        final val = prefs.getString(key);
+        if (val == 'forever') {
+          muted[uId] = null;
+        } else if (val != null) {
+          final exp = DateTime.tryParse(val);
+          if (exp != null && exp.isAfter(now)) {
+            muted[uId] = exp;
+          } else {
+            await prefs.remove(key); // Đã hết hạn tắt thông báo
+          }
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _pinnedUserIds = pinned.toSet();
+          _mutedUntilMap = muted;
+        });
+      }
+    } catch (_) {}
+  }
+
+  bool _isUserMuted(String userId) {
+    if (!_mutedUntilMap.containsKey(userId)) return false;
+    final until = _mutedUntilMap[userId];
+    if (until == null) return true; // Vĩnh viễn
+    return DateTime.now().isBefore(until);
+  }
+
+  Future<void> _togglePinUser(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_pinnedUserIds.contains(userId)) {
+        _pinnedUserIds.remove(userId);
+      } else {
+        _pinnedUserIds.add(userId);
+      }
+    });
+    await prefs.setStringList('chat_pinned_ids', _pinnedUserIds.toList());
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _muteUser(String userId, Duration? duration) async {
+    final prefs = await SharedPreferences.getInstance();
+    final until = duration != null ? DateTime.now().add(duration) : null;
+    setState(() {
+      _mutedUntilMap[userId] = until;
+    });
+    final key = 'chat_muted_until_$userId';
+    if (until == null) {
+      await prefs.setString(key, 'forever');
+    } else {
+      await prefs.setString(key, until.toIso8601String());
+    }
+    if (mounted) {
+      final label = duration == null
+          ? 'cho đến khi bật lại'
+          : (duration.inHours >= 24
+              ? 'trong 1 ngày'
+              : (duration.inHours >= 4
+                  ? 'trong 4 giờ'
+                  : 'trong 1 giờ'));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã tắt thông báo $label'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _unmuteUser(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _mutedUntilMap.remove(userId);
+    });
+    await prefs.remove('chat_muted_until_$userId');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã bật lại thông báo cuộc trò chuyện'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _deleteConversation(String userId) async {
+    setState(() {
+      _recentConversations.remove(userId);
+    });
+    _recalcTotalUnread();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã xóa cuộc trò chuyện khỏi danh sách'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _blockUser(String userId) async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token == null || !mounted) return;
+      await ApiService.post(
+        '${AppConstants.baseUrl}/users/$userId/block',
+        context,
+        token: token,
+        showLoading: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _recentConversations.remove(userId);
+      });
+      _recalcTotalUnread();
+      context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã chặn người dùng thành công'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Lỗi chặn người dùng: $e');
+    }
+  }
+
+  Future<void> _reportUser(String userId) async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token == null || !mounted) return;
+      await ApiService.post(
+        '${AppConstants.baseUrl}/users/$userId/report',
+        context,
+        body: {'reason': 'Quấy rối / Spam hoặc nội dung không phù hợp'},
+        token: token,
+        showLoading: false,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã gửi báo cáo vi phạm. Đội ngũ FateLink sẽ kiểm tra trong 24h.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Lỗi báo cáo người dùng: $e');
+    }
+  }
+
+  Future<void> _unmatchUser(String userId) async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token == null || !mounted) return;
+      await ApiService.delete(
+        '${AppConstants.baseUrl}/matches/$userId/unmatch',
+        context,
+        token: token,
+        showLoading: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _recentConversations.remove(userId);
+      });
+      _recalcTotalUnread();
+      context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã hủy ghép đôi thành công'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Lỗi hủy ghép đôi: $e');
+    }
+  }
+
+  void _recalcTotalUnread() {
+    final total = _recentConversations.values.fold<int>(
+      0,
+      (sum, item) => sum + item.unreadCount,
+    );
+    AppSocketService().totalUnreadCount.value = total;
+    BadgeService.updateBadgeCount(total);
   }
 
   /// Nạp tin nhắn gần nhất của bạn bè và thông báo hệ thống THẬT từ API
@@ -125,6 +357,7 @@ class ChatScreenState extends State<ChatScreen> {
         setState(() {
           _recentConversations = map;
         });
+        _recalcTotalUnread();
       }
 
       // 2. Lấy thông báo hệ thống FateLink từ API
@@ -199,6 +432,7 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _socketSub?.cancel();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _searchController.dispose();
@@ -729,7 +963,25 @@ class ChatScreenState extends State<ChatScreen> {
     // CHỈ hiển thị những người CẢ HAI ĐÃ CÙNG THẢ TIM NHAU!
     // Lấy tin nhắn thực tế từ cơ sở dữ liệu qua API /messages/conversations
     if (_selectedFilter == 'all' || _selectedFilter == 'matches') {
-      for (final user in mutualMatches) {
+      // Sắp xếp: Ưu tiên cuộc hội thoại ĐƯỢC GHIM lên đầu, sau đó sắp xếp theo thời gian tin nhắn mới nhất
+      final sortedMatches = List.of(mutualMatches);
+      sortedMatches.sort((a, b) {
+        final aPinned = _pinnedUserIds.contains(a.id);
+        final bPinned = _pinnedUserIds.contains(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+
+        final aTime = _recentConversations[a.id]?.lastMessageTime;
+        final bTime = _recentConversations[b.id]?.lastMessageTime;
+        if (aTime != null && bTime != null) {
+          return bTime.compareTo(aTime);
+        }
+        if (aTime != null) return -1;
+        if (bTime != null) return 1;
+        return 0;
+      });
+
+      for (final user in sortedMatches) {
         final String displayName = user.name;
         final String avatarUrl = user.avatar ?? '';
 
@@ -752,6 +1004,8 @@ class ChatScreenState extends State<ChatScreen> {
           final progress = (user.compatibilityScore / 100.0).clamp(0.0, 1.0);
           final calculatedAge = user.age ?? (18 + (user.id.hashCode.abs() % 7));
           final calculatedGender = user.gender ?? (user.id.hashCode % 2 == 0 ? 'female' : 'male');
+          final isPinned = _pinnedUserIds.contains(user.id);
+          final isMuted = _isUserMuted(user.id);
 
           conversationTiles.add(
             ChatConversationTile(
@@ -760,10 +1014,27 @@ class ChatScreenState extends State<ChatScreen> {
               lastMessage: effectiveLastMessage,
               time: effectiveTime,
               unreadCount: effectiveUnread,
+              isPinned: isPinned,
+              isMuted: isMuted,
               gender: calculatedGender,
               age: calculatedAge,
               meyuFeelProgress: progress,
               onTap: () async {
+                // Đánh dấu đã đọc cuộc trò chuyện này
+                if (_recentConversations.containsKey(user.id)) {
+                  setState(() {
+                    final old = _recentConversations[user.id]!;
+                    _recentConversations[user.id] = DirectConversationMeta(
+                      partnerId: old.partnerId,
+                      lastMessage: old.lastMessage,
+                      lastMessageTime: old.lastMessageTime,
+                      isSentByMe: old.isSentByMe,
+                      unreadCount: 0,
+                    );
+                  });
+                  _recalcTotalUnread();
+                }
+
                 await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => MatchChatScreen(
@@ -775,6 +1046,23 @@ class ChatScreenState extends State<ChatScreen> {
                 if (mounted) {
                   _fetchDirectConversationsAndNotifications();
                 }
+              },
+              onLongPress: () {
+                ChatConversationOptionsModal.show(
+                  context,
+                  userId: user.id,
+                  userName: displayName,
+                  userAvatar: avatarUrl,
+                  isPinned: isPinned,
+                  isMuted: isMuted,
+                  onTogglePin: () => _togglePinUser(user.id),
+                  onMute: (duration) => _muteUser(user.id, duration),
+                  onUnmute: () => _unmuteUser(user.id),
+                  onDeleteConversation: () => _deleteConversation(user.id),
+                  onBlockUser: () => _blockUser(user.id),
+                  onReportUser: () => _reportUser(user.id),
+                  onUnmatchUser: () => _unmatchUser(user.id),
+                );
               },
             ),
           );

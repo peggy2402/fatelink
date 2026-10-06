@@ -2,6 +2,7 @@
     <!-- Kết nối mạng & kiểm tra trạng thái internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
 
     <!-- Định vị vị trí để tính khoảng cách & tìm bạn bè xung quanh -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -17,6 +18,10 @@
     <!-- Micro cho tin nhắn thoại & cuộc gọi WebRTC -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
 
     <!-- Nhận thông báo đẩy (Android 13+) & Rung cho Heads-up notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

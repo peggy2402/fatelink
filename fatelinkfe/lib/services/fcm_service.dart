@@ -9,6 +9,7 @@ import 'package:fatelinkfe/services/api_service.dart';
 import 'package:fatelinkfe/core/router/app_router.dart';
 import 'badge_service.dart';
 import 'notification_service.dart';
+import 'app_socket_service.dart';
 
 /// Top-level background message handler bắt buộc cho FCM Android
 /// Chạy trong một isolate độc lập khi app đang ở chế độ chạy ngầm (Background) hoặc đã tắt (Terminated)
@@ -118,6 +119,12 @@ class FcmService {
   ) {
     // Đã mở tin nhắn -> Reset badge icon app
     BadgeService.clearBadge();
+
+    // Nếu là cuộc gọi đến -> đảm bảo socket kết nối để CallManager mở cuộc gọi
+    if (data['type'] == 'incoming_voice_call') {
+      AppSocketService.instance.initialize();
+      return;
+    }
 
     final partnerId = data['callerId'] ?? data['partnerId'] ?? data['senderId'];
     if (partnerId != null && partnerId.toString().isNotEmpty) {

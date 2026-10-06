@@ -5,6 +5,7 @@ import '../core/utils/constants.dart';
 import '../core/utils/secure_storage_helper.dart';
 import 'api_service.dart';
 import 'badge_service.dart';
+import 'call_manager.dart';
 
 /// Dịch vụ Socket.IO toàn cục cho FateLink
 /// - Kết nối WebRTC & Direct Message xuyên suốt vòng đời ứng dụng
@@ -14,6 +15,7 @@ import 'badge_service.dart';
 class AppSocketService {
   static final AppSocketService _instance = AppSocketService._internal();
   factory AppSocketService() => _instance;
+  static AppSocketService get instance => _instance;
   AppSocketService._internal();
 
   IO.Socket? _socket;
@@ -33,6 +35,7 @@ class AppSocketService {
   // Getters
   IO.Socket? get socket => _socket;
   Stream<Map<String, dynamic>> get directMessageStream => _directMessageController.stream;
+  Stream<Map<String, dynamic>> get messageStream => _directMessageController.stream;
   Stream<Map<String, dynamic>> get incomingCallStream => _incomingCallController.stream;
   Stream<Map<String, dynamic>> get userStatusStream => _userStatusController.stream;
   Stream<void> get reconnectStream => _reconnectController.stream;
@@ -80,6 +83,7 @@ class AppSocketService {
     );
 
     _registerSocketListeners();
+    CallManager.instance.bindSocket(_socket!);
     _socket!.connect();
   }
 

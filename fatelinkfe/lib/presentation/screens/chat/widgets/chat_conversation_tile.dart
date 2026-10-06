@@ -34,6 +34,9 @@ class ChatConversationTile extends StatelessWidget {
   final int? age;
   final double? meyuFeelProgress;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool isPinned;
+  final bool isMuted;
 
   const ChatConversationTile({
     super.key,
@@ -50,6 +53,9 @@ class ChatConversationTile extends StatelessWidget {
     this.age,
     this.meyuFeelProgress,
     required this.onTap,
+    this.onLongPress,
+    this.isPinned = false,
+    this.isMuted = false,
   });
 
   String _formatSnippet(String raw) {
@@ -80,15 +86,18 @@ class ChatConversationTile extends StatelessWidget {
     return RepaintBoundary(
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: MediaQuery.withClampedTextScaling(
             minScaleFactor: 1.0,
             maxScaleFactor: 1.15,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: kTileMinHeight),
               child: Container(
-                color: hasUnread || isWaveRequest
-                    ? const Color(0xFF6366F1).withValues(alpha: isWaveRequest ? 0.06 : 0.04)
-                    : Colors.transparent,
+                color: isPinned
+                    ? const Color(0xFF6366F1).withValues(alpha: 0.05)
+                    : (hasUnread || isWaveRequest
+                        ? const Color(0xFF6366F1).withValues(alpha: isWaveRequest ? 0.06 : 0.04)
+                        : Colors.transparent),
                 padding: const EdgeInsets.symmetric(
                   horizontal: kTileHorizontalPadding,
                   vertical: kTileVerticalPadding,
@@ -107,7 +116,7 @@ class ChatConversationTile extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Hàng 1: [Tên (Flexible)] + [Huy hiệu tuổi/giới tính] + [Tag Bot/Hệ thống] + [Thời gian]
+                          // Hàng 1: [Tên (Flexible)] + [Huy hiệu tuổi/giới tính] + [Tag Bot/Hệ thống] + [Icon Ghim/Tắt Chuông + Thời gian]
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
@@ -146,20 +155,42 @@ class ChatConversationTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                displayTime,
-                                style: TextStyle(
-                                  fontFamily: 'BeVietnamPro',
-                                  fontSize: kTimeFontSize,
-                                  color: isWaveRequest
-                                      ? const Color(0xFFEC4899)
-                                      : (hasUnread
-                                          ? const Color(0xFF6366F1)
-                                          : const Color(0xFF94A3B8)),
-                                  fontWeight: hasUnread || isWaveRequest
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  if (isMuted) ...[
+                                    const Icon(
+                                      Icons.notifications_off_rounded,
+                                      size: 13,
+                                      color: Color(0xFF94A3B8),
+                                    ),
+                                    const SizedBox(width: 3.5),
+                                  ],
+                                  if (isPinned) ...[
+                                    const Icon(
+                                      Icons.push_pin_rounded,
+                                      size: 13,
+                                      color: Color(0xFF8B5CF6),
+                                    ),
+                                    const SizedBox(width: 3.5),
+                                  ],
+                                  Text(
+                                    displayTime,
+                                    style: TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: kTimeFontSize,
+                                      color: isWaveRequest
+                                          ? const Color(0xFFEC4899)
+                                          : (hasUnread
+                                              ? const Color(0xFF6366F1)
+                                              : const Color(0xFF94A3B8)),
+                                      fontWeight: hasUnread || isWaveRequest
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -511,19 +542,37 @@ class ChatConversationTile extends StatelessWidget {
   }
 
   Widget _buildUnreadBadge() {
+    final text = unreadCount > 99
+        ? '99+'
+        : (unreadCount > 9 ? '9+' : '$unreadCount');
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFEC4899),
-        borderRadius: BorderRadius.circular(10),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF2A6D), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF2A6D).withValues(alpha: 0.35),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
-        unreadCount > 9 ? '9+' : '$unreadCount',
+        text,
         style: const TextStyle(
           fontFamily: 'BeVietnamPro',
           color: Colors.white,
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: FontWeight.w800,
+          height: 1.1,
         ),
       ),
     );

@@ -1,40 +1,51 @@
 import 'package:flutter/material.dart';
+import '../router/app_router.dart';
 import 'error_formatter.dart';
 
 class ToastUtil {
   static OverlayEntry? _currentEntry;
 
-  static void showSuccess(BuildContext context, String message) {
+  static BuildContext? get _effectiveContext => AppRouter.navigatorKey.currentContext;
+
+  static void showSuccess(BuildContext? context, String message) {
+    final ctx = context ?? _effectiveContext;
+    if (ctx == null) return;
     _showToast(
-      context,
+      ctx,
       message,
       const Color(0xFF10B981), // Emerald
       Icons.check_circle_rounded,
     );
   }
 
-  static void showError(BuildContext context, String message) {
+  static void showError(BuildContext? context, String message) {
+    final ctx = context ?? _effectiveContext;
+    if (ctx == null) return;
     final cleanMessage = ErrorFormatter.format(message);
     _showToast(
-      context,
+      ctx,
       cleanMessage,
       const Color(0xFFF43F5E), // Rose
       Icons.error_rounded,
     );
   }
 
-  static void showInfo(BuildContext context, String message) {
+  static void showInfo(BuildContext? context, String message) {
+    final ctx = context ?? _effectiveContext;
+    if (ctx == null) return;
     _showToast(
-      context,
+      ctx,
       message,
       const Color(0xFF6366F1), // Brand Indigo
       Icons.info_rounded,
     );
   }
 
-  static void showWarning(BuildContext context, String message) {
+  static void showWarning(BuildContext? context, String message) {
+    final ctx = context ?? _effectiveContext;
+    if (ctx == null) return;
     _showToast(
-      context,
+      ctx,
       message,
       const Color(0xFFF59E0B), // Amber
       Icons.warning_rounded,

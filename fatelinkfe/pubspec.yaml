@@ -93,6 +93,7 @@ flutter:
     - assets/translations/
     - assets/fonts/
     - assets/avatars/
+    - assets/sounds/
     # - assets/lottie/
     # - assets/placeholders/
     # - assets/flags/

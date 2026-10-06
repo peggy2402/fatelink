@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -53,13 +54,12 @@ type ClientToServerEvents = {
   checkUserStatus: (payload: { targetUserId: string }) => void;
   checkUsersStatus: (payload: { targetUserIds: string[] }) => void;
   typing: (payload: { partnerId: string; isTyping: boolean }) => void;
-  startVoiceCall: (payload: { partnerId: string }) => void;
-  acceptVoiceCall: (payload: { callerId: string }) => void;
-  rejectVoiceCall: (payload: { callerId: string; reason?: string }) => void;
-  endVoiceCall: (payload: { partnerId: string }) => void;
-  webrtcOffer: (payload: { partnerId: string; sdp: any }) => void;
-  webrtcAnswer: (payload: { partnerId: string; sdp: any }) => void;
-  iceCandidate: (payload: { partnerId: string; candidate: any }) => void;
+  startVoiceCall: (payload: { partnerId: string; sdp: any }) => void;
+  acceptVoiceCall: (payload: { callId: string; callerId: string }) => void;
+  rejectVoiceCall: (payload: { callId: string; callerId: string; reason?: string }) => void;
+  endVoiceCall: (payload: { callId?: string; partnerId: string; reason?: string }) => void;
+  webrtcAnswer: (payload: { callId?: string; partnerId: string; sdp: any }) => void;
+  iceCandidate: (payload: { callId?: string; partnerId: string; candidate: any }) => void;
 };
 
 type ServerToClientEvents = {
@@ -103,20 +103,35 @@ type ServerToClientEvents = {
   usersStatusResult: (payload: Record<string, boolean>) => void;
   receiveTyping: (payload: { senderId: string; isTyping: boolean }) => void;
   incomingVoiceCall: (payload: {
+    callId: string;
     callerId: string;
     callerName: string;
     callerAvatar: string | null;
+    sdp: any;
     timestamp: string;
   }) => void;
-  voiceCallRinging: (payload: { partnerId: string }) => void;
-  voiceCallUnavailable: (payload: { partnerId: string; reason: string }) => void;
-  voiceCallAccepted: (payload: { partnerId: string }) => void;
-  voiceCallRejected: (payload: { partnerId: string; reason: string }) => void;
-  voiceCallEnded: (payload: { partnerId: string }) => void;
-  webrtcOffer: (payload: { senderId: string; sdp: any }) => void;
-  webrtcAnswer: (payload: { senderId: string; sdp: any }) => void;
-  iceCandidate: (payload: { senderId: string; candidate: any }) => void;
+  voiceCallRinging: (payload: { callId: string; partnerId: string }) => void;
+  voiceCallBusy: (payload: { partnerId: string }) => void;
+  voiceCallMissed: (payload: { callId: string; partnerId: string }) => void;
+  voiceCallAccepted: (payload: { callId: string; partnerId: string }) => void;
+  voiceCallRejected: (payload: { callId: string; partnerId: string; reason: string }) => void;
+  voiceCallEnded: (payload: { callId?: string; partnerId: string; reason?: string }) => void;
+  voiceCallAnsweredElsewhere: (payload: { callId: string }) => void;
+  webrtcAnswer: (payload: { callId?: string; senderId: string; sdp: any }) => void;
+  iceCandidate: (payload: { callId?: string; senderId: string; candidate: any }) => void;
 };
+
+export interface VoiceCallSession {
+  callId: string;
+  callerId: string;
+  calleeId: string;
+  callerName: string;
+  callerAvatar: string | null;
+  offerSdp: any;
+  status: 'ringing' | 'connected' | 'ended';
+  createdAt: Date;
+  timeoutTimer?: NodeJS.Timeout;
+}
 
 type InterServerEvents = Record<string, never>;
 type ChatSocketData = { userId?: string };
@@ -144,6 +159,36 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @WebSocketServer()
   server!: ChatServer; // Thêm '!' để khắc phục lỗi "has no initializer"
+
+  private readonly activeCalls = new Map<string, VoiceCallSession>();
+  private readonly userActiveCallMap = new Map<string, string>(); // userId -> callId
+
+  public cleanupCall(callId: string) {
+    const session = this.activeCalls.get(callId);
+    if (!session) return;
+    if (session.timeoutTimer) {
+      clearTimeout(session.timeoutTimer);
+      session.timeoutTimer = undefined;
+    }
+    this.activeCalls.delete(callId);
+    if (this.userActiveCallMap.get(session.callerId) === callId) {
+      this.userActiveCallMap.delete(session.callerId);
+    }
+    if (this.userActiveCallMap.get(session.calleeId) === callId) {
+      this.userActiveCallMap.delete(session.calleeId);
+    }
+    this.logger.log(`[Call Cleanup] callId=${callId} cleaned up`);
+  }
+
+  public getPendingCallForUser(userId: string): VoiceCallSession | null {
+    const callId = this.userActiveCallMap.get(userId);
+    if (!callId) return null;
+    const session = this.activeCalls.get(callId);
+    if (session && session.calleeId === userId && session.status === 'ringing') {
+      return session;
+    }
+    return null;
+  }
 
   constructor(
     @Inject(CHAT_APPLICATION_TOKENS.handleRealtimeMessage)
@@ -206,6 +251,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId,
         isOnline: true,
       });
+
+      // Nếu đang có cuộc gọi đang ringing nhắm tới user này, re-emit cho socket vừa kết nối
+      const pendingCall = this.getPendingCallForUser(userId);
+      if (pendingCall) {
+        this.logger.log(`[Pending Call Re-emit on Connect] userId=${userId}, callId=${pendingCall.callId}`);
+        client.emit('incomingVoiceCall', {
+          callId: pendingCall.callId,
+          callerId: pendingCall.callerId,
+          callerName: pendingCall.callerName,
+          callerAvatar: pendingCall.callerAvatar,
+          sdp: pendingCall.offerSdp,
+          timestamp: pendingCall.createdAt.toISOString(),
+        });
+      }
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Rejected websocket connection: ${client.id}. Reason: ${reason}`);
@@ -217,22 +276,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: ChatSocket) {
     const machineId = process.env.FLY_MACHINE_ID || process.env.HOSTNAME || 'local';
     if (client.data.userId) {
-      client.leave(`user:${client.data.userId}`);
+      const userId = client.data.userId;
+      client.leave(`user:${userId}`);
       const isFullyOffline = this.chatPresenceService.markOffline(
-        client.data.userId,
+        userId,
         client.id,
       );
 
       if (isFullyOffline) {
         // TỐI ƯU: Broadcast cho toàn bộ client biết user này vừa offline
         this.server.emit('userStatusChanged', {
-          userId: client.data.userId,
+          userId,
           isOnline: false,
         });
+
+        // Xử lý cuộc gọi nếu user ngắt kết nối hoàn toàn
+        const callId = this.userActiveCallMap.get(userId);
+        if (callId) {
+          const session = this.activeCalls.get(callId);
+          if (session) {
+            const partnerId = session.callerId === userId ? session.calleeId : session.callerId;
+            this.logger.log(`[Call Cleanup on Disconnect] callId=${callId}, disconnectedUser=${userId}, notifyPartner=${partnerId}`);
+            this.server.to(`user:${partnerId}`).emit('voiceCallEnded', {
+              callId,
+              partnerId: userId,
+              reason: 'peer_disconnected',
+            });
+            this.cleanupCall(callId);
+          }
+        }
       }
 
       this.logger.log(
-        `[Socket Disconnect] machine=${machineId}, socketId=${client.id}, userId=${client.data.userId}, isFullyOffline=${isFullyOffline}`,
+        `[Socket Disconnect] machine=${machineId}, socketId=${client.id}, userId=${userId}, isFullyOffline=${isFullyOffline}`,
       );
     } else {
       this.logger.log(`[Socket Disconnect] machine=${machineId}, socketId=${client.id} (no userId)`);
@@ -570,18 +646,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // ==========================================
 
   /**
-   * Bắt đầu cuộc gọi thoại: Người gọi kích hoạt cuộc gọi tới bạn bè
+   * Bắt đầu cuộc gọi thoại: Người gọi kích hoạt cuộc gọi tới bạn bè kèm SDP Offer
    */
   @SubscribeMessage('startVoiceCall')
   async handleStartVoiceCall(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string },
+    @MessageBody() payload: { partnerId: string; sdp: any },
   ) {
     const senderId = client.data.userId;
     if (!senderId) return;
 
     try {
-      const { partnerId } = payload;
+      const { partnerId, sdp } = payload;
+
+      // 1. Kiểm tra đối phương có đang bận trong cuộc gọi khác không
+      if (this.userActiveCallMap.has(partnerId)) {
+        this.logger.warn(`User ${partnerId} is already in another call`);
+        client.emit('voiceCallBusy', { partnerId });
+        return;
+      }
+
+      // Nếu người gọi đã có cuộc gọi đang dở, dọn dẹp trước
+      const existingCallId = this.userActiveCallMap.get(senderId);
+      if (existingCallId) {
+        this.cleanupCall(existingCallId);
+      }
+
       const [caller, partner] = await Promise.all([
         this.userRepository.findById(senderId),
         this.userRepository.findById(partnerId),
@@ -589,21 +679,52 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const callerName = caller?.name || 'Bạn tâm giao';
       const callerAvatar = caller?.avatar || null;
+      const callId = randomUUID();
+
+      const session: VoiceCallSession = {
+        callId,
+        callerId: senderId,
+        calleeId: partnerId,
+        callerName,
+        callerAvatar,
+        offerSdp: sdp,
+        status: 'ringing',
+        createdAt: new Date(),
+      };
+
+      // 30 giây timeout nếu không ai nhấc máy
+      session.timeoutTimer = setTimeout(() => {
+        const currentCall = this.activeCalls.get(callId);
+        if (currentCall && currentCall.status === 'ringing') {
+          this.logger.log(`[Call Timeout 30s] callId=${callId}, caller=${senderId}, callee=${partnerId}`);
+          this.server.to(`user:${senderId}`).emit('voiceCallMissed', { callId, partnerId });
+          this.server.to(`user:${partnerId}`).emit('voiceCallMissed', { callId, partnerId: senderId });
+          this.cleanupCall(callId);
+        }
+      }, 30000);
+
+      this.activeCalls.set(callId, session);
+      this.userActiveCallMap.set(senderId, callId);
+      this.userActiveCallMap.set(partnerId, callId);
 
       const callPayload = {
+        callId,
         callerId: senderId,
         callerName,
         callerAvatar,
-        timestamp: new Date().toISOString(),
+        sdp,
+        timestamp: session.createdAt.toISOString(),
       };
 
-      // Broadcast tới room user:{partnerId}
+      this.logger.log(`[VoiceCall Start] callId=${callId}, caller=${senderId}, callee=${partnerId}`);
+
+      // Broadcast tới room user:{partnerId} (tất cả thiết bị của callee)
       this.server.to(`user:${partnerId}`).emit('incomingVoiceCall', callPayload);
 
-      // Báo cho caller biết máy đang đổ chuông
-      client.emit('voiceCallRinging', { partnerId });
+      // Báo cho caller biết máy đối phương đang đổ chuông
+      client.emit('voiceCallRinging', { callId, partnerId });
 
-      // Kích hoạt Push Notification FCM để đánh thức máy người nhận kể cả khi chạy nền
+      // Kích hoạt Push Notification FCM để đánh thức máy người nhận (chỉ gửi metadata, KHÔNG gửi SDP qua FCM)
       if (partner?.fcmToken) {
         await this.firebaseNotificationService.sendPushNotification(
           partner.fcmToken,
@@ -612,6 +733,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             body: 'Đang gọi cho bạn • Chạm để trả lời',
             data: {
               type: 'incoming_voice_call',
+              callId,
               callerId: senderId,
               callerName,
               callerAvatar: callerAvatar || '',
@@ -632,13 +754,34 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('acceptVoiceCall')
   handleAcceptVoiceCall(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { callerId: string },
+    @MessageBody() payload: { callId: string; callerId: string },
   ) {
     const receiverId = client.data.userId;
     if (!receiverId) return;
 
+    const session = this.activeCalls.get(payload.callId);
+    if (!session || session.calleeId !== receiverId || session.status !== 'ringing') {
+      this.logger.warn(`Invalid acceptVoiceCall: callId=${payload.callId}, receiverId=${receiverId}`);
+      return;
+    }
+
+    if (session.timeoutTimer) {
+      clearTimeout(session.timeoutTimer);
+      session.timeoutTimer = undefined;
+    }
+    session.status = 'connected';
+
+    this.logger.log(`[VoiceCall Accepted] callId=${payload.callId}, caller=${payload.callerId}, callee=${receiverId}`);
+
+    // Báo cho caller biết cuộc gọi đã được chấp nhận
     this.server.to(`user:${payload.callerId}`).emit('voiceCallAccepted', {
+      callId: payload.callId,
       partnerId: receiverId,
+    });
+
+    // Báo cho các thiết bị khác của callee tắt chuông
+    client.broadcast.to(`user:${receiverId}`).emit('voiceCallAnsweredElsewhere', {
+      callId: payload.callId,
     });
   }
 
@@ -648,12 +791,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('rejectVoiceCall')
   handleRejectVoiceCall(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { callerId: string; reason?: string },
+    @MessageBody() payload: { callId: string; callerId: string; reason?: string },
   ) {
     const receiverId = client.data.userId;
     if (!receiverId) return;
 
+    this.logger.log(`[VoiceCall Rejected] callId=${payload.callId}, caller=${payload.callerId}, callee=${receiverId}`);
+    this.cleanupCall(payload.callId);
+
     this.server.to(`user:${payload.callerId}`).emit('voiceCallRejected', {
+      callId: payload.callId,
       partnerId: receiverId,
       reason: payload.reason || 'declined',
     });
@@ -665,30 +812,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('endVoiceCall')
   handleEndVoiceCall(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string },
+    @MessageBody() payload: { callId?: string; partnerId: string; reason?: string },
   ) {
     const senderId = client.data.userId;
     if (!senderId) return;
 
+    const callId = payload.callId || this.userActiveCallMap.get(senderId);
+    if (callId) {
+      this.cleanupCall(callId);
+    }
+
+    this.logger.log(`[VoiceCall Ended] callId=${callId}, sender=${senderId}, partner=${payload.partnerId}`);
     this.server.to(`user:${payload.partnerId}`).emit('voiceCallEnded', {
+      callId,
       partnerId: senderId,
-    });
-  }
-
-  /**
-   * WebRTC Signaling: Chuyển tiếp SDP Offer
-   */
-  @SubscribeMessage('webrtcOffer')
-  handleWebRtcOffer(
-    @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string; sdp: any },
-  ) {
-    const senderId = client.data.userId;
-    if (!senderId) return;
-
-    this.server.to(`user:${payload.partnerId}`).emit('webrtcOffer', {
-      senderId,
-      sdp: payload.sdp,
+      reason: payload.reason || 'user_hung_up',
     });
   }
 
@@ -698,12 +836,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('webrtcAnswer')
   handleWebRtcAnswer(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string; sdp: any },
+    @MessageBody() payload: { callId?: string; partnerId: string; sdp: any },
   ) {
     const senderId = client.data.userId;
     if (!senderId) return;
 
     this.server.to(`user:${payload.partnerId}`).emit('webrtcAnswer', {
+      callId: payload.callId,
       senderId,
       sdp: payload.sdp,
     });
@@ -715,12 +854,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('iceCandidate')
   handleIceCandidate(
     @ConnectedSocket() client: ChatSocket,
-    @MessageBody() payload: { partnerId: string; candidate: any },
+    @MessageBody() payload: { callId?: string; partnerId: string; candidate: any },
   ) {
     const senderId = client.data.userId;
     if (!senderId) return;
 
     this.server.to(`user:${payload.partnerId}`).emit('iceCandidate', {
+      callId: payload.callId,
       senderId,
       candidate: payload.candidate,
     });

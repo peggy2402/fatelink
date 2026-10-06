@@ -591,4 +591,32 @@ class ApiService {
       }
     }
   }
+
+  /// Lấy cấu hình ICE Servers (STUN + TURN) từ backend cho WebRTC
+  static Future<List<Map<String, dynamic>>?> getIceServers() async {
+    try {
+      final token = await SecureStorageHelper.read('accessToken');
+      if (token == null) return null;
+      final cleanToken = token.replaceFirst(RegExp(r'^Bearer\s+'), '').trim();
+      final url = Uri.parse('${AppConstants.baseUrl}/calls/ice-servers');
+      final res = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $cleanToken',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['iceServers'] is List) {
+          return List<Map<String, dynamic>>.from(
+            (data['iceServers'] as List).map((e) => Map<String, dynamic>.from(e as Map)),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ApiService] Không thể lấy ICE servers từ API, sử dụng cấu hình mặc định: $e');
+    }
+    return null;
+  }
 }

@@ -6,6 +6,7 @@ import '../../presentation/screens/home/soul_connections_screen.dart';
 import '../../presentation/screens/onboarding/onboarding_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/main_screen.dart';
+import '../../presentation/screens/call/cosmic_voice_call_screen.dart';
 
 class AppRouter {
   // Global Navigator Key để điều hướng từ FCM/Notification Background & Foreground
@@ -42,6 +43,11 @@ class AppRouter {
         return MaterialPageRoute(builder: (context) => const LoginScreen());
       case '/main':
         return MaterialPageRoute(builder: (context) => const MainScreen());
+      case '/voice-call':
+        return MaterialPageRoute(
+          builder: (context) => const CosmicVoiceCallScreen(),
+          settings: settings,
+        );
       default:
         return null; // Trả về null để Flutter tự xử lý hoặc bạn có thể trả về một trang 404 (UnknownRouteScreen)
     }

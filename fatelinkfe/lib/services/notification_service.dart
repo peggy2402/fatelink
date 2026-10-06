@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../core/router/app_router.dart';
 import 'badge_service.dart';
+import 'app_socket_service.dart';
 
 /// Quản lý thông báo cục bộ (Local Notifications) và Notification Channels trên Android
 class NotificationService {
@@ -141,6 +142,10 @@ class NotificationService {
       // Kiểm tra nếu payload là JSON
       if (response.payload!.startsWith('{')) {
         final Map<String, dynamic> data = jsonDecode(response.payload!);
+        if (data['type'] == 'incoming_voice_call') {
+          AppSocketService.instance.initialize();
+          return;
+        }
         partnerId = data['partnerId'] ?? data['senderId'];
       } else {
         partnerId = response.payload;

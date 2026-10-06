@@ -283,7 +283,6 @@ class _MainScreenState extends State<MainScreen>
                                       _isPopupOpen = false;
                                       if (index == 2) {
                                         _hasUnreadMessages = false;
-                                        AppSocketService().totalUnreadCount.value = 0;
                                       }
                                     });
                                   },
