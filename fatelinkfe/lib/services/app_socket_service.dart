@@ -204,6 +204,11 @@ class AppSocketService {
     }
   }
 
+  /// Đẩy tin nhắn trực tiếp cục bộ vào stream (dùng cho các tin nhắn do chính mình tạo ra như cuộc gọi thoại)
+  void emitLocalDirectMessage(Map<String, dynamic> messagePayload) {
+    _directMessageController.add(messagePayload);
+  }
+
   Future<Map<String, dynamic>> _emitWithTimeout(
     Map<String, dynamic> payload, {
     required Duration timeout,

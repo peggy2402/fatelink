@@ -449,6 +449,7 @@ class _CosmicVoiceCallScreenState extends State<CosmicVoiceCallScreen>
               color: const Color(0xFFFF4757),
               size: 72,
               onTap: () {
+                debugPrint('👉 [UI Call] Người dùng nhấn Từ chối');
                 HapticFeedback.heavyImpact();
                 CallManager.instance.rejectIncomingCall();
               },
@@ -461,6 +462,7 @@ class _CosmicVoiceCallScreenState extends State<CosmicVoiceCallScreen>
               color: const Color(0xFF2ED573),
               size: 72,
               onTap: () {
+                debugPrint('👉 [UI Call] Người dùng nhấn Trả lời');
                 HapticFeedback.heavyImpact();
                 CallManager.instance.acceptIncomingCall();
               },
@@ -503,6 +505,7 @@ class _CosmicVoiceCallScreenState extends State<CosmicVoiceCallScreen>
             color: const Color(0xFFFF4757),
             size: 72,
             onTap: () {
+              debugPrint('👉 [UI Call] Người dùng nhấn Cúp máy');
               HapticFeedback.heavyImpact();
               callManager.hangUp();
             },
@@ -538,39 +541,43 @@ class _CosmicVoiceCallScreenState extends State<CosmicVoiceCallScreen>
     required double size,
     required VoidCallback onTap,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: iconColor, size: size * 0.44),
             ),
-            child: Icon(icon, color: iconColor, size: size * 0.44),
-          ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'BeVietnamPro',
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

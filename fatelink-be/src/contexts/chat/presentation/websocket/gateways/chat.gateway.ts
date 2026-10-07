@@ -660,17 +660,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const { partnerId, sdp } = payload;
 
       // 1. Kiểm tra đối phương có đang bận trong cuộc gọi khác không
-      if (this.userActiveCallMap.has(partnerId)) {
-        this.logger.warn(`User ${partnerId} is already in another call`);
-        client.emit('voiceCallBusy', { partnerId });
-        return;
+      const partnerActiveCallId = this.userActiveCallMap.get(partnerId);
+      if (partnerActiveCallId) {
+        const partnerSession = this.activeCalls.get(partnerActiveCallId);
+        if (!partnerSession) {
+          // Phiên gọi cũ đã dọn nhưng map còn sót -> xóa rác ngay lập tức
+          this.userActiveCallMap.delete(partnerId);
+        } else {
+          this.logger.warn(`User ${partnerId} is already in active call ${partnerActiveCallId}`);
+          client.emit('voiceCallBusy', { partnerId });
+          return;
+        }
       }
 
-      // Nếu người gọi đã có cuộc gọi đang dở, dọn dẹp trước
+      // Nếu người gọi có cuộc gọi cũ còn sót trong map, dọn dẹp trước
       const existingCallId = this.userActiveCallMap.get(senderId);
       if (existingCallId) {
         this.cleanupCall(existingCallId);
       }
+      this.userActiveCallMap.delete(senderId);
 
       const [caller, partner] = await Promise.all([
         this.userRepository.findById(senderId),
@@ -798,6 +806,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.logger.log(`[VoiceCall Rejected] callId=${payload.callId}, caller=${payload.callerId}, callee=${receiverId}`);
     this.cleanupCall(payload.callId);
+    this.userActiveCallMap.delete(receiverId);
+    if (payload.callerId) {
+      this.userActiveCallMap.delete(payload.callerId);
+    }
 
     this.server.to(`user:${payload.callerId}`).emit('voiceCallRejected', {
       callId: payload.callId,
@@ -820,6 +832,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const callId = payload.callId || this.userActiveCallMap.get(senderId);
     if (callId) {
       this.cleanupCall(callId);
+    }
+    this.userActiveCallMap.delete(senderId);
+    if (payload.partnerId) {
+      this.userActiveCallMap.delete(payload.partnerId);
     }
 
     this.logger.log(`[VoiceCall Ended] callId=${callId}, sender=${senderId}, partner=${payload.partnerId}`);

@@ -250,13 +250,19 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       _directMessageSub?.cancel();
       _directMessageSub = AppSocketService().directMessageStream.listen((data) {
         if (!mounted) return;
-        if (data['senderId'] == widget.partnerId) {
-          HapticFeedback.lightImpact();
-          final chatMsg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
+        final senderId = data['senderId']?.toString() ?? '';
+        final partnerId = data['partnerId']?.toString() ?? '';
+        final isForThisChat = senderId == widget.partnerId || partnerId == widget.partnerId;
 
-          final senderId = data['senderId']?.toString() ?? '';
+        if (isForThisChat) {
+          HapticFeedback.lightImpact();
+          final bool isSentByMe = data['isSentByMe'] == true || (senderId.isNotEmpty && senderId != widget.partnerId);
+          final map = Map<String, dynamic>.from(data);
+          map['isSentByMe'] = isSentByMe;
+          final chatMsg = ChatMessage.fromJson(map);
+
           debugPrint(
-            '📩 [Socket Receive] bên nhận: receiveDirectMessage: id=${chatMsg.id}, senderId=$senderId, text=${chatMsg.text.length > 30 ? chatMsg.text.substring(0, 30) : chatMsg.text}',
+            '📩 [Socket Receive] Tin nhắn phòng chat: id=${chatMsg.id}, isSentByMe=$isSentByMe, text=${chatMsg.text.length > 30 ? chatMsg.text.substring(0, 30) : chatMsg.text}',
           );
 
           setState(() {
@@ -2908,6 +2914,11 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       );
     }
 
+    // 5.1 Render Thẻ cuộc gọi thoại (P2P Soulmate Voice Call Card)
+    if (msg.isCall) {
+      return _buildCallMessageBubble(msg, isMe);
+    }
+
     // 6. Văn bản thông thường
     return Text(
       msg.text,
@@ -2918,6 +2929,111 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         height: 1.45,
         letterSpacing: 0.1,
         fontWeight: isMe ? FontWeight.w500 : FontWeight.w400,
+      ),
+    );
+  }
+
+  /// Thẻ hiển thị trạng thái Cuộc gọi thoại (Soulmate Voice Call Card)
+  Widget _buildCallMessageBubble(ChatMessage msg, bool isMe) {
+    final isMissed = msg.isCallMissed;
+    final isRejected = msg.isCallRejected;
+    final isFailed = isMissed || isRejected;
+
+    final IconData icon = isMissed
+        ? Icons.phone_missed_rounded
+        : (isRejected ? Icons.phone_disabled_rounded : Icons.phone_in_talk_rounded);
+
+    final Color statusColor = isFailed
+        ? const Color(0xFFFF4757)
+        : (isMe ? const Color(0xFF2ED573) : const Color(0xFF10B981));
+
+    String title;
+    String subtitle;
+    if (isMissed) {
+      title = isMe ? 'Cuộc gọi đi nhỡ' : 'Cuộc gọi thoại nhỡ';
+      subtitle = isMe ? 'Đối phương không trả lời' : 'Bạn đã bỏ lỡ cuộc gọi';
+    } else if (isRejected) {
+      title = isMe ? 'Cuộc gọi bị từ chối' : 'Đã từ chối cuộc gọi';
+      subtitle = isMe ? 'Đối phương đã từ chối' : 'Cuộc gọi thoại bị từ chối';
+    } else {
+      title = 'Cuộc gọi thoại';
+      subtitle = msg.text.contains('(') ? msg.text : 'Đã kết thúc cuộc gọi';
+    }
+
+    if (msg.durationMs != null && msg.durationMs! > 0) {
+      final totalSec = msg.durationMs! ~/ 1000;
+      final m = (totalSec ~/ 60).toString().padLeft(2, '0');
+      final s = (totalSec % 60).toString().padLeft(2, '0');
+      subtitle = 'Thời lượng: $m:$s';
+    }
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 165),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Icon tròn trạng thái cuộc gọi
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isMe
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : statusColor.withValues(alpha: 0.12),
+            ),
+            child: Icon(
+              icon,
+              color: isMe ? Colors.white : statusColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Tiêu đề và nội dung/thời lượng
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    color: isMe ? Colors.white : const Color(0xFF1E293B),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    color: isMe ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF64748B),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Nút gọi lại nhanh (Callback)
+          IconButton(
+            icon: Icon(
+              Icons.phone_forwarded_rounded,
+              color: isMe ? Colors.white : const Color(0xFF8B5CF6),
+              size: 20,
+            ),
+            tooltip: 'Gọi lại',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
+            onPressed: _handleStartVoiceCall,
+          ),
+        ],
       ),
     );
   }

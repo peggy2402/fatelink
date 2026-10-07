@@ -130,6 +130,27 @@ class ChatMessage {
     );
   }
 
+  /// Nhận diện tin nhắn cuộc gọi thoại (P2P WebRTC Call)
+  bool get isCall {
+    if (messageType == 'call' ||
+        messageType == 'call_rejected' ||
+        messageType == 'call_missed' ||
+        messageType == 'call_ended') {
+      return true;
+    }
+    if (text.startsWith('📞 Cuộc gọi') ||
+        text.startsWith('Cuộc gọi thoại') ||
+        text.startsWith('Cuộc gọi bị từ chối') ||
+        text.startsWith('Cuộc gọi nhỡ')) {
+      return true;
+    }
+    return false;
+  }
+
+  bool get isCallMissed => messageType == 'call_missed' || text.toLowerCase().contains('nhỡ');
+  bool get isCallRejected => messageType == 'call_rejected' || text.toLowerCase().contains('từ chối');
+  bool get isCallEnded => messageType == 'call_ended' || (!isCallMissed && !isCallRejected && isCall);
+
   /// Nhận diện tin nhắn thoại
   bool get isVoice {
     if (messageType == 'voice') return true;

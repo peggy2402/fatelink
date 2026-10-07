@@ -8,6 +8,7 @@ import '../core/router/app_router.dart';
 import '../core/services/webrtc_voice_call_service.dart';
 import '../core/utils/toast_utils.dart';
 import '../presentation/screens/call/cosmic_voice_call_screen.dart';
+import 'app_socket_service.dart';
 
 /// Máy trạng thái vòng đời cuộc gọi
 enum CallState {
@@ -38,6 +39,26 @@ class CallSession {
     this.offerSdp,
     this.connectedAt,
   });
+
+  CallSession copyWith({
+    String? callId,
+    String? partnerId,
+    String? partnerName,
+    String? partnerAvatar,
+    bool? isCaller,
+    dynamic offerSdp,
+    DateTime? connectedAt,
+  }) {
+    return CallSession(
+      callId: callId ?? this.callId,
+      partnerId: partnerId ?? this.partnerId,
+      partnerName: partnerName ?? this.partnerName,
+      partnerAvatar: partnerAvatar ?? this.partnerAvatar,
+      isCaller: isCaller ?? this.isCaller,
+      offerSdp: offerSdp ?? this.offerSdp,
+      connectedAt: connectedAt ?? this.connectedAt,
+    );
+  }
 }
 
 /// CallManager (Singleton toàn app)
@@ -75,6 +96,7 @@ class CallManager {
 
   bool _isScreenPushed = false;
   StreamSubscription? _rtcConnSub;
+  StreamSubscription? _rtcIceSub;
 
   /// Đăng ký lắng nghe sự kiện từ WebRtcVoiceCallService
   void _subscribeWebRtcEvents() {
@@ -82,21 +104,33 @@ class CallManager {
       debugPrint('🛰️ [CallManager] WebRTC ConnectionState: $rtcState');
 
       if (rtcState.toString().contains('Connected')) {
-        if (state != CallState.connected) {
-          _stopSounds();
-          _ringingTimeoutTimer?.cancel();
-          _currentSession?.connectedAt = DateTime.now();
-          stateNotifier.value = CallState.connected;
-          _startDurationTimer();
-          HapticFeedback.mediumImpact();
-        }
+        _onCallConnected();
       } else if (rtcState.toString().contains('Failed') || rtcState.toString().contains('Closed')) {
         if (state == CallState.connected || state == CallState.connecting) {
-          debugPrint('⚠️ [CallManager] WebRTC bị ngắt kết nối');
+          debugPrint('⚠️ [CallManager] WebRTC bị ngắt kết nối (State: $rtcState)');
           _notifyAndEnd(reason: 'Mất kết nối cuộc gọi');
         }
       }
     });
+
+    _rtcIceSub = WebRtcVoiceCallService.instance.onIceConnectionStateChanged.listen((iceState) {
+      debugPrint('❄️ [CallManager] WebRTC IceConnectionState: $iceState');
+      if (iceState.toString().contains('Connected') || iceState.toString().contains('Completed')) {
+        _onCallConnected();
+      }
+    });
+  }
+
+  void _onCallConnected() {
+    if (state != CallState.connected) {
+      debugPrint('🎉 [CallManager] Kênh âm thanh P2P đã thông suốt! Bắt đầu đếm giây.');
+      _stopSounds();
+      _ringingTimeoutTimer?.cancel();
+      _currentSession?.connectedAt = DateTime.now();
+      stateNotifier.value = CallState.connected;
+      _startDurationTimer();
+      HapticFeedback.mediumImpact();
+    }
   }
 
   /// Gắn Socket.IO toàn cục để quản lý signaling xuyên suốt vòng đời app
@@ -180,8 +214,8 @@ class CallManager {
 
   void _onVoiceCallRinging(dynamic data) {
     debugPrint('🔔 [CallManager] Máy đối phương đang đổ chuông: $data');
-    if (state == CallState.outgoingRinging) {
-      // Đã có ack đổ chuông từ server
+    if (data is Map && data['callId'] != null && _currentSession != null) {
+      _currentSession = _currentSession!.copyWith(callId: data['callId'].toString());
     }
   }
 
@@ -196,6 +230,15 @@ class CallManager {
 
   void _onVoiceCallRejected(dynamic data) {
     debugPrint('❌ [CallManager] Đối phương từ chối cuộc gọi: $data');
+    final session = _currentSession;
+    if (session != null && session.isCaller) {
+      _recordCallMessageToChat(
+        partnerId: session.partnerId,
+        text: 'Cuộc gọi thoại bị từ chối',
+        messageType: 'call_rejected',
+        clientMessageId: 'call_rej_${session.callId}',
+      );
+    }
     _notifyAndEnd(reason: 'Đối phương đã từ chối cuộc gọi');
   }
 
@@ -211,6 +254,15 @@ class CallManager {
 
   void _onVoiceCallMissed(dynamic data) {
     debugPrint('⏱️ [CallManager] Cuộc gọi nhỡ hoặc hết thời gian chờ: $data');
+    final session = _currentSession;
+    if (session != null && session.isCaller) {
+      _recordCallMessageToChat(
+        partnerId: session.partnerId,
+        text: 'Cuộc gọi thoại nhỡ',
+        messageType: 'call_missed',
+        clientMessageId: 'call_mis_${session.callId}',
+      );
+    }
     _notifyAndEnd(reason: 'Cuộc gọi nhỡ / Không trả lời');
   }
 
@@ -249,11 +301,14 @@ class CallManager {
       return false;
     }
 
-    // 1. Kiểm tra quyền Microphone lúc chạy (permission_handler)
-    final micPermission = await Permission.microphone.request();
-    if (micPermission.isPermanentlyDenied || micPermission.isDenied) {
-      ToastUtil.showError(null, 'Vui lòng cấp quyền Microphone để thực hiện cuộc gọi');
-      return false;
+    // 1. Kiểm tra quyền Microphone an toàn (không chặn cứng nếu permission_handler trả về denied trên Simulator)
+    try {
+      final micStatus = await Permission.microphone.status;
+      if (!micStatus.isGranted) {
+        await Permission.microphone.request();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CallManager] Lỗi kiểm tra mic permission: $e');
     }
 
     if (_socket == null || !_socket!.connected) {
@@ -311,13 +366,17 @@ class CallManager {
 
   /// Trả lời cuộc gọi đến
   Future<bool> acceptIncomingCall() async {
+    debugPrint('👉 [CallManager] Người dùng bấm acceptIncomingCall()');
     if (_currentSession == null || state != CallState.incomingRinging) return false;
 
-    final micPermission = await Permission.microphone.request();
-    if (micPermission.isPermanentlyDenied || micPermission.isDenied) {
-      ToastUtil.showError(null, 'Vui lòng cấp quyền Microphone để trả lời cuộc gọi');
-      rejectIncomingCall(reason: 'permission_denied');
-      return false;
+    // Yêu cầu quyền Micro an toàn, không tự động cúp máy / reject nếu permission_handler trả về denied trên Simulator/iOS
+    try {
+      final micStatus = await Permission.microphone.status;
+      if (!micStatus.isGranted) {
+        await Permission.microphone.request();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CallManager] Lỗi kiểm tra mic permission: $e');
     }
 
     _stopSounds();
@@ -431,6 +490,21 @@ class CallManager {
   void _cleanup({required bool notifyPeer}) {
     _stopSounds();
     _ringingTimeoutTimer?.cancel();
+
+    // Ghi nhận tin nhắn kết thúc cuộc gọi nếu cuộc gọi đã được kết nối và bên này là Caller
+    final session = _currentSession;
+    final duration = durationSecondsNotifier.value;
+    if (session != null && session.isCaller && session.connectedAt != null && duration > 0) {
+      final durationText = _formatDuration(duration);
+      _recordCallMessageToChat(
+        partnerId: session.partnerId,
+        text: 'Cuộc gọi thoại ($durationText)',
+        messageType: 'call_ended',
+        durationMs: duration * 1000,
+        clientMessageId: 'call_end_${session.callId}',
+      );
+    }
+
     _callDurationTimer?.cancel();
     _callDurationTimer = null;
 
@@ -455,8 +529,59 @@ class CallManager {
     _ringingTimeoutTimer?.cancel();
     _ringingTimeoutTimer = Timer(const Duration(seconds: 30), () {
       debugPrint('⏱️ [CallManager] 30 giây không ai nhấc máy');
+      final session = _currentSession;
+      if (session != null && session.isCaller) {
+        _recordCallMessageToChat(
+          partnerId: session.partnerId,
+          text: 'Cuộc gọi thoại nhỡ',
+          messageType: 'call_missed',
+          clientMessageId: 'call_mis_${session.callId}',
+        );
+      }
       _notifyAndEnd(reason: 'Không có phản hồi từ đối phương');
     });
+  }
+
+  /// Gửi tin nhắn trạng thái cuộc gọi vào khung chat
+  Future<void> _recordCallMessageToChat({
+    required String partnerId,
+    required String text,
+    required String messageType,
+    int? durationMs,
+    required String clientMessageId,
+  }) async {
+    try {
+      debugPrint('📝 [CallManager] Ghi nhận lịch sử cuộc gọi vào Chat: $text (type=$messageType)');
+
+      // 1. Phát trực tiếp cho UI của chính mình (Caller) thấy ngay tức thì giống Messenger
+      AppSocketService.instance.emitLocalDirectMessage({
+        'id': clientMessageId,
+        'partnerId': partnerId,
+        'text': text,
+        'messageType': messageType,
+        'durationMs': durationMs,
+        'clientMessageId': clientMessageId,
+        'timestamp': DateTime.now().toIso8601String(),
+        'isSentByMe': true,
+      });
+
+      // 2. Gửi qua socket Ack tới Server để lưu DB và chuyển tiếp cho Callee
+      await AppSocketService.instance.sendDirectMessageWithAck(
+        partnerId: partnerId,
+        text: text,
+        messageType: messageType,
+        durationMs: durationMs,
+        clientMessageId: clientMessageId,
+      );
+    } catch (e) {
+      debugPrint('⚠️ [CallManager] Không thể lưu tin nhắn cuộc gọi vào Chat: $e');
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   Future<void> _playRingtone() async {
@@ -510,6 +635,7 @@ class CallManager {
     if (_isScreenPushed) return;
     _isScreenPushed = true;
 
+    final sessionForThisRoute = _currentSession;
     AppRouter.navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder: (_) => const CosmicVoiceCallScreen(),
@@ -517,8 +643,9 @@ class CallManager {
       ),
     ).then((_) {
       _isScreenPushed = false;
-      // Nếu người dùng vô tình thoát ra ngoài mà cuộc gọi vẫn đang diễn ra, cúp máy an toàn
-      if (isInCall) {
+      // Chỉ cúp máy nếu phiên cuộc gọi hiện tại vẫn là phiên của route vừa pop
+      // Tránh việc route cũ vừa pop xong lại cúp máy phiên cuộc gọi mới!
+      if (isInCall && _currentSession == sessionForThisRoute) {
         hangUp();
       }
     });
@@ -537,5 +664,6 @@ class CallManager {
     _ringingTimeoutTimer?.cancel();
     _callDurationTimer?.cancel();
     _rtcConnSub?.cancel();
+    _rtcIceSub?.cancel();
   }
 }

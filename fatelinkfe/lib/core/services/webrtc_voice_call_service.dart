@@ -106,8 +106,13 @@ class WebRtcVoiceCallService {
 
       _setupPeerConnectionListeners(onIceCandidateGenerated);
 
-      // Âm thanh mặc định ra TAI NGHE (earpiece)
-      await Helper.setSpeakerphoneOn(false);
+      // Âm thanh mặc định bật LOA NGOÀI để người dùng nghe rõ khi test và trò chuyện
+      _isSpeakerOn = true;
+      try {
+        await Helper.setSpeakerphoneOn(true);
+      } catch (e) {
+        debugPrint('⚠️ [WebRTC] Không thể bật loa ngoài: $e');
+      }
 
       // Tạo SDP Offer
       final offer = await _peerConnection!.createOffer({
@@ -157,8 +162,13 @@ class WebRtcVoiceCallService {
 
       _setupPeerConnectionListeners(onIceCandidateGenerated);
 
-      // Âm thanh mặc định ra TAI NGHE (earpiece)
-      await Helper.setSpeakerphoneOn(false);
+      // Âm thanh mặc định bật LOA NGOÀI để người dùng nghe rõ khi test và trò chuyện
+      _isSpeakerOn = true;
+      try {
+        await Helper.setSpeakerphoneOn(true);
+      } catch (e) {
+        debugPrint('⚠️ [WebRTC] Không thể bật loa ngoài: $e');
+      }
 
       // Thiết lập Remote Description từ Offer của Caller
       final sdpDescription = RTCSessionDescription(
@@ -241,6 +251,9 @@ class WebRtcVoiceCallService {
       if (event.streams.isNotEmpty) {
         _remoteStream = event.streams.first;
       }
+      try {
+        event.track.enabled = true;
+      } catch (_) {}
     };
   }
 
