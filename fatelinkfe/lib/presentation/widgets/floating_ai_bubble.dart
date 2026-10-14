@@ -176,6 +176,19 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
     super.dispose();
   }
 
+  String _resolveDynamicGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Hôm nay bạn cảm thấy thế nào? ✨';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Nghỉ ngơi chút nhé, bạn ổn chứ? ☕';
+    } else if (hour >= 18 && hour < 22) {
+      return 'Một ngày của bạn thế nào? 🌆';
+    } else {
+      return 'Đêm muộn rồi, có điều gì trăn trở không? 🌙';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isVisible || !_isInitialized) return const SizedBox.shrink();
@@ -433,7 +446,7 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                     clipBehavior: Clip.none,
                     alignment: Alignment.center,
                     children: [
-                      // Bong bóng text thoại
+                      // Bong bóng text thoại gợi ý thông minh theo thời gian thực
                       if (_showSpeechBubble && !_isDragging && !_isPressed)
                         Positioned(
                           left: isLeftAligned ? 56 : null,
@@ -449,20 +462,27 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFF6366F1).withValues(alpha: 0.18),
+                                  width: 1,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.18),
-                                    blurRadius: 10,
+                                    color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                              child: const Text(
-                                'NGÀY HÔM NAY CỦA BẠN THẾ NÀO?',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
+                              child: Text(
+                                _resolveDynamicGreeting(),
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  height: 1.35,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -482,16 +502,19 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: _isPressed
-                                  ? const Color(0xFF00C6FF)
-                                  : const Color(0xFF0066FF),
+                                  ? const Color(0xFFEC4899)
+                                  : const Color(0xFF6366F1),
                               width: _isPressed ? 2.5 : 2.0,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF0066FF).withValues(
-                                  alpha: _isPressed ? 0.5 : 0.25,
+                                color: (_isPressed
+                                        ? const Color(0xFFEC4899)
+                                        : const Color(0xFF6366F1))
+                                    .withValues(
+                                  alpha: _isPressed ? 0.5 : 0.3,
                                 ),
-                                blurRadius: _isPressed ? 14 : 8,
+                                blurRadius: _isPressed ? 14 : 9,
                                 spreadRadius: _isPressed ? 2 : 0,
                               ),
                             ],
@@ -512,13 +535,22 @@ class _FloatingAiBubbleState extends State<FloatingAiBubble>
                           right: -2,
                           child: Container(
                             padding: const EdgeInsets.all(5),
-                            decoration: const BoxDecoration(
-                              color: Colors.redAccent,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFEC4899), Color(0xFFFF2A6D)],
+                              ),
                               shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                             child: const Text(
                               '1',
                               style: TextStyle(
+                                fontFamily: 'BeVietnamPro',
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,

@@ -4,8 +4,8 @@ import '../../../../presentation/widgets/back.dart';
 
 /// AppBar phòng chat với Faye AI (ChatRoomAppBar):
 /// - Nút quay lại danh sách
-/// - Avatar Faye AI kèm quầng sáng và huy hiệu BOT
-/// - Trạng thái hoạt động thời gian thực
+/// - Avatar Faye AI kèm quầng sáng Cosmic Tri-Color Glow và huy hiệu AI COMPANION ✨
+/// - Trạng thái trực tuyến ngọc bích phát sáng nhẹ
 class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onBack;
   final VoidCallback? onOptionsTap;
@@ -25,8 +25,15 @@ class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: AppBar(
-          backgroundColor: Colors.white.withValues(alpha: 0.85),
+          backgroundColor: Colors.white.withValues(alpha: 0.9),
           elevation: 0,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1.0),
+            child: Container(
+              color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+              height: 1.0,
+            ),
+          ),
           leading: Padding(
             padding: const EdgeInsets.only(left: 12.0),
             child: CustomBackButton(onPressed: onBack),
@@ -36,16 +43,29 @@ class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(1.5),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.all(2.0),
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFEC4899),
+                      Color(0xFF8B5CF6),
+                      Color(0xFF00E5FF),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const CircleAvatar(
                   backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
-                  radius: 18,
+                  radius: 17,
                 ),
               ),
               const SizedBox(width: 10),
@@ -56,13 +76,15 @@ class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(
+                        const Flexible(
                           child: Text(
                             'Faye AI',
                             style: TextStyle(
-                              color: Colors.grey.shade900,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontFamily: 'BeVietnamPro',
+                              color: Color(0xFF0F172A),
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -73,16 +95,17 @@ class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF9C27B0), Color(0xFF00B8D4)],
+                              colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
                             ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'BOT',
+                            'AI SOUL ✨',
                             style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
                               color: Colors.white,
                               fontSize: 8.5,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -94,16 +117,23 @@ class ChatRoomAppBar extends StatelessWidget implements PreferredSizeWidget {
                         Container(
                           width: 6,
                           height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF00C853),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.5),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          'Đang hoạt động...',
+                        const Text(
+                          'Sẵn sàng lắng nghe bạn...',
                           style: TextStyle(
-                            color: Colors.green.shade700,
+                            fontFamily: 'BeVietnamPro',
+                            color: Color(0xFF059669),
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                           ),

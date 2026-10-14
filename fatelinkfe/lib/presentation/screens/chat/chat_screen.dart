@@ -1094,7 +1094,7 @@ class ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       key: const ValueKey('ChatRoomView'),
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: ChatRoomAppBar(onBack: _switchToListView),
       body: BlocListener<ChatBloc, ChatState>(
         listenWhen: (previous, current) {
@@ -1134,7 +1134,7 @@ class ChatScreenState extends State<ChatScreen> {
                 if (state.status == ChatStatus.loading &&
                     state.messages.isEmpty) {
                   return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFFF2A6D)),
+                    child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                   );
                 }
 
