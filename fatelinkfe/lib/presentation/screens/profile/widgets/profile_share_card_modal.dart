@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/utils/toast_utils.dart';
+import '../../../../core/utils/slug_utils.dart';
+import '../../../../core/services/image_picker_service.dart';
 
 class ProfileShareCardModal {
   static void show(
@@ -12,7 +14,7 @@ class ProfileShareCardModal {
     required String soulId,
     required String avatar,
   }) {
-    final cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
+    final cleanHandle = SlugUtils.toCleanHandle(handle, fallbackSeed: soulId);
     final profileUrl = 'https://meyu.com/m/@$cleanHandle';
 
     showModalBottomSheet(
@@ -115,8 +117,8 @@ class ProfileShareCardModal {
                                     ),
                                   ),
                                   child: ClipOval(
-                                    child: Image.network(
-                                      avatar,
+                                    child: Image(
+                                      image: ImagePickerService.getImageProvider(avatar),
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, _, _) =>
                                           const CircleAvatar(
@@ -148,12 +150,13 @@ class ProfileShareCardModal {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '@$cleanHandle • $soulId',
+                                        '@$cleanHandle',
                                         style: const TextStyle(
                                           fontFamily: 'BeVietnamPro',
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           color: Color(0xFF6366F1),
                                           fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.1,
                                         ),
                                       ),
                                     ],

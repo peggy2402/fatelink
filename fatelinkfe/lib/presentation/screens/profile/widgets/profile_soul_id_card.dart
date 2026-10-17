@@ -136,12 +136,13 @@ class ProfileSoulIdCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '$handle • $soulId',
+                      handle,
                       style: const TextStyle(
                         fontFamily: 'BeVietnamPro',
                         color: Color(0xFF6366F1),
                         fontWeight: FontWeight.w700,
-                        fontSize: 12,
+                        fontSize: 13,
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(height: 8),

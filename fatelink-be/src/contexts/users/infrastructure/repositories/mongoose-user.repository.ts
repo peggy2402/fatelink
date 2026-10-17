@@ -11,6 +11,54 @@ import {
 } from '../models/notification.model';
 import { Report, ReportDocument } from '../models/report.model';
 
+function generateEnglishSlugHandle(name?: string): string {
+  if (!name || name.trim().length === 0) {
+    const adjectives = [
+      'cosmic',
+      'starlight',
+      'mystic',
+      'silent',
+      'lunar',
+      'solar',
+      'aurora',
+      'velvet',
+      'echo',
+      'nova',
+    ];
+    const nouns = [
+      'soul',
+      'wanderer',
+      'voyager',
+      'spark',
+      'dreamer',
+      'orbit',
+      'breeze',
+      'seeker',
+      'rider',
+      'pulse',
+    ];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const num = Math.floor(100 + Math.random() * 900);
+    return `${adj}_${noun}_${num}`;
+  }
+
+  // 100% tiếng Anh không dấu, loại bỏ toàn bộ dấu tiếng Việt, dấu cách, ký tự đặc biệt, slash '/'
+  let slug = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  if (!slug || slug.length < 2) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    slug = `user_${randomSuffix}`;
+  }
+
+  return slug;
+}
+
 @Injectable()
 export class MongooseUserRepository implements UserRepositoryPort {
   constructor(
@@ -22,10 +70,29 @@ export class MongooseUserRepository implements UserRepositoryPort {
   ) {}
 
   async createProfileAccount(profile: UserAccountProfile): Promise<DomainUser> {
+    const baseHandle = profile.handle
+      ? generateEnglishSlugHandle(profile.handle)
+      : generateEnglishSlugHandle(profile.name);
+
+    let candidateHandle = baseHandle;
+    let attempts = 0;
+
+    // Đảm bảo không ai bị trùng nhau (DUY NHẤT)!
+    while (await this.userModel.exists({ handle: candidateHandle })) {
+      attempts++;
+      const randomSuffix = Math.floor(10 + Math.random() * 90);
+      candidateHandle = `${baseHandle}${randomSuffix}`;
+      if (attempts > 10) {
+        candidateHandle = `${baseHandle}${Date.now().toString().slice(-4)}`;
+        break;
+      }
+    }
+
     const user = await this.userModel.create({
       email: profile.email,
       name: profile.name,
       avatar: profile.avatar,
+      handle: candidateHandle,
     });
     return this.toDomainUser(user);
   }
@@ -468,7 +535,8 @@ export class MongooseUserRepository implements UserRepositoryPort {
     return DomainUser.rehydrate({
       id: document._id.toString(),
       email: plainUser.email,
-      handle: (plainUser as any).handle,
+      handle:
+        (plainUser as any).handle || generateEnglishSlugHandle(plainUser.name),
       name: plainUser.name,
       avatar: plainUser.avatar,
       bio: plainUser.bio,

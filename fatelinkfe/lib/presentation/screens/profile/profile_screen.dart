@@ -13,6 +13,7 @@ import '../../widgets/vibe_duration_picker_modal.dart';
 import '../../../core/utils/constants.dart';
 import '../../../services/api_service.dart';
 import 'edit_profile_screen.dart';
+import '../../../core/utils/slug_utils.dart';
 import 'widgets/profile_sliver_app_bar.dart';
 import 'widgets/profile_soul_id_card.dart';
 import 'widgets/profile_soul_stats_card.dart';
@@ -332,8 +333,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? (data['matchedCount'] as num).toInt()
                       : 0);
 
-              final handle =
-                  _cachedHandle ?? '@${name.toLowerCase().replaceAll(' ', '')}';
+              final handle = SlugUtils.toDisplayHandle(
+                data['handle'] ?? _cachedHandle ?? name,
+                fallbackSeed: userId,
+              );
               final displayBio =
                   (_cachedTagline != null && _cachedTagline!.isNotEmpty)
                       ? _cachedTagline!
