@@ -24,6 +24,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthPhoneRequestOtpRequested>(_onPhoneRequestOtpRequested);
     on<AuthPhoneLoginRequested>(_onPhoneLoginRequested);
     on<AuthMagicLinkRequestRequested>(_onMagicLinkRequested);
+    on<AuthMagicLinkLoginRequested>(_onMagicLinkLoginRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
   }
 
@@ -252,6 +253,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onMagicLinkLoginRequested(
+    AuthMagicLinkLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final authResult = await _authenticateWithSession(
+        endpoint: AppConstants.loginWithMagicLink,
+        body: {
+          'token': event.token.trim(),
+        },
+      );
+      emit(
+        AuthAuthenticated(
+          authResult.accessToken,
+          pendingTermsConsent: authResult.pendingTermsConsent,
+        ),
+      );
+    } catch (e) {
+      emit(AuthError(ErrorFormatter.format(e)));
+      emit(AuthUnauthenticated());
+    }
+  }
+
   Future<void> _onAuthLogoutRequested(
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
@@ -288,6 +313,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     switch (provider) {
       case AuthSocialProvider.google:
         return AppConstants.loginWithGoogle;
+      case AuthSocialProvider.facebook:
+        return AppConstants.loginWithFacebook;
       case AuthSocialProvider.zalo:
         return AppConstants.loginWithZalo;
       case AuthSocialProvider.tiktok:
@@ -300,6 +327,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       case AuthSocialProvider.google:
         return {
           'token': event.accessToken,
+        };
+      case AuthSocialProvider.facebook:
+        return {
+          'accessToken': event.accessToken,
         };
       case AuthSocialProvider.zalo:
         return {

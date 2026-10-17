@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="appID" translatable="false">3205454775701109337</string>
+    <string name="facebook_app_id">1424007649216620</string>
+    <string name="fb_login_protocol_scheme">fb1424007649216620</string>
+    <string name="facebook_client_token">f3a76ad83f3637857040ab4b2275b84f</string>
     <string name="widget_name">Tri kỷ Tâm hồn FateLink</string>
     <string name="widget_description">Theo dõi tần số cảm xúc và tâm hồn đồng điệu gần bạn nhất</string>
 </resources>

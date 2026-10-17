@@ -43,6 +43,7 @@ export class MongooseSystemConfigRepository implements SystemConfigRepository {
       systemPrompt: document.systemPrompt,
       additionalKnowledge: document.additionalKnowledge,
       onboardingMessageLimit: document.onboardingMessageLimit,
+      socialAuth: document.socialAuth,
     };
   }
 }

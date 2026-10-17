@@ -138,3 +138,33 @@ Khi thiết kế nút bấm gradient bo tròn (Pill / Rounded Button) có hiệu
   )
   ```
 
+---
+
+## 8. Quy chuẩn kiến trúc Web Portal & Clean Component Architecture
+
+> Áp dụng cho toàn bộ phân hệ Web Admin Dashboard, Landing Pages và các trang chính sách/pháp lý trong thư mục `fatelink-be/public/`.
+
+### A. Triệt tiêu tập tin nguyên khối (No Monolithic All-In-One Files)
+- **LỖI CẤM:** Không bao giờ nhồi nhét toàn bộ logic nghiệp vụ (Auth, Config, User table, AI models, Socket chat, Logs) vào một file Javascript duy nhất (> 1,000 dòng như `admin.js` cũ) hoặc một file HTML duy nhất gom mọi tab.
+- **NGUYÊN TẮC CLEAN ARCHITECTURE:**
+  1. **Core Layer (`js/core/`):** Chứa các dịch vụ lõi như `api.js` (gọi HTTP API, tự động đính kèm Bearer token, xử lý refresh token/401 logout), `storage.js` (quản lý LocalStorage/SessionStorage an toàn).
+  2. **Component Layer (`js/components/`):** Các thành phần giao diện dùng chung có tính độc lập cao:
+     - `toast.js`: Thông báo góc màn hình (Success / Error / Warning).
+     - `sidebar.js`: Điều hướng menu, quản lý trạng thái tab đang active, responsive mobile drawer.
+     - `terminal-logs.js`: Console log hệ thống dạng streaming thời gian thực.
+     - `modal.js`: Hộp thoại xác nhận, popup form.
+  3. **Module Layer (`js/modules/`):** Từng tab chức năng nghiệp vụ riêng biệt tuân thủ Single Responsibility:
+     - `system-config.js`: Quản lý cấu hình hệ thống & tích hợp mạng xã hội (Facebook, Google, Zalo, TikTok).
+     - `ai-config.js`: Tinh chỉnh System Prompt, Knowledge Base, Onboarding limits của Faye AI.
+     - `users.js`: Danh sách người dùng, tìm kiếm, lọc trạng thái, khóa/mở khóa tài khoản.
+     - `ai-models.js`: Quản lý danh sách AI providers, đo lường độ trễ (latency/ping), toggle model.
+     - `test-chat.js`: Giả lập phòng chat trực tiếp với AI để kiểm thử prompt.
+     - `feedback.js`: Quản lý phản hồi đánh giá của người dùng.
+  4. **Entry Point (`admin.js`):** Chỉ đóng vai trò bootstrap, khởi tạo event listeners và điều phối các module. Mỗi module không vượt quá **250 - 350 dòng**.
+
+### B. Chuẩn Thẩm mỹ & Trải nghiệm Web Cosmic
+- **Bảng màu:** Đồng bộ tuyệt đối với Mobile Design Tokens (`#6366F1` Indigo, `#EC4899` Pink, `#8B5CF6` Violet, `#0F172A` Slate Dark).
+- **Cards & Inputs:** Border-radius tối thiểu `16px` cho card, `12px` cho input field. Sử dụng viền mảnh `border border-gray-200 dark:border-gray-800` kết hợp đổ bóng nhẹ `shadow-sm hover:shadow-md`.
+- **Feedback tức thì (Immediate Feedback):** Mọi thao tác lưu cấu hình, đổi toggle, xóa hoặc thêm mới đều phải có Toast hiển thị kết quả và thay đổi trạng thái nút (Loading spinner) để người dùng an tâm.
+
+

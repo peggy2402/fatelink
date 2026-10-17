@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/utils/toast_utils.dart';
-
 class LoginSocialOptionsRow extends StatelessWidget {
   const LoginSocialOptionsRow({
     super.key,
     required this.isLoading,
+    this.isFacebookLoading = false,
     required this.isTikTokLoading,
     required this.isZaloLoading,
+    required this.onFacebookSignIn,
     required this.onTikTokSignIn,
     required this.onZaloSignIn,
     required this.onShowPhoneOtpSheet,
   });
 
   final bool isLoading;
+  final bool isFacebookLoading;
   final bool isTikTokLoading;
   final bool isZaloLoading;
+  final VoidCallback onFacebookSignIn;
   final VoidCallback onTikTokSignIn;
   final VoidCallback onZaloSignIn;
   final VoidCallback onShowPhoneOtpSheet;
@@ -29,11 +31,9 @@ class LoginSocialOptionsRow extends StatelessWidget {
           child: LoginSocialButton(
             label: 'Facebook',
             iconWidget: _buildFacebookBadge(),
-            isDisabled: isLoading,
-            onTap: () => ToastUtil.showInfo(
-              context,
-              'Facebook login trên app chưa được nối SDK.',
-            ),
+            isLoading: isFacebookLoading,
+            isDisabled: isLoading && !isFacebookLoading,
+            onTap: onFacebookSignIn,
           ),
         ),
 

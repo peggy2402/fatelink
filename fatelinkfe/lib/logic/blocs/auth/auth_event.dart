@@ -9,7 +9,7 @@ abstract class AuthEvent extends Equatable {
 
 class AuthCheckRequested extends AuthEvent {} // Khởi chạy auto-login
 
-enum AuthSocialProvider { google, zalo, tiktok }
+enum AuthSocialProvider { google, facebook, zalo, tiktok }
 
 class AuthLoginRequested extends AuthEvent {
   final AuthSocialProvider provider;
@@ -98,6 +98,15 @@ class AuthMagicLinkRequestRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [email, name];
+}
+
+class AuthMagicLinkLoginRequested extends AuthEvent {
+  final String token;
+
+  const AuthMagicLinkLoginRequested({required this.token});
+
+  @override
+  List<Object?> get props => [token];
 }
 
 class AuthLogoutRequested extends AuthEvent {} // Người dùng bấm đăng xuất

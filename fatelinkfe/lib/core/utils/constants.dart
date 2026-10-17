@@ -11,10 +11,19 @@ class AppConstants {
       'v1'; // Nếu có versioning, có thể thêm vào URL như: '$baseUrl/$apiVersion'
   // API Endpoints
   static const String loginWithGoogle = 'auth/google/login';
+  static const String loginWithFacebook = 'auth/facebook/login';
   static const String loginWithZalo = 'auth/zalo/login';
   static const String loginWithTikTok = 'auth/tiktok/login';
+  static const String loginWithEmail = 'auth/email/login';
+  static const String registerWithEmail = 'auth/email/register';
+  static const String requestMagicLink = 'auth/magic-link/request';
+  static const String loginWithMagicLink = 'auth/magic-link/login';
+  static const String requestPhoneOtp = 'auth/phone/request-otp';
+  static const String loginWithPhoneOtp = 'auth/phone/login';
   static const String refreshToken = 'auth/refresh';
   static const String zaloAppId = '3205454775701109337';
+  static const String facebookAppId = '1424007649216620';
+  static const String facebookClientToken = 'f3a76ad83f3637857040ab4b2275b84f';
   static const String logout = 'auth/logout';
   static const String userRecommendations = 'users/recommendations';
   static const String suggestReplies = 'chat/suggest-replies';

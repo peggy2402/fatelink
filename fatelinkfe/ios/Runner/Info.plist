@@ -79,13 +79,23 @@
 				<string>com.googleusercontent.apps.918573554808-9lic50m4gfeh8fs664229vnmmqkro5hg</string>
 				<string>zalo-3205454775701109337</string>
 				<string>fatelink</string>
+				<!-- Scheme đăng nhập Facebook fb[AppID] -->
+				<string>fb1424007649216620</string>
 			</array>
 		</dict>
 	</array>
 	<key>ZaloAppID</key>
 	<string>3205454775701109337</string>
+	<key>FacebookAppID</key>
+	<string>1424007649216620</string>
+	<key>FacebookClientToken</key>
+	<string>f3a76ad83f3637857040ab4b2275b84f</string>
+	<key>FacebookDisplayName</key>
+	<string>Meyu</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
 		<string>zalosdk</string>
 		<string>zaloshareext</string>
 	</array>

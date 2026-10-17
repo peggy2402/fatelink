@@ -63,6 +63,7 @@ dependencies:
   record: ^6.2.1
   audioplayers: 6.7.1
   flutter_webrtc: ^1.6.2+hotfix.3
+  flutter_facebook_auth: ^7.1.5
 dependency_overrides:
   dbus: ^0.8.0
 dev_dependencies:

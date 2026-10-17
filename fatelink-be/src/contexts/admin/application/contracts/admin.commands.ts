@@ -19,6 +19,7 @@ export interface UpdateSystemConfigCommand {
   systemPrompt?: string;
   additionalKnowledge?: string;
   onboardingMessageLimit?: number;
+  socialAuth?: any;
 }
 
 export interface ReorderAiModelsCommand {

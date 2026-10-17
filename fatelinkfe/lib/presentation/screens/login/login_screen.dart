@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_zalo/flutter_zalo.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -23,7 +24,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-enum _LoginAction { google, zalo, tiktok, email, register }
+enum _LoginAction { google, facebook, zalo, tiktok, email, register }
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
@@ -276,6 +277,52 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
+  Future<void> _handleFacebookSignIn() async {
+    if (AppConstants.facebookAppId == 'YOUR_FACEBOOK_APP_ID') {
+      ToastUtil.showWarning(
+        context,
+        'Chưa cấu hình Facebook App ID. Mở chế độ dán Token thử nghiệm.',
+      );
+      showFacebookAuthSheet(context);
+      return;
+    }
+
+    setState(() => _activeLoginAction = _LoginAction.facebook);
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
+
+      if (result.status == LoginStatus.success) {
+        final AccessToken accessToken = result.accessToken!;
+        if (!mounted) return;
+        context.read<AuthBloc>().add(
+          AuthLoginRequested(
+            provider: AuthSocialProvider.facebook,
+            accessToken: accessToken.tokenString,
+          ),
+        );
+      } else if (result.status == LoginStatus.cancelled) {
+        setState(() => _activeLoginAction = null);
+      } else {
+        setState(() => _activeLoginAction = null);
+        debugPrint('Lỗi đăng nhập Facebook: ${result.message}');
+        if (mounted) {
+          ToastUtil.showError(
+            context,
+            result.message ?? 'Đăng nhập Facebook thất bại.',
+          );
+        }
+      }
+    } catch (error) {
+      setState(() => _activeLoginAction = null);
+      debugPrint('Lỗi Facebook Sign-In: $error');
+      if (mounted) {
+        ToastUtil.showError(context, 'Đăng nhập Facebook thất bại: $error');
+      }
+    }
+  }
+
   Future<void> _showPhoneOtpSheet() {
     return showPhoneOtpSheet(context);
   }
@@ -323,6 +370,9 @@ class _LoginScreenState extends State<LoginScreen>
                     isGoogleLoading:
                         isAuthLoading &&
                         _activeLoginAction == _LoginAction.google,
+                    isFacebookLoading:
+                        isAuthLoading &&
+                        _activeLoginAction == _LoginAction.facebook,
                     isTikTokLoading:
                         isAuthLoading &&
                         _activeLoginAction == _LoginAction.tiktok,
@@ -337,6 +387,7 @@ class _LoginScreenState extends State<LoginScreen>
                         _activeLoginAction == _LoginAction.register,
                     appVersion: _appVersion,
                     onGoogleSignIn: _handleGoogleSignIn,
+                    onFacebookSignIn: _handleFacebookSignIn,
                     onTikTokSignIn: _handleTikTokSignIn,
                     onZaloSignIn: _handleZaloSignIn,
                     onEmailLogin: _handleEmailLogin,

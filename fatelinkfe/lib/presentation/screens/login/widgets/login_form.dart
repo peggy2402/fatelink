@@ -24,12 +24,14 @@ class LoginForm extends StatelessWidget {
     required this.isEmailLoginExpanded,
     required this.isLoading,
     required this.isGoogleLoading,
+    this.isFacebookLoading = false,
     required this.isTikTokLoading,
     required this.isZaloLoading,
     required this.isEmailLoading,
     required this.isRegisterLoading,
     required this.appVersion,
     required this.onGoogleSignIn,
+    required this.onFacebookSignIn,
     required this.onTikTokSignIn,
     required this.onZaloSignIn,
     required this.onEmailLogin,
@@ -52,12 +54,14 @@ class LoginForm extends StatelessWidget {
   final bool isEmailLoginExpanded;
   final bool isLoading;
   final bool isGoogleLoading;
+  final bool isFacebookLoading;
   final bool isTikTokLoading;
   final bool isZaloLoading;
   final bool isEmailLoading;
   final bool isRegisterLoading;
   final String appVersion;
   final VoidCallback onGoogleSignIn;
+  final VoidCallback onFacebookSignIn;
   final VoidCallback onTikTokSignIn;
   final VoidCallback onZaloSignIn;
   final VoidCallback onEmailLogin;
@@ -192,8 +196,10 @@ class LoginForm extends StatelessWidget {
         // Social options row (Facebook, TikTok, Zalo, Phone SMS OTP)
         LoginSocialOptionsRow(
           isLoading: isLoading,
+          isFacebookLoading: isFacebookLoading,
           isTikTokLoading: isTikTokLoading,
           isZaloLoading: isZaloLoading,
+          onFacebookSignIn: onFacebookSignIn,
           onTikTokSignIn: onTikTokSignIn,
           onZaloSignIn: onZaloSignIn,
           onShowPhoneOtpSheet: onShowPhoneOtpSheet,

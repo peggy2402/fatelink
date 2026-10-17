@@ -26,6 +26,7 @@ import '../match/match_chat_screen.dart';
 import '../home/widgets/radar_scanner_modal.dart';
 import '../home/widgets/notifications_modal.dart';
 import '../../widgets/cosmic_pulse_received_modal.dart';
+import '../../widgets/cosmic_match_ready_modal.dart';
 import '../../../services/api_service.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/utils/secure_storage_helper.dart';
@@ -1099,9 +1100,27 @@ class ChatScreenState extends State<ChatScreen> {
       body: BlocListener<ChatBloc, ChatState>(
         listenWhen: (previous, current) {
           return previous.messages.length != current.messages.length ||
-              previous.isTyping != current.isTyping;
+              previous.isTyping != current.isTyping ||
+              previous.matchReadyMessage != current.matchReadyMessage;
         },
         listener: (context, state) {
+          // Xử lý khi Faye AI thấu hiểu người dùng và phát tín hiệu ghép đôi định mệnh
+          if (state.matchReadyMessage.isNotEmpty) {
+            final readyMsg = state.matchReadyMessage;
+            context.read<ChatBloc>().add(ClearNotificationEvents());
+            // Kích hoạt đồng bộ lại danh sách người ghép đôi theo cảm xúc mới ở HomeBloc
+            context.read<HomeBloc>().add(RefreshRecommendationsEvent(context));
+
+            CosmicMatchReadyModal.show(
+              context,
+              message: readyMsg,
+              onExploreMatches: () {
+                _switchToListView();
+                widget.onBack();
+              },
+            );
+          }
+
           if (state.messages.length > _previousMessageCount) {
             final newMessage = state.messages.last;
             final isMe = newMessage.isSentByMe;

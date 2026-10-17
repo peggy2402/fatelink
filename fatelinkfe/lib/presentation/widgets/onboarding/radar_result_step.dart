@@ -293,23 +293,67 @@ class _RadarResultStepState extends State<RadarResultStep> {
         ),
         const SizedBox(height: 8),
 
-        // Secondary Action: Chat with Faye AI
-        TextButton(
-          onPressed: widget.onChatWithFaye,
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFCBD5E1), size: 15),
-              SizedBox(width: 6),
-              Text(
-                'Hoặc trò chuyện sâu hơn cùng Faye AI',
-                style: TextStyle(
-                  color: Color(0xFFCBD5E1),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
+        // Secondary Action: Nâng cấp trải nghiệm thấu cảm cùng Faye AI
+        Container(
+          margin: const EdgeInsets.only(top: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+              width: 1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: widget.onChatWithFaye,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundImage: AssetImage('assets/images/avt_faye_ai.png'),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Để Faye hiểu sâu hơn về bạn',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.auto_awesome_rounded, color: Color(0xFF00E5FF), size: 13),
+                            ],
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Trò chuyện tự nhiên để Faye hiệu chuẩn tần số chuẩn xác hơn',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              color: Color(0xFF94A3B8),
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFCBD5E1), size: 13),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ],

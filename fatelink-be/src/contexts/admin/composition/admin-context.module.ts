@@ -6,6 +6,7 @@ import { AdminAuthController } from '@contexts/admin/presentation/http/controlle
 import { AdminConfigController } from '@contexts/admin/presentation/http/controllers/admin-config.controller';
 import { AdminLogsController } from '@contexts/admin/presentation/http/controllers/admin-logs.controller';
 import { AdminUsersController } from '@contexts/admin/presentation/http/controllers/admin-users.controller';
+import { PublicConfigController } from '@contexts/admin/presentation/http/controllers/public-config.controller';
 import { AdminApplicationModule } from './admin-application.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { AdminApplicationModule } from './admin-application.module';
   controllers: [
     AdminAuthController,
     AdminConfigController,
+    PublicConfigController,
     AdminUsersController,
     AdminAiController,
     AdminLogsController,

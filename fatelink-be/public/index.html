@@ -59,7 +59,10 @@
                 <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
             </div>
             <nav class="flex-1 p-4 space-y-2">
-                <button onclick="switchTab('configTab')" id="btn-configTab" class="w-full flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-lg text-left text-white">
+                <button onclick="switchTab('systemConfigTab')" id="btn-systemConfigTab" class="w-full flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-lg text-left text-white">
+                    <i class="fas fa-sliders-h w-5"></i> <span>Cấu hình hệ thống</span>
+                </button>
+                <button onclick="switchTab('configTab')" id="btn-configTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
                     <i class="fas fa-robot w-5"></i> <span>Cấu hình AI</span>
                 </button>
                 <button onclick="switchTab('usersTab')" id="btn-usersTab" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-800 rounded-lg text-left text-gray-400">
@@ -87,17 +90,239 @@
 
         <!-- Nội dung chính (Main Content) -->
         <div class="flex-1 flex flex-col overflow-hidden w-full relative z-10">
-            <header class="bg-white shadow-sm z-10">
-                <div class="px-6 py-4 flex justify-between items-center">
-                    <h2 id="pageTitle" class="text-xl font-semibold text-gray-800">Cấu hình AI</h2>
-                    <span class="text-sm text-gray-500">Đang hoạt động bình thường 🟢</span>
+            <header class="bg-white shadow-sm z-10 sticky top-0">
+                <div class="px-4 sm:px-6 py-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="toggleSidebar()" class="md:hidden text-gray-600 hover:text-gray-900 focus:outline-none p-1.5 rounded-lg hover:bg-gray-100 transition" title="Mở menu điều hướng">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h2 id="pageTitle" class="text-lg sm:text-xl font-semibold text-gray-800">Cấu hình hệ thống & Mạng xã hội</h2>
+                    </div>
+                    <span class="text-xs sm:text-sm text-gray-500 flex items-center gap-1.5">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="hidden sm:inline">Hệ thống đang hoạt động</span>
+                    </span>
                 </div>
             </header>
             
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-0 sm:p-6">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6 pb-28">
                 
+                <!-- TAB 0: CẤU HÌNH HỆ THỐNG & MẠNG XÃ HỘI -->
+                <div id="systemConfigTab" class="space-y-6 max-w-5xl mx-auto">
+                    <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">System & Social Auth</span>
+                            <h3 class="text-2xl font-bold mt-2">Cấu hình Đăng nhập Mạng xã hội</h3>
+                            <p class="text-sm opacity-90 mt-1">Quản lý và kích hoạt linh hoạt các nhà cung cấp Google, Facebook, Zalo, TikTok mà không cần release lại app.</p>
+                        </div>
+                        <i class="fas fa-shield-alt text-5xl opacity-30 hidden sm:block"></i>
+                    </div>
+
+                    <!-- Lưới các Card Mạng Xã Hội -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- CARD 1: FACEBOOK LOGIN -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between hover:shadow-md transition">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shadow-sm">
+                                            <i class="fab fa-facebook-f"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">Facebook Login (Meta)</h4>
+                                            <p class="text-xs text-gray-400">developers.facebook.com</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="fb_enabled" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="space-y-4 text-sm">
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">Facebook App ID</label>
+                                        <div class="relative">
+                                            <input type="text" id="fb_appId" placeholder="VD: 123456789012345" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-blue-500 focus:border-blue-500">
+                                            <button type="button" onclick="copyFieldValue('fb_appId', 'Facebook App ID')" class="absolute right-2 top-2 text-gray-400 hover:text-blue-600"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">Client Token (Mã token máy khách)</label>
+                                        <div class="relative">
+                                            <input type="text" id="fb_clientToken" placeholder="VD: a1b2c3d4e5f6..." class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-blue-500 focus:border-blue-500">
+                                            <button type="button" onclick="copyFieldValue('fb_clientToken', 'Facebook Client Token')" class="absolute right-2 top-2 text-gray-400 hover:text-blue-600"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">App Secret (Mã bí mật ứng dụng)</label>
+                                        <div class="relative">
+                                            <input type="password" id="fb_appSecret" placeholder="••••••••••••••••" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-blue-500 focus:border-blue-500">
+                                            <button type="button" onclick="toggleSecretVisibility('fb_appSecret', this)" class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                <span>iOS Bundle: <code class="text-blue-600">com.example.fatelinkfe</code></span>
+                                <a href="https://developers.facebook.com/apps" target="_blank" class="text-blue-500 hover:underline">Mở Meta Portal <i class="fas fa-external-link-alt text-[10px]"></i></a>
+                            </div>
+                        </div>
+
+                        <!-- CARD 2: GOOGLE SIGN-IN -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between hover:shadow-md transition">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-xl shadow-sm">
+                                            <i class="fab fa-google"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">Google Sign-In</h4>
+                                            <p class="text-xs text-gray-400">console.cloud.google.com</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="gg_enabled" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                                    </label>
+                                </div>
+                                <div class="space-y-4 text-sm">
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">Web / Server Client ID</label>
+                                        <div class="relative">
+                                            <input type="text" id="gg_clientId" placeholder="VD: xxx.apps.googleusercontent.com" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-red-500 focus:border-red-500">
+                                            <button type="button" onclick="copyFieldValue('gg_clientId', 'Google Client ID')" class="absolute right-2 top-2 text-gray-400 hover:text-red-600"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">iOS Client ID (Tùy chọn)</label>
+                                        <div class="relative">
+                                            <input type="text" id="gg_iosClientId" placeholder="VD: xxx.apps.googleusercontent.com" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-red-500 focus:border-red-500">
+                                            <button type="button" onclick="copyFieldValue('gg_iosClientId', 'Google iOS Client ID')" class="absolute right-2 top-2 text-gray-400 hover:text-red-600"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                <span>Google Cloud OAuth 2.0</span>
+                                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-red-500 hover:underline">Google Console <i class="fas fa-external-link-alt text-[10px]"></i></a>
+                            </div>
+                        </div>
+
+                        <!-- CARD 3: ZALO LOGIN -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between hover:shadow-md transition">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl font-bold shadow-sm">
+                                            Z
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">Zalo Login</h4>
+                                            <p class="text-xs text-gray-400">developers.zalo.me</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="zalo_enabled" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                                    </label>
+                                </div>
+                                <div class="space-y-4 text-sm">
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">Zalo App ID</label>
+                                        <div class="relative">
+                                            <input type="text" id="zalo_appId" placeholder="VD: 3205454775701109337" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-sky-500 focus:border-sky-500">
+                                            <button type="button" onclick="copyFieldValue('zalo_appId', 'Zalo App ID')" class="absolute right-2 top-2 text-gray-400 hover:text-sky-600"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">Zalo Secret Key</label>
+                                        <div class="relative">
+                                            <input type="password" id="zalo_secretKey" placeholder="••••••••••••••••" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-sky-500 focus:border-sky-500">
+                                            <button type="button" onclick="toggleSecretVisibility('zalo_secretKey', this)" class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                <span>Zalo SDK 4.x</span>
+                                <a href="https://developers.zalo.me" target="_blank" class="text-sky-500 hover:underline">Zalo Developers <i class="fas fa-external-link-alt text-[10px]"></i></a>
+                            </div>
+                        </div>
+
+                        <!-- CARD 4: TIKTOK LOGIN -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between hover:shadow-md transition">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-xl shadow-sm">
+                                            <i class="fab fa-tiktok"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800">TikTok Login Kit</h4>
+                                            <p class="text-xs text-gray-400">developers.tiktok.com</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="tt_enabled" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
+                                    </label>
+                                </div>
+                                <div class="space-y-4 text-sm">
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">TikTok Client Key</label>
+                                        <div class="relative">
+                                            <input type="text" id="tt_clientKey" placeholder="VD: aw..." class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-gray-900 focus:border-gray-900">
+                                            <button type="button" onclick="copyFieldValue('tt_clientKey', 'TikTok Client Key')" class="absolute right-2 top-2 text-gray-400 hover:text-gray-900"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-gray-700 mb-1">TikTok Client Secret</label>
+                                        <div class="relative">
+                                            <input type="password" id="tt_clientSecret" placeholder="••••••••••••••••" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-xs focus:ring-gray-900 focus:border-gray-900">
+                                            <button type="button" onclick="toggleSecretVisibility('tt_clientSecret', this)" class="absolute right-2 top-2 text-gray-400 hover:text-gray-600"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                <span>OAuth 2.0 Webhook</span>
+                                <a href="https://developers.tiktok.com" target="_blank" class="text-gray-700 hover:underline">TikTok Portal <i class="fas fa-external-link-alt text-[10px]"></i></a>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- CARD 5: CÀI ĐẶT CHUNG -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <h4 class="font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-cogs mr-2 text-indigo-600"></i> Cài đặt chung ứng dụng
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Giới hạn tin nhắn AI Onboarding</label>
+                                <input type="number" id="sys_onboardingMessageLimit" min="1" max="50" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm" value="10">
+                                <p class="text-xs text-gray-400 mt-1">Số lượt trò chuyện với Faye trước khi đề xuất mở radar ghép đôi.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thanh Hành Động Lưu Cấu Hình (Sticky Bottom Bar) -->
+                    <div class="sticky bottom-4 z-20 bg-white/95 backdrop-blur-md border border-gray-200/90 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div class="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
+                            <i class="fas fa-info-circle text-blue-500 text-base"></i>
+                            <span>Cấu hình mạng xã hội sẽ được cập nhật tức thì tới Flutter Client.</span>
+                        </div>
+                        <button id="btnSaveSystemConfig" onclick="saveSystemConfig()" class="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95 shrink-0">
+                            <i class="fas fa-save text-base"></i>
+                            <span>Lưu cấu hình hệ thống</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- TAB 1: CẤU HÌNH AI -->
-                <div id="configTab" class="bg-white rounded-xl shadow-sm p-6 max-w-4xl">
+                <div id="configTab" class="hidden bg-white rounded-xl shadow-sm p-6 max-w-4xl">
                     <!-- Banner AI Đang huấn luyện -->
                     <div class="mb-6 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-4 text-white flex items-center shadow-md">
                         <i class="fas fa-brain text-3xl mr-4 animate-pulse"></i>
@@ -424,6 +649,18 @@
             </form>
         </div>
     </div>
+
+    <!-- Kiến trúc Clean Web Components & Modules -->
+    <script src="js/core/api.js"></script>
+    <script src="js/components/toast.js"></script>
+    <script src="js/components/terminal-logs.js"></script>
+    <script src="js/components/sidebar.js"></script>
+    <script src="js/modules/system-config.js"></script>
+    <script src="js/modules/ai-config.js"></script>
+    <script src="js/modules/users.js"></script>
+    <script src="js/modules/ai-models.js"></script>
+    <script src="js/modules/test-chat.js"></script>
+    <script src="js/modules/feedback.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

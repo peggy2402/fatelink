@@ -12,6 +12,12 @@ import '../../../data/models/vibe_photo_item.dart';
 import '../../widgets/vibe_duration_picker_modal.dart';
 import '../../../core/utils/constants.dart';
 import '../../../services/api_service.dart';
+import 'widgets/edit_profile_avatar_section.dart';
+import 'widgets/edit_profile_input_field.dart';
+import 'widgets/edit_profile_gender_selector.dart';
+import 'widgets/edit_profile_frequency_card.dart';
+import 'widgets/edit_profile_vibe_manager.dart';
+import 'widgets/profile_face_lock_card.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String? initialName;
@@ -100,64 +106,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (lastNameChangeStr != null) {
       final lastDate = DateTime.tryParse(lastNameChangeStr);
       if (lastDate != null) {
-        final diff = DateTime.now().difference(lastDate).inDays;
-        if (diff < 30) {
+        final daysPassed = DateTime.now().difference(lastDate).inDays;
+        if (daysPassed < 30) {
           _canChangeName = false;
-          _daysUntilNameChange = 30 - diff;
+          _daysUntilNameChange = 30 - daysPassed;
         }
       }
     }
 
-    // Kiểm tra quy định thời hạn đổi @handle (7 ngày/lần)
+    // Kiểm tra quy định thời hạn đổi mã @ (7 ngày/lần)
     final lastHandleChangeStr = prefs.getString('last_handle_change_date');
     if (lastHandleChangeStr != null) {
       final lastDate = DateTime.tryParse(lastHandleChangeStr);
       if (lastDate != null) {
-        final diff = DateTime.now().difference(lastDate).inDays;
-        if (diff < 7) {
+        final daysPassed = DateTime.now().difference(lastDate).inDays;
+        if (daysPassed < 7) {
           _canChangeHandle = false;
-          _daysUntilHandleChange = 7 - diff;
+          _daysUntilHandleChange = 7 - daysPassed;
         }
       }
     }
 
+    final parsedVibes = prefVibes.map((e) => VibePhotoItem.fromRaw(e)).toList();
+    final activeVibes = VibePhotoItem.filterActive(parsedVibes);
+
     if (mounted) {
       setState(() {
-        if (savedName != null && savedName.isNotEmpty) {
-          _originalName = savedName;
-          _nameController.text = savedName;
-        }
-        final finalHandle =
-            prefHandle ??
-            savedHandle ??
-            '@${_originalName.toLowerCase().replaceAll(' ', '')}';
-        _originalHandle = finalHandle.startsWith('@')
-            ? finalHandle
-            : '@$finalHandle';
-        _handleController.text = _originalHandle;
+        _isFaceLocked = locked;
+        _selectedMoodIcon = icon;
+        _selectedHertz = hertz;
+        _currentMoodTitle = mood;
+        _selectedGender = prefGender;
+        _vibePhotos = activeVibes;
 
         if (savedAvatar != null && savedAvatar.isNotEmpty) {
           _currentAvatar = savedAvatar;
         }
-        final parsedVibes = prefVibes
-            .map((e) => VibePhotoItem.fromRaw(e))
-            .toList();
-        final activeVibes = VibePhotoItem.filterActive(parsedVibes);
-        if (activeVibes.length != prefVibes.length) {
-          prefs.setStringList(
-            'user_vibe_photos',
-            activeVibes.map((e) => e.toRawString()).toList(),
-          );
+        if (savedName != null && savedName.isNotEmpty) {
+          _nameController.text = savedName;
+          _originalName = savedName;
         }
-        _vibePhotos = activeVibes;
-
-        _isFaceLocked = locked;
-        _selectedGender = prefGender;
-        _selectedMoodIcon = icon;
-        _selectedHertz = hertz;
-        _currentMoodTitle = mood;
-        _dobController.text = prefDob;
-        _addressController.text = prefAddress;
+        if (prefHandle != null && prefHandle.isNotEmpty) {
+          _handleController.text = prefHandle.startsWith('@')
+              ? prefHandle
+              : '@$prefHandle';
+          _originalHandle = _handleController.text;
+        } else if (savedHandle != null && savedHandle.isNotEmpty) {
+          _handleController.text = savedHandle.startsWith('@')
+              ? savedHandle
+              : '@$savedHandle';
+          _originalHandle = _handleController.text;
+        }
+        if (prefDob.isNotEmpty) {
+          _dobController.text = prefDob;
+        }
+        if (prefAddress.isNotEmpty) {
+          _addressController.text = prefAddress;
+        }
         if (prefTagline != null && prefTagline.isNotEmpty) {
           _taglineController.text = prefTagline;
         }
@@ -178,28 +183,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _getZodiacSign(DateTime date) {
     final day = date.day;
     final month = date.month;
-    if ((month == 3 && day >= 21) || (month == 4 && day <= 19))
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) {
       return 'Bạch Dương ♈';
-    if ((month == 4 && day >= 20) || (month == 5 && day <= 20))
+    }
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) {
       return 'Kim Ngưu ♉';
-    if ((month == 5 && day >= 21) || (month == 6 && day <= 20))
+    }
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) {
       return 'Song Tử ♊';
-    if ((month == 6 && day >= 21) || (month == 7 && day <= 22))
+    }
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) {
       return 'Cự Giải ♋';
-    if ((month == 7 && day >= 23) || (month == 8 && day <= 22))
+    }
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) {
       return 'Sư Tử ♌';
-    if ((month == 8 && day >= 23) || (month == 9 && day <= 22))
+    }
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) {
       return 'Xử Nữ ♍';
-    if ((month == 9 && day >= 23) || (month == 10 && day <= 22))
+    }
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) {
       return 'Thiên Bình ♎';
-    if ((month == 10 && day >= 23) || (month == 11 && day <= 21))
+    }
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) {
       return 'Bọ Cạp ♏';
-    if ((month == 11 && day >= 22) || (month == 12 && day <= 21))
+    }
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) {
       return 'Nhân Mã ♐';
-    if ((month == 12 && day >= 22) || (month == 1 && day <= 19))
+    }
+    if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) {
       return 'Ma Kết ♑';
-    if ((month == 1 && day >= 20) || (month == 2 && day <= 18))
+    }
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) {
       return 'Bảo Bình ♒';
+    }
     return 'Song Ngư ♓';
   }
 
@@ -337,41 +353,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final age = now.year - picked.year;
       final zodiac = _getZodiacSign(picked);
       final formatted =
-          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year} ($age tuổi • $zodiac)';
       setState(() {
-        _dobController.text = '$formatted ($age tuổi • $zodiac)';
+        _dobController.text = formatted;
       });
     }
   }
 
   Future<void> _saveProfile() async {
-    FocusScope.of(context).unfocus();
+    final newName = _nameController.text.trim();
+    var newHandle = _handleController.text.trim();
+    final newDob = _dobController.text.trim();
+    final newAddress = _addressController.text.trim();
+    final newTagline = _taglineController.text.trim();
+
+    if (newName.isEmpty) {
+      ToastUtil.showWarning(context, 'Tên hiển thị không được để trống');
+      return;
+    }
+
+    if (newHandle.isEmpty) {
+      ToastUtil.showWarning(context, 'Mã định danh không được để trống');
+      return;
+    }
+
+    if (!newHandle.startsWith('@')) {
+      newHandle = '@$newHandle';
+    }
+
     setState(() => _isSaving = true);
 
     try {
-      final newName = _nameController.text.trim();
-      var rawHandle = _handleController.text
-          .trim()
-          .replaceAll('@', '')
-          .toLowerCase()
-          .replaceAll(' ', '');
-      if (rawHandle.isEmpty) {
-        rawHandle = newName.toLowerCase().replaceAll(' ', '');
-      }
-      final newHandle = '@$rawHandle';
-      final newDob = _dobController.text.trim();
-      final newAddress = _addressController.text.trim();
-      final newTagline = _taglineController.text.trim();
-
       final prefs = await SharedPreferences.getInstance();
 
-      // Xử lý đổi tên hiển thị
-      if (newName != _originalName && newName.isNotEmpty) {
+      // Kiểm tra xem Tên hiển thị có thay đổi không
+      if (newName != _originalName) {
         if (!_canChangeName) {
           if (mounted) {
             ToastUtil.showWarning(
               context,
-              'Bạn chỉ có thể đổi Tên hiển thị sau $_daysUntilNameChange ngày nữa.',
+              'Bạn chỉ có thể đổi lại Tên hiển thị sau $_daysUntilNameChange ngày nữa.',
             );
             setState(() => _isSaving = false);
           }
@@ -385,7 +406,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
 
-      // Xử lý đổi @handle
+      // Kiểm tra xem @handle có thay đổi không
       if (newHandle != _originalHandle) {
         if (!_canChangeHandle) {
           if (mounted) {
@@ -494,6 +515,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         title: const Text(
           'Chỉnh sửa hồ sơ',
           style: TextStyle(
+            fontFamily: 'BeVietnamPro',
             color: Color(0xFF0F172A),
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -515,6 +537,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 : const Text(
                     'Lưu',
                     style: TextStyle(
+                      fontFamily: 'BeVietnamPro',
                       color: Color(0xFF6366F1),
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
@@ -532,108 +555,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Avatar Center (Loại bỏ triệt để bóng mờ vuông, hỗ trợ chọn ảnh từ Thư viện & Camera)
-              Center(
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    GestureDetector(
-                      onTap: _pickAvatar,
-                      child: Container(
-                        width: 104,
-                        height: 104,
-                        padding: const EdgeInsets.all(3.5),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          // Sử dụng bóng tròn nhẹ dịu tự nhiên, không lệch góc gây vệt vuông xám
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF6366F1,
-                              ).withValues(alpha: 0.16),
-                              blurRadius: 10,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image(
-                            image: ImagePickerService.getImageProvider(
-                              avatarSource,
-                            ),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const CircleAvatar(
-                                  radius: 46,
-                                  backgroundColor: Color(0xFFE0E7FF),
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Color(0xFF6366F1),
-                                    size: 44,
-                                  ),
-                                ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _pickAvatar,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _pickAvatar,
-                  icon: const Icon(
-                    Icons.photo_library_outlined,
-                    size: 16,
-                    color: Color(0xFF6366F1),
-                  ),
-                  label: const Text(
-                    'Đổi ảnh đại diện',
-                    style: TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                ),
+              // 1. Avatar Center
+              EditProfileAvatarSection(
+                avatarSource: avatarSource,
+                onPickAvatar: _pickAvatar,
               ),
               const SizedBox(height: 18),
 
               // 2. Tên hiển thị (Display Name) - Quy định 30 ngày/lần
-              _buildInputField(
+              EditProfileInputField(
                 label: 'Tên hiển thị',
                 hintText: 'Nhập tên của bạn...',
                 controller: _nameController,
@@ -653,7 +583,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
 
               // 3. Mã định danh (@username) - Quy định 7 ngày/lần
-              _buildInputField(
+              EditProfileInputField(
                 label: 'Mã định danh liên kết (@username)',
                 hintText: '@username',
                 controller: _handleController,
@@ -673,44 +603,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
 
               // 3.5 Giới tính (Gender selector)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Giới tính',
-                    style: TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildGenderOption(
-                        'female',
-                        'Nữ',
-                        Icons.female_rounded,
-                        const Color(0xFFEC4899),
-                      ),
-                      const SizedBox(width: 10),
-                      _buildGenderOption(
-                        'male',
-                        'Nam',
-                        Icons.male_rounded,
-                        const Color(0xFF6366F1),
-                      ),
-                      const SizedBox(width: 10),
-                      _buildGenderOption(
-                        'other',
-                        'Khác',
-                        Icons.all_inclusive_rounded,
-                        const Color(0xFF8B5CF6),
-                      ),
-                    ],
-                  ),
-                ],
+              EditProfileGenderSelector(
+                selectedGender: _selectedGender,
+                onGenderChanged: (val) => setState(() => _selectedGender = val),
               ),
               const SizedBox(height: 20),
 
@@ -721,6 +616,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   const Text(
                     'Ngày sinh',
                     style: TextStyle(
+                      fontFamily: 'BeVietnamPro',
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF334155),
@@ -733,6 +629,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: TextField(
                         controller: _dobController,
                         style: const TextStyle(
+                          fontFamily: 'BeVietnamPro',
                           fontSize: 15,
                           color: Color(0xFF0F172A),
                           fontWeight: FontWeight.w600,
@@ -745,6 +642,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                           hintText: 'Chọn ngày sinh của bạn...',
                           hintStyle: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
                             color: Color(0xFF94A3B8),
                             fontSize: 13.5,
                           ),
@@ -795,7 +693,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
 
               // 6. Tagline / Châm ngôn sống (Giới hạn tối đa 100 ký tự)
-              _buildInputField(
+              EditProfileInputField(
                 label: 'Châm ngôn sống (Tagline / Bio)',
                 hintText: 'VD: "Đang tìm kiếm một kết nối định mệnh..."',
                 controller: _taglineController,
@@ -808,435 +706,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 6.5 --- GÓC TÂM HỒN (VIBE PHOTOS) - TẢI ẢNH TỪ THƯ VIỆN ---
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.camera_alt_rounded,
-                            color: Color(0xFF6366F1),
-                            size: 18,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Góc tâm hồn (Vibes)',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '${_vibePhotos.length}/6 ảnh',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6366F1),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Lưu giữ những bức ảnh không lộ mặt thể hiện góc tâm hồn riêng của bạn.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 110,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      children: [
-                        // Nút thêm ảnh từ thư viện
-                        InkWell(
-                          onTap: _pickVibePhotos,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            width: 90,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFCBD5E1),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add_photo_alternate_rounded,
-                                  color: Color(0xFF6366F1),
-                                  size: 28,
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Thêm ảnh',
-                                  style: TextStyle(
-                                    fontFamily: 'BeVietnamPro',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF6366F1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Danh sách ảnh Vibe đã chọn với huy hiệu đếm ngược tự hủy
-                        ..._vibePhotos.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-                          return Container(
-                            width: 90,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Image(
-                                      image:
-                                          ImagePickerService.getImageProvider(
-                                            item.imageUrl,
-                                          ),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                // Nút xóa ảnh góc trên phải
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: GestureDetector(
-                                    onTap: () => _removeVibePhoto(index),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.65,
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.close_rounded,
-                                        color: Colors.white,
-                                        size: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Huy hiệu thời gian tự hủy góc dưới
-                                Positioned(
-                                  bottom: 4,
-                                  left: 4,
-                                  right: 4,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2.5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.68,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.timer_outlined,
-                                          color: Colors.white,
-                                          size: 10,
-                                        ),
-                                        const SizedBox(width: 3),
-                                        Flexible(
-                                          child: Text(
-                                            item.remainingTimeFormatted,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontFamily: 'BeVietnamPro',
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
+              // 6.5 --- GÓC TÂM HỒN (VIBE PHOTOS) ---
+              EditProfileVibeManager(
+                vibePhotos: _vibePhotos,
+                onPickVibePhotos: _pickVibePhotos,
+                onRemoveVibePhoto: _removeVibePhoto,
               ),
               const SizedBox(height: 24),
 
-              // 7. --- TẦN SỐ NĂNG LƯỢNG ĐO LƯỜNG THỰC TẾ (Thay thế mockdata tĩnh) ---
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.graphic_eq_rounded,
-                                color: Color(0xFF6366F1),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Tần số cảm xúc hiện tại',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF6366F1,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$_selectedMoodIcon $_selectedHertz',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF6366F1),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Đang phát: $_currentMoodTitle',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF334155),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Tần số tâm hồn được hệ thống đo lường khách quan từ Trợ lý AI Faye và Radar 3 chạm theo thời gian thực (không phải cấu hình ngẫu nhiên).',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Nút quét lại tần số
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          RadarScannerModal.show(
-                            context,
-                            onConnectMatch: () =>
-                                Navigator.of(context).pushNamed('/matches'),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.radar_rounded,
-                          color: Color(0xFF6366F1),
-                          size: 18,
-                        ),
-                        label: const Flexible(
-                          child: Text(
-                            'Quét lại tần số tâm trạng (Radar 3 chạm)',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Color(0xFF6366F1),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFFC7D2FE),
-                            width: 1.2,
-                          ),
-                          minimumSize: const Size(0, 48),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              // 7. --- TẦN SỐ NĂNG LƯỢNG ĐO LƯỜNG THỰC TẾ ---
+              EditProfileFrequencyCard(
+                selectedMoodIcon: _selectedMoodIcon,
+                selectedHertz: _selectedHertz,
+                currentMoodTitle: _currentMoodTitle,
+                onScanRadar: () {
+                  RadarScannerModal.show(
+                    context,
+                    onConnectMatch: () =>
+                        Navigator.of(context).pushNamed('/matches'),
+                  );
+                },
               ),
               const SizedBox(height: 24),
 
               // 8. --- TÍNH NĂNG: CÔNG TẮC KHÓA DIỆN MẠO CÁ NHÂN ---
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _isFaceLocked
-                        ? const Color(0xFFEC4899).withValues(alpha: 0.4)
-                        : const Color(0xFFE2E8F0),
-                    width: _isFaceLocked ? 1.5 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _isFaceLocked
-                          ? const Color(0xFFEC4899).withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: _isFaceLocked
-                                ? const Color(
-                                    0xFFEC4899,
-                                  ).withValues(alpha: 0.12)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            _isFaceLocked
-                                ? Icons.lock_rounded
-                                : Icons.lock_open_rounded,
-                            color: _isFaceLocked
-                                ? const Color(0xFFEC4899)
-                                : const Color(0xFF64748B),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Khóa diện mạo cá nhân',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: _isFaceLocked
-                                      ? const Color(0xFFEC4899)
-                                      : const Color(0xFF0F172A),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _isFaceLocked
-                                    ? 'Đang bật ẩn danh'
-                                    : 'Mặc định: Hiện khi 2 bên cùng thả tim',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: _isFaceLocked
-                                      ? const Color(0xFFEC4899)
-                                      : const Color(0xFF64748B),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch.adaptive(
-                          value: _isFaceLocked,
-                          activeTrackColor: const Color(0xFFEC4899),
-                          onChanged: (val) {
-                            setState(() => _isFaceLocked = val);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _isFaceLocked
-                          ? '🔒 Khi BẬT: Người khác sẽ KHÔNG THỂ nhìn thấy Tên thật, Ảnh đại diện và Góc tâm hồn (Vibes) của bạn kể cả khi cả hai đã thả tim / follow nhau. Họ chỉ kết nối qua Tần số và Chiều sâu tâm lý.'
-                          : '✨ Khi TẮT: Ảnh đại diện, Tên thật và Góc tâm hồn (Vibes) sẽ tự động mở khóa ngay khi cả hai người cùng thả tim / follow nhau.',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF64748B),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
+              ProfileFaceLockCard(
+                isFaceLocked: _isFaceLocked,
+                onToggle: (val) => setState(() => _isFaceLocked = val),
               ),
               const SizedBox(height: 32),
 
@@ -1265,6 +761,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       : const Text(
                           'Lưu thay đổi',
                           style: TextStyle(
+                            fontFamily: 'BeVietnamPro',
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -1273,209 +770,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputField({
-    required String label,
-    required String hintText,
-    required TextEditingController controller,
-    required IconData icon,
-    int maxLines = 1,
-    int? maxLength,
-    bool showCounter = false,
-    bool isReadOnly = false,
-    String? helperText,
-    Widget? trailing,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF334155),
-                ),
-              ),
-            ),
-            if (showCounter && maxLength != null)
-              AnimatedBuilder(
-                animation: controller,
-                builder: (context, _) {
-                  final len = controller.text.characters.length;
-                  final isNearLimit = len >= (maxLength * 0.9);
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isNearLimit
-                          ? const Color(0xFFEC4899).withValues(alpha: 0.12)
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '$len/$maxLength',
-                      style: TextStyle(
-                        fontFamily: 'BeVietnamPro',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: isNearLimit
-                            ? const Color(0xFFEC4899)
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            if (trailing != null) ...[const SizedBox(width: 8), trailing],
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          maxLines: maxLines,
-          maxLength: maxLength,
-          buildCounter: showCounter
-              ? (_, {required currentLength, required isFocused, maxLength}) =>
-                    null
-              : null,
-          readOnly: isReadOnly,
-          style: TextStyle(
-            fontSize: 15,
-            color: isReadOnly
-                ? const Color(0xFF64748B)
-                : const Color(0xFF0F172A),
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            prefixIcon: maxLines == 1
-                ? Icon(
-                    icon,
-                    color: isReadOnly
-                        ? const Color(0xFFCBD5E1)
-                        : const Color(0xFF94A3B8),
-                    size: 20,
-                  )
-                : null,
-            hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 13.5,
-            ),
-            filled: true,
-            fillColor: isReadOnly ? const Color(0xFFF1F5F9) : Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: isReadOnly
-                    ? const Color(0xFFE2E8F0)
-                    : const Color(0xFFE2E8F0),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: isReadOnly
-                    ? const Color(0xFFE2E8F0)
-                    : const Color(0xFF6366F1),
-                width: isReadOnly ? 1 : 1.5,
-              ),
-            ),
-            contentPadding: const EdgeInsets.all(16),
-          ),
-        ),
-        if (helperText != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            helperText,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: isReadOnly
-                  ? const Color(0xFFD97706)
-                  : const Color(0xFF64748B),
-              fontWeight: isReadOnly ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildGenderOption(
-    String key,
-    String label,
-    IconData icon,
-    Color activeColor,
-  ) {
-    final isSelected = _selectedGender == key;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedGender = key;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? activeColor.withValues(alpha: 0.12)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? activeColor : const Color(0xFFE2E8F0),
-              width: isSelected ? 1.6 : 1.0,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.18),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 4,
-                    ),
-                  ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isSelected ? activeColor : const Color(0xFF64748B),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'BeVietnamPro',
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? activeColor : const Color(0xFF334155),
-                ),
-              ),
             ],
           ),
         ),

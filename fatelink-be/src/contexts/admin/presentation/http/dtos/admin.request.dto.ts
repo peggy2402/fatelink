@@ -43,6 +43,12 @@ export class UpdateSystemConfigDto {
   @IsInt()
   @Min(1)
   onboardingMessageLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Cấu hình đăng nhập các mạng xã hội (Facebook, Google, Zalo, TikTok)',
+  })
+  @IsOptional()
+  socialAuth?: Record<string, any>;
 }
 
 export class BanUserDto {

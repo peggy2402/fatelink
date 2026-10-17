@@ -16,6 +16,56 @@ export class SystemConfig {
 
   @Prop({ default: 10 })
   onboardingMessageLimit!: number;
+
+  @Prop({
+    type: Object,
+    default: {
+      facebook: {
+        enabled: true,
+        appId: '',
+        clientToken: '',
+        appSecret: '',
+      },
+      google: {
+        enabled: true,
+        clientId: '918573554808-07stv5tp2474icsh5f47mvop9vaa9sug.apps.googleusercontent.com',
+        iosClientId: '',
+      },
+      zalo: {
+        enabled: true,
+        appId: '3205454775701109337',
+        secretKey: '',
+      },
+      tiktok: {
+        enabled: true,
+        clientKey: '',
+        clientSecret: '',
+      },
+    },
+  })
+  socialAuth?: {
+    facebook?: {
+      enabled: boolean;
+      appId: string;
+      clientToken: string;
+      appSecret?: string;
+    };
+    google?: {
+      enabled: boolean;
+      clientId: string;
+      iosClientId?: string;
+    };
+    zalo?: {
+      enabled: boolean;
+      appId: string;
+      secretKey?: string;
+    };
+    tiktok?: {
+      enabled: boolean;
+      clientKey: string;
+      clientSecret?: string;
+    };
+  };
 }
 
 export const SystemConfigSchema = SchemaFactory.createForClass(SystemConfig);

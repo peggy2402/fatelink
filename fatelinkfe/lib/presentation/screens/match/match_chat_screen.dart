@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -15,7 +14,6 @@ import '../../../core/utils/secure_storage_helper.dart';
 import '../../../core/utils/toast_utils.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/models/match_user.dart';
-import '../../../presentation/widgets/typing_indicator.dart';
 import '../../../services/api_service.dart';
 import '../../../services/badge_service.dart';
 import '../../../services/app_socket_service.dart';
@@ -24,18 +22,20 @@ import '../../../services/call_manager.dart';
 // Components & Widgets tách rời sạch sẽ
 import '../../widgets/cosmic_report_modal.dart';
 import '../profile/user_detail_screen.dart';
-import 'widgets/cosmic_incoming_call_modal.dart';
 import 'widgets/cosmic_location_modal.dart';
-import 'widgets/cosmic_voice_call_modal.dart';
-import 'widgets/glassmorphic_card_stack.dart';
-import 'widgets/glassmorphic_image_viewer.dart';
 import 'widgets/match_ai_suggestion_sheet.dart';
 import 'widgets/match_options_bottom_sheet.dart';
 import 'widgets/cosmic_emoji_picker_sheet.dart';
-import 'widgets/cosmic_voice_player_bubble.dart';
-import 'widgets/telegram_voice_recorder_bar.dart';
 import 'widgets/meyufeel_resonance_bar.dart';
 import 'widgets/meyufeel_watermark_lotus.dart';
+import 'widgets/match_chat_app_bar.dart';
+import 'widgets/match_connection_header.dart';
+import 'widgets/match_icebreaker_chips.dart';
+import 'widgets/match_scroll_bottom_button.dart';
+import 'widgets/match_typing_indicator.dart';
+import 'widgets/match_telegram_input_bar.dart';
+import 'widgets/match_message_bubble.dart';
+import 'widgets/match_media_sheet.dart';
 import '../../../core/services/voice_note_service.dart';
 import '../../../core/services/voice_player_manager.dart';
 
@@ -560,110 +560,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
         curve: Curves.easeOut,
       );
     }
-  }
-
-  /// Nút mũi tên nổi cuộn xuống tin nhắn mới nhất phong cách Messenger / Telegram
-  Widget _buildScrollToBottomButton() {
-    return Positioned(
-      bottom: 12,
-      right: 16,
-      child: AnimatedScale(
-        scale: !_isNearBottom ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutBack,
-        child: AnimatedOpacity(
-          opacity: !_isNearBottom ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 180),
-          child: IgnorePointer(
-            ignoring: _isNearBottom,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.96),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                      width: 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(21),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _scrollToBottom();
-                        if (_unreadCount > 0) {
-                          setState(() => _unreadCount = 0);
-                        }
-                      },
-                      child: const Center(
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Color(0xFF6366F1),
-                          size: 26,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (_unreadCount > 0)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFEC4899), Color(0xFF6366F1)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFEC4899).withValues(alpha: 0.4),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Center(
-                        child: Text(
-                          _unreadCount > 99 ? '99+' : '$_unreadCount',
-                          style: const TextStyle(
-                            fontFamily: 'BeVietnamPro',
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -1509,131 +1405,12 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
   /// Sheet tiện ích đa phương tiện (+)
   void _showMediaActionSheet() {
     HapticFeedback.lightImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4.5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Chia sẻ tiện ích định mệnh',
-                style: TextStyle(
-                  fontFamily: 'BeVietnamPro',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildMediaOptionItem(
-                    icon: Icons.photo_library_rounded,
-                    label: 'Gửi nhiều ảnh',
-                    gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _handlePickMultiImages();
-                    },
-                  ),
-                  _buildMediaOptionItem(
-                    icon: Icons.camera_alt_rounded,
-                    label: 'Máy ảnh',
-                    gradient: const [Color(0xFFEC4899), Color(0xFFD946EF)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _handlePickCamera();
-                    },
-                  ),
-                  _buildMediaOptionItem(
-                    icon: Icons.location_on_rounded,
-                    label: 'Vị trí',
-                    gradient: const [Color(0xFF10B981), Color(0xFF059669)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _handleShareLocation();
-                    },
-                  ),
-                  _buildMediaOptionItem(
-                    icon: Icons.mic_rounded,
-                    label: 'Ghi âm thoại',
-                    gradient: const [Color(0xFF8B5CF6), Color(0xFF6366F1)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _handleVoiceNote();
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMediaOptionItem({
-    required IconData icon,
-    required String label,
-    required List<Color> gradient,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: gradient.first.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'BeVietnamPro',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF334155),
-            ),
-          ),
-        ],
-      ),
+    MatchMediaSheet.show(
+      context,
+      onPickMultiImages: _handlePickMultiImages,
+      onPickCamera: _handlePickCamera,
+      onShareLocation: _handleShareLocation,
+      onVoiceNote: _handleVoiceNote,
     );
   }
 
@@ -1728,9 +1505,29 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
       end: Alignment.bottomRight,
     );
 
+    final partnerAvatarWidget = _buildPartnerAvatarImage();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: _isMultiSelectMode ? _buildMultiSelectAppBar() : _buildStandardAppBar(auraGradient),
+      appBar: MatchChatAppBar(
+        isMultiSelectMode: _isMultiSelectMode,
+        selectedCount: _selectedMessageIds.length,
+        onCloseMultiSelect: () {
+          setState(() {
+            _isMultiSelectMode = false;
+            _selectedMessageIds.clear();
+          });
+        },
+        onDeleteSelected: _showMultiDeleteConfirmDialog,
+        partnerDisplayName: _partnerDisplayName,
+        partnerAvatarWidget: partnerAvatarWidget,
+        partnerHertz: _partnerHertz ?? '528 Hz',
+        isPartnerOnline: _isPartnerOnline,
+        onBack: () => Navigator.pop(context),
+        onPartnerProfileTap: _navigateToProfile,
+        onStartVoiceCall: _handleStartVoiceCall,
+        onOptionsTap: _showOptionsModal,
+      ),
       body: SafeArea(
         top: false,
         bottom: false,
@@ -1752,54 +1549,120 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
                 children: [
                   const MeyuFeelWatermarkLotus(),
                   GestureDetector(
-                onTap: () {
-                  if (_isEmojiPickerVisible) {
-                    setState(() => _isEmojiPickerVisible = false);
-                  }
-                  FocusScope.of(context).unfocus();
-                },
-                child: _isLoadingHistory
-                    ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: _messages.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == _messages.length) {
-                            return _buildSoulmateConnectionHeader(auraGradient);
-                          }
-                          final msg = _messages[index];
-                          return _buildSelectableMessageBubble(msg, auraGradient);
-                        },
-                      ),
+                    onTap: () {
+                      if (_isEmojiPickerVisible) {
+                        setState(() => _isEmojiPickerVisible = false);
+                      }
+                      FocusScope.of(context).unfocus();
+                    },
+                    child: _isLoadingHistory
+                        ? const Center(
+                            child: CircularProgressIndicator(color: Color(0xFF8B5CF6)),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            reverse: true,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            itemCount: _messages.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == _messages.length) {
+                                return MatchConnectionHeader(
+                                  auraGradient: auraGradient,
+                                  partnerAvatarWidget: partnerAvatarWidget,
+                                  partnerDisplayName: _partnerDisplayName,
+                                  partnerHertz: _partnerHertz ?? '528 Hz',
+                                  partnerBio: _partnerBio,
+                                  onProfileTap: _navigateToProfile,
+                                );
+                              }
+                              final msg = _messages[index];
+                              final isSelected = _selectedMessageIds.contains(msg.id);
+
+                              return MatchMessageBubble(
+                                message: msg,
+                                isMultiSelectMode: _isMultiSelectMode,
+                                isSelected: isSelected,
+                                auraGradient: auraGradient,
+                                partnerAvatarWidget: partnerAvatarWidget,
+                                onPartnerProfileTap: _navigateToProfile,
+                                onLongPress: () => _showMessageActionMenu(msg),
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedMessageIds.remove(msg.id);
+                                    } else {
+                                      _selectedMessageIds.add(msg.id);
+                                    }
+                                  });
+                                },
+                                onRetrySendMessage: _retrySendMessage,
+                                onRetrySendImageMessage: _retrySendImageMessage,
+                                onRetrySendVoiceMessage: _retrySendVoiceMessage,
+                                onStartVoiceCall: _handleStartVoiceCall,
+                              );
+                            },
+                          ),
+                  ),
+                  // Nút mũi tên cuộn xuống tin nhắn mới nhất
+                  MatchScrollBottomButton(
+                    isVisible: !_isNearBottom,
+                    unreadCount: _unreadCount,
+                    onTap: () {
+                      _scrollToBottom();
+                      if (_unreadCount > 0) {
+                        setState(() => _unreadCount = 0);
+                      }
+                    },
+                  ),
+                ],
               ),
-              // Nút mũi tên cuộn xuống tin nhắn mới nhất (Scroll to Bottom Messenger style)
-              _buildScrollToBottomButton(),
-            ],
-          ),
-        ),
+            ),
 
             // Đang nhập văn bản (Typing indicator)
             if (_isPartnerTyping && !_isMultiSelectMode)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildTypingIndicator(auraGradient),
+                child: MatchTypingIndicator(
+                  auraGradient: auraGradient,
+                  partnerAvatarWidget: partnerAvatarWidget,
+                ),
               ),
-
-            // Khung trả lời tin nhắn (Reply preview banner)
-            if (_replyingMessage != null && !_isMultiSelectMode)
-              _buildReplyPreviewBanner(),
 
             // Thanh chip câu hỏi gợi ý mở lời (Icebreakers)
             if (_messages.length <= 4 && !_isMultiSelectMode)
-              _buildIcebreakerChips(),
+              MatchIcebreakerChips(
+                icebreakers: _icebreakers,
+                onSelectPrompt: _handleSendMessage,
+              ),
 
-            // Thanh công cụ nhập liệu đa năng phong cách Telegram / Messenger & Bảng Emoji inline phía dưới
+            // Thanh công cụ nhập liệu đa năng phong cách Telegram & Bảng Emoji inline phía dưới
             if (!_isMultiSelectMode) ...[
-              _buildTelegramMessengerInputBar(),
+              MatchTelegramInputBar(
+                chatController: _chatController,
+                focusNode: _focusNode,
+                hasInputText: _hasInputText,
+                isRecordingVoice: _isRecordingVoice,
+                isEmojiPickerVisible: _isEmojiPickerVisible,
+                partnerDisplayName: _partnerDisplayName,
+                replyingMessage: _replyingMessage,
+                onCancelReply: () => setState(() => _replyingMessage = null),
+                onShowMediaActionSheet: _showMediaActionSheet,
+                onPickCamera: _handlePickCamera,
+                onShowAiSuggestionModal: _showAiSuggestionModal,
+                onToggleEmojiPicker: _toggleEmojiPicker,
+                onSendMessage: _handleSendMessage,
+                onStartRecordVoice: () {
+                  if (CallManager.instance.isInCall) {
+                    ToastUtil.showInfo(context, 'Không thể ghi âm khi đang trong cuộc gọi');
+                    return;
+                  }
+                  setState(() => _isRecordingVoice = true);
+                },
+                onCancelRecordVoice: () {
+                  setState(() => _isRecordingVoice = false);
+                },
+                onVoiceRecordComplete: _handleVoiceRecordComplete,
+              ),
               if (_isEmojiPickerVisible)
                 CosmicEmojiPickerPanel(
                   onEmojiSelected: _insertEmoji,
@@ -1810,42 +1673,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  /// AppBar Chế độ Multi-select (Chọn nhiều tin nhắn để xóa/thu hồi)
-  PreferredSizeWidget _buildMultiSelectAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.close_rounded, color: Color(0xFF0F172A)),
-        onPressed: () {
-          setState(() {
-            _isMultiSelectMode = false;
-            _selectedMessageIds.clear();
-          });
-        },
-      ),
-      title: Text(
-        'Đã chọn ${_selectedMessageIds.length} tin nhắn',
-        style: const TextStyle(
-          fontFamily: 'BeVietnamPro',
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF0F172A),
-        ),
-      ),
-      actions: [
-        if (_selectedMessageIds.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
-            tooltip: 'Xóa hoặc thu hồi',
-            onPressed: () {
-              _showMultiDeleteConfirmDialog();
-            },
-          ),
-      ],
     );
   }
 
@@ -1890,1267 +1717,6 @@ class _MatchChatScreenState extends State<MatchChatScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// AppBar chuẩn (ĐÃ BỎ TÍCH XANH CẠNH TÊN)
-  PreferredSizeWidget _buildStandardAppBar(LinearGradient auraGradient) {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(66),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              border: const Border(
-                bottom: BorderSide(
-                  color: Color(0xFFF1E5ED),
-                  width: 1.0,
-                ),
-              ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Row(
-                  children: [
-                    // Nút Back
-                    IconButton(
-                      icon: const Icon(
-                        Icons.chevron_left_rounded,
-                        color: Color(0xFF0F172A),
-                        size: 30,
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-
-                    // Nhấn vào Avatar hoặc Tên để xem Profile đối phương
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _navigateToProfile,
-                        behavior: HitTestBehavior.opaque,
-                        child: Row(
-                          children: [
-                            Stack(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: auraGradient,
-                                  ),
-                                  padding: const EdgeInsets.all(2),
-                                  child: ClipOval(
-                                    child: _buildPartnerAvatarImage(),
-                                  ),
-                                ),
-                                // Trạng thái Online
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      color: _isPartnerOnline
-                                          ? const Color(0xFF10B981)
-                                          : const Color(0xFF94A3B8),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 10),
-
-                            // Tên đối phương (ĐÃ BỎ TÍCH XANH)
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    _partnerDisplayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontFamily: 'BeVietnamPro',
-                                      color: Color(0xFF0F172A),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.sensors_rounded,
-                                        color: _isPartnerOnline
-                                            ? const Color(0xFF10B981)
-                                            : const Color(0xFF6366F1),
-                                        size: 12,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          _isPartnerOnline
-                                              ? '$_partnerHertz • Đang phát sóng'
-                                              : '$_partnerHertz • Ngoại tuyến',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontFamily: 'BeVietnamPro',
-                                            color: _isPartnerOnline
-                                                ? const Color(0xFF10B981)
-                                                : const Color(0xFF64748B),
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Nút Gọi thoại trực tiếp (chỉ icon điện thoại thuần túy, không viền tròn)
-                    IconButton(
-                      tooltip: 'Cuộc gọi thoại',
-                      icon: const Icon(
-                        Icons.phone_rounded,
-                        color: Color(0xFF7C3AED),
-                        size: 22,
-                      ),
-                      onPressed: _handleStartVoiceCall,
-                    ),
-
-                    // Nút Tuỳ chọn 3 chấm
-                    IconButton(
-                      icon: const Icon(
-                        Icons.more_vert_rounded,
-                        color: Color(0xFF64748B),
-                        size: 22,
-                      ),
-                      onPressed: _showOptionsModal,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Khung trích dẫn trả lời (Reply Preview Banner)
-  Widget _buildReplyPreviewBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F3FF),
-        borderRadius: BorderRadius.circular(16),
-        border: const Border(
-          left: BorderSide(color: Color(0xFF8B5CF6), width: 3.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.reply_rounded, color: Color(0xFF8B5CF6), size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Đang trả lời ${_replyingMessage!.isSentByMe ? 'chính bạn' : _partnerDisplayName}',
-                  style: const TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF7C3AED),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _replyingMessage!.text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontSize: 12.5,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF94A3B8)),
-            onPressed: () => setState(() => _replyingMessage = null),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Header Se Duyên (ĐÃ BỎ TÍCH XANH CẠNH TÊN)
-  Widget _buildSoulmateConnectionHeader(LinearGradient auraGradient) {
-    return GestureDetector(
-      onTap: _navigateToProfile,
-      child: Container(
-        margin: const EdgeInsets.only(top: 10, bottom: 24, left: 16, right: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: const Color(0xFFF1E5ED),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Avatar lớn
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: auraGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFEC4899).withValues(alpha: 0.25),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(3),
-              child: ClipOval(
-                child: _buildPartnerAvatarImage(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Tên thật đối phương (ĐÃ BỎ TÍCH XANH)
-            Text(
-              _partnerDisplayName,
-              style: const TextStyle(
-                fontFamily: 'BeVietnamPro',
-                fontSize: 18.5,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 6),
-
-            // Chip Kết nối định mệnh & Tần số
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFF5F3FF),
-                    Color(0xFFFDF2F8),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFDDD6FE)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.favorite_rounded,
-                    size: 13,
-                    color: Color(0xFFEC4899),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Đồng điệu định mệnh • $_partnerHertz',
-                    style: const TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Lời chúc se duyên
-            Text(
-              _partnerBio != null && _partnerBio!.isNotEmpty
-                  ? '“$_partnerBio”'
-                  : 'Hai bạn đã tìm thấy nhau giữa triệu tần số vũ trụ.\nHãy cùng mở đầu một cuộc trò chuyện chân thành nhé! ✨',
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'BeVietnamPro',
-                fontSize: 13,
-                color: Color(0xFF64748B),
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Nút bấm xem Profile
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.person_search_rounded,
-                    color: Color(0xFF6366F1),
-                    size: 14,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Nhấn để xem toàn bộ hồ sơ',
-                    style: TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Hàng chip câu hỏi gợi ý mở lời (Icebreakers)
-  Widget _buildIcebreakerChips() {
-    return Container(
-      height: 38,
-      margin: const EdgeInsets.only(bottom: 6),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _icebreakers.length,
-        separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final prompt = _icebreakers[index];
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _handleSendMessage(prompt);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE0E7FF)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  prompt,
-                  style: const TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    color: Color(0xFF334155),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  /// Thanh công cụ nhập liệu đa năng phong cách Telegram / Messenger
-  Widget _buildTelegramMessengerInputBar() {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
-
-    final effectiveBottomPadding = _isEmojiPickerVisible
-        ? 6.0
-        : (bottomInset > 0
-            ? 6.0
-            : (safeBottom > 0 ? safeBottom : 8.0));
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.96),
-            border: const Border(
-              top: BorderSide(
-                color: Color(0xFFF1E5ED),
-                width: 1.0,
-              ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.only(
-            left: 10,
-            right: 10,
-            top: 8,
-            bottom: effectiveBottomPadding,
-          ),
-          child: _isRecordingVoice
-              ? TelegramVoiceRecorderBar(
-                  onRecordComplete: _handleVoiceRecordComplete,
-                  onRecordCancel: () {
-                    setState(() => _isRecordingVoice = false);
-                  },
-                )
-              : Row(
-                  children: [
-                    // 1. Nút '+' mở Popup/Sheet đa tiện ích
-                    IconButton(
-                      icon: const Icon(
-                        Icons.add_circle_outline_rounded,
-                        color: Color(0xFF6366F1),
-                        size: 26,
-                      ),
-                      tooltip: 'Chia sẻ ảnh, vị trí, voice note',
-                      onPressed: _showMediaActionSheet,
-                    ),
-
-                    // 2. Nút Camera chụp nhanh (phong cách Telegram / Messenger)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.camera_alt_outlined,
-                        color: Color(0xFF64748B),
-                        size: 24,
-                      ),
-                      tooltip: 'Chụp ảnh nhanh',
-                      onPressed: _handlePickCamera,
-                    ),
-
-                    // 3. Khung ô nhập văn bản tích hợp Emoji
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _chatController,
-                                focusNode: _focusNode,
-                                style: const TextStyle(
-                                  fontFamily: 'BeVietnamPro',
-                                  fontSize: 14.5,
-                                  color: Color(0xFF0F172A),
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Nhắn tin cho $_partnerDisplayName...',
-                                  hintStyle: const TextStyle(
-                                    fontFamily: 'BeVietnamPro',
-                                    fontSize: 14,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
-                                textInputAction: TextInputAction.send,
-                                onSubmitted: (val) => _handleSendMessage(val),
-                              ),
-                            ),
-                            // Icon Faye AI gợi ý trả lời (đặt cạnh icon emoji, chỉ icon thuần túy)
-                            GestureDetector(
-                              onTap: _showAiSuggestionModal,
-                              behavior: HitTestBehavior.opaque,
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                                child: Icon(
-                                  Icons.auto_awesome_rounded,
-                                  color: Color(0xFF8B5CF6),
-                                  size: 21,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            // Icon Emoji chuyển đổi giữa Bàn phím & Bảng chọn Emoji inline
-                            GestureDetector(
-                              onTap: _toggleEmojiPicker,
-                              child: Icon(
-                                _isEmojiPickerVisible
-                                    ? Icons.keyboard_alt_outlined
-                                    : Icons.sentiment_satisfied_alt_rounded,
-                                color: const Color(0xFF7C3AED),
-                                size: 22,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-
-                    // 4. Nút Hành động chuyển đổi linh hoạt:
-                    //    - Có chữ: Nút GỬI tin nhắn (Send Button) tròn hồng tím
-                    //    - Rỗng: Nút MICRO ghi âm thoại Telegram (chạm/giữ để ghi)
-                    GestureDetector(
-                      onTap: () {
-                        if (_hasInputText) {
-                          _handleSendMessage(_chatController.text);
-                        } else {
-                          if (CallManager.instance.isInCall) {
-                            ToastUtil.showInfo(context, 'Không thể ghi âm khi đang trong cuộc gọi');
-                            return;
-                          }
-                          setState(() => _isRecordingVoice = true);
-                        }
-                      },
-                      onLongPress: () {
-                        if (!_hasInputText) {
-                          if (CallManager.instance.isInCall) {
-                            ToastUtil.showInfo(context, 'Không thể ghi âm khi đang trong cuộc gọi');
-                            return;
-                          }
-                          setState(() => _isRecordingVoice = true);
-                        }
-                      },
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFEC4899).withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            _hasInputText ? Icons.arrow_upward_rounded : Icons.mic_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
-    );
-  }
-
-  /// Wrapper cho tin nhắn có checkbox khi ở chế độ Multi-select
-  Widget _buildSelectableMessageBubble(ChatMessage msg, LinearGradient auraGradient) {
-    final isSelected = _selectedMessageIds.contains(msg.id);
-
-    return GestureDetector(
-      onLongPress: () => _showMessageActionMenu(msg),
-      onTap: _isMultiSelectMode
-          ? () {
-              setState(() {
-                if (isSelected) {
-                  _selectedMessageIds.remove(msg.id);
-                } else {
-                  _selectedMessageIds.add(msg.id);
-                }
-              });
-            }
-          : null,
-      child: Container(
-        color: isSelected ? const Color(0xFFEDE9FE).withValues(alpha: 0.5) : Colors.transparent,
-        child: Row(
-          children: [
-            if (_isMultiSelectMode)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Icon(
-                  isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isSelected ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8),
-                  size: 22,
-                ),
-              ),
-            Expanded(
-              child: _buildMessageBubble(msg, auraGradient),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Bong bóng tin nhắn thông minh (Văn bản, Card Stack nhiều ảnh, Ghi âm thoại, Vị trí, Thu hồi)
-  Widget _buildMessageBubble(ChatMessage msg, LinearGradient auraGradient) {
-    final isMe = msg.isSentByMe;
-    final timeString =
-        "${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}";
-
-    final isImageStack = msg.messageType == 'imageStack' || msg.imageUrls.length > 1;
-    final isSingleImage = msg.messageType == 'image' || (msg.imageUrls.length == 1) || msg.text.startsWith('[Hình ảnh]');
-    final isVoice = msg.isVoice;
-    final isLocation = msg.messageType == 'location' || msg.text.startsWith('📍 [Vị trí]');
-    final isRevoked = msg.isRevoked;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Avatar đối phương bên trái -> Bấm vào để xem Profile
-          if (!isMe) ...[
-            GestureDetector(
-              onTap: _navigateToProfile,
-              child: Container(
-                width: 32,
-                height: 32,
-                margin: const EdgeInsets.only(right: 8, bottom: 2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: auraGradient,
-                ),
-                padding: const EdgeInsets.all(1.5),
-                child: ClipOval(
-                  child: _buildPartnerAvatarImage(),
-                ),
-              ),
-            ),
-          ],
-
-          // Nội dung bong bóng
-          Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.74,
-                    ),
-                    padding: (isImageStack || isSingleImage)
-                        ? const EdgeInsets.all(4)
-                        : (isVoice
-                            ? const EdgeInsets.symmetric(vertical: 4, horizontal: 8)
-                            : const EdgeInsets.symmetric(vertical: 12, horizontal: 16)),
-                    decoration: BoxDecoration(
-                      gradient: isMe && !isRevoked
-                          ? const LinearGradient(
-                              colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: isRevoked
-                          ? const Color(0xFFF1F5F9)
-                          : (isMe ? null : Colors.white),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(22),
-                        topRight: const Radius.circular(22),
-                        bottomLeft: isMe ? const Radius.circular(22) : const Radius.circular(6),
-                        bottomRight: isMe ? const Radius.circular(6) : const Radius.circular(22),
-                      ),
-                      border: (isMe && !isRevoked)
-                          ? null
-                          : Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isMe && !isRevoked
-                              ? const Color(0xFFEC4899).withValues(alpha: 0.25)
-                              : const Color(0xFF64748B).withValues(alpha: 0.08),
-                          blurRadius: isMe ? 12 : 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        // Trích dẫn Reply
-                        if (msg.replyToText != null && !isRevoked)
-                          _buildReplyQuoteBox(msg, isMe),
-
-                        // Nội dung chính
-                        _buildBubbleContent(
-                          msg,
-                          isMe,
-                          isSingleImage,
-                          isImageStack,
-                          isVoice,
-                          isLocation,
-                          isRevoked,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Badge Reaction nổi ở góc dưới bong bóng (❤️, 🔥, 👍,...)
-                  if (msg.reaction != null && !isRevoked)
-                    Positioned(
-                      bottom: -8,
-                      right: isMe ? null : -4,
-                      left: isMe ? -4 : null,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          msg.reaction!,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // Thời gian gửi
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      timeString,
-                      style: const TextStyle(
-                        fontFamily: 'BeVietnamPro',
-                        color: Color(0xFF94A3B8),
-                        fontSize: 10.5,
-                      ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      if (msg.isSending)
-                        const SizedBox(
-                          width: 10,
-                          height: 10,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF94A3B8)),
-                          ),
-                        )
-                      else if (msg.isSendError)
-                        GestureDetector(
-                          onTap: () => _retrySendMessage(msg),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.error_outline_rounded, color: Color(0xFFFF3B30), size: 13),
-                              SizedBox(width: 2),
-                              Text(
-                                'Thử lại',
-                                style: TextStyle(
-                                  fontFamily: 'BeVietnamPro',
-                                  color: Color(0xFFFF3B30),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.done_all_rounded,
-                          color: Color(0xFF6366F1),
-                          size: 13,
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Khung trích dẫn Reply bên trong Bubble
-  Widget _buildReplyQuoteBox(ChatMessage msg, bool isMe) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: isMe
-            ? Colors.white.withValues(alpha: 0.18)
-            : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(
-            color: isMe ? Colors.white : const Color(0xFF8B5CF6),
-            width: 3,
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            msg.replyToSender ?? 'Tin nhắn',
-            style: TextStyle(
-              fontFamily: 'BeVietnamPro',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: isMe ? Colors.white : const Color(0xFF7C3AED),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            msg.replyToText ?? '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'BeVietnamPro',
-              fontSize: 12,
-              color: isMe ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF475569),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Xây dựng nội dung chi tiết bên trong bong bóng tin nhắn
-  Widget _buildBubbleContent(
-    ChatMessage msg,
-    bool isMe,
-    bool isSingleImage,
-    bool isImageStack,
-    bool isVoice,
-    bool isLocation,
-    bool isRevoked,
-  ) {
-    // 1. Trạng thái đã thu hồi
-    if (isRevoked) {
-      return const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.block_flipped, color: Color(0xFF94A3B8), size: 16),
-          SizedBox(width: 6),
-          Text(
-            'Tin nhắn đã được thu hồi',
-            style: TextStyle(
-              fontFamily: 'BeVietnamPro',
-              color: Color(0xFF94A3B8),
-              fontSize: 13.5,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      );
-    }
-
-    // 2. Vấn đề 2 & 4.1: Render Modern Glassmorphic Card Stack UI cho nhiều ảnh
-    if (isImageStack) {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          GlassmorphicCardStack(
-            images: msg.imageUrls,
-            isSentByMe: isMe,
-          ),
-          if (msg.isSending) _buildImageLoadingOverlay(),
-          if (msg.isSendError)
-            _buildImageErrorOverlay(() => _retrySendImageMessage(msg)),
-        ],
-      );
-    }
-
-    // 3. Render 1 ảnh đơn lẻ
-    if (isSingleImage) {
-      final img = msg.imageUrls.isNotEmpty
-          ? msg.imageUrls.first
-          : msg.text.replaceFirst('[Hình ảnh]', '').trim();
-
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (msg.isSendError) {
-                _retrySendImageMessage(msg);
-              } else if (!msg.isSending) {
-                GlassmorphicImageViewer.show(context, images: [img], initialIndex: 0);
-              }
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: img.startsWith('file://')
-                  ? Image.file(
-                      File(img.replaceFirst('file://', '')),
-                      width: 220,
-                      height: 220,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => _buildImageError(),
-                    )
-                  : Image.network(
-                      img,
-                      width: 220,
-                      height: 220,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => _buildImageError(),
-                    ),
-            ),
-          ),
-          if (msg.isSending) _buildImageLoadingOverlay(),
-          if (msg.isSendError)
-            _buildImageErrorOverlay(() => _retrySendImageMessage(msg)),
-        ],
-      );
-    }
-
-    // 4. Render Tin nhắn thoại (Voice Note) - Chuẩn Telegram, sóng âm tĩnh tô tiến trình, không rung lắc
-    if (isVoice) {
-      return CosmicVoicePlayerBubble(
-        message: msg,
-        isSentByMe: isMe,
-        onRetrySend: msg.isSendError ? () => _retrySendVoiceMessage(msg) : null,
-      );
-    }
-
-    // 5. Render Vị trí (Location Card)
-    if (isLocation) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isMe ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFD1FAE5),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.location_on_rounded,
-              color: isMe ? Colors.white : const Color(0xFF059669),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              msg.text,
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                color: isMe ? Colors.white : const Color(0xFF1E293B),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // 5.1 Render Thẻ cuộc gọi thoại (P2P Soulmate Voice Call Card)
-    if (msg.isCall) {
-      return _buildCallMessageBubble(msg, isMe);
-    }
-
-    // 6. Văn bản thông thường
-    return Text(
-      msg.text,
-      style: TextStyle(
-        fontFamily: 'BeVietnamPro',
-        color: isMe ? Colors.white : const Color(0xFF1E293B),
-        fontSize: 14.5,
-        height: 1.45,
-        letterSpacing: 0.1,
-        fontWeight: isMe ? FontWeight.w500 : FontWeight.w400,
-      ),
-    );
-  }
-
-  /// Thẻ hiển thị trạng thái Cuộc gọi thoại (Soulmate Voice Call Card)
-  Widget _buildCallMessageBubble(ChatMessage msg, bool isMe) {
-    final isMissed = msg.isCallMissed;
-    final isRejected = msg.isCallRejected;
-    final isFailed = isMissed || isRejected;
-
-    final IconData icon = isMissed
-        ? Icons.phone_missed_rounded
-        : (isRejected ? Icons.phone_disabled_rounded : Icons.phone_in_talk_rounded);
-
-    final Color statusColor = isFailed
-        ? const Color(0xFFFF4757)
-        : (isMe ? const Color(0xFF2ED573) : const Color(0xFF10B981));
-
-    String title;
-    String subtitle;
-    if (isMissed) {
-      title = isMe ? 'Cuộc gọi đi nhỡ' : 'Cuộc gọi thoại nhỡ';
-      subtitle = isMe ? 'Đối phương không trả lời' : 'Bạn đã bỏ lỡ cuộc gọi';
-    } else if (isRejected) {
-      title = isMe ? 'Cuộc gọi bị từ chối' : 'Đã từ chối cuộc gọi';
-      subtitle = isMe ? 'Đối phương đã từ chối' : 'Cuộc gọi thoại bị từ chối';
-    } else {
-      title = 'Cuộc gọi thoại';
-      subtitle = msg.text.contains('(') ? msg.text : 'Đã kết thúc cuộc gọi';
-    }
-
-    if (msg.durationMs != null && msg.durationMs! > 0) {
-      final totalSec = msg.durationMs! ~/ 1000;
-      final m = (totalSec ~/ 60).toString().padLeft(2, '0');
-      final s = (totalSec % 60).toString().padLeft(2, '0');
-      subtitle = 'Thời lượng: $m:$s';
-    }
-
-    return Container(
-      constraints: const BoxConstraints(minWidth: 165),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Icon tròn trạng thái cuộc gọi
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isMe
-                  ? Colors.white.withValues(alpha: 0.22)
-                  : statusColor.withValues(alpha: 0.12),
-            ),
-            child: Icon(
-              icon,
-              color: isMe ? Colors.white : statusColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Tiêu đề và nội dung/thời lượng
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    color: isMe ? Colors.white : const Color(0xFF1E293B),
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    color: isMe ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF64748B),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Nút gọi lại nhanh (Callback)
-          IconButton(
-            icon: Icon(
-              Icons.phone_forwarded_rounded,
-              color: isMe ? Colors.white : const Color(0xFF8B5CF6),
-              size: 20,
-            ),
-            tooltip: 'Gọi lại',
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            padding: EdgeInsets.zero,
-            onPressed: _handleStartVoiceCall,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImageError() {
-    return Container(
-      width: 200,
-      height: 150,
-      color: const Color(0xFFF1F5F9),
-      child: const Center(
-        child: Icon(Icons.broken_image_rounded, color: Color(0xFF94A3B8), size: 36),
-      ),
-    );
-  }
-
-  Widget _buildImageLoadingOverlay() {
-    return Positioned.fill(
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageErrorOverlay(VoidCallback onRetry) {
-    return Positioned.fill(
-      child: GestureDetector(
-        onTap: onRetry,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Chạm để thử lại',
-                  style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Typing indicator
-  Widget _buildTypingIndicator(LinearGradient auraGradient) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 8, bottom: 2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: auraGradient,
-            ),
-            padding: const EdgeInsets.all(1.5),
-            child: ClipOval(
-              child: _buildPartnerAvatarImage(),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(18),
-              ),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF64748B).withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const TypingIndicator(color: Color(0xFF8B5CF6)),
-          ),
-        ],
       ),
     );
   }
