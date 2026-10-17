@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
 import type {
   FacebookAuthService,
   FacebookUserProfile,
@@ -17,6 +18,18 @@ type FacebookMeResponse = {
   picture?: { data?: { url?: string } };
 };
 
+type FacebookIdTokenPayload = {
+  iss?: string;
+  aud?: string;
+  sub?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  picture?: string;
+  email?: string;
+  exp?: number;
+};
+
 export class FacebookAuthServiceImpl implements FacebookAuthService {
   constructor(private readonly configService: ConfigService) {}
 
@@ -30,6 +43,33 @@ export class FacebookAuthServiceImpl implements FacebookAuthService {
       );
     }
 
+    // 1. Hỗ trợ Facebook OIDC ID Token (JWT do iOS Limited Login phát hành)
+    if (input.accessToken.startsWith('eyJ')) {
+      const decoded = jwt.decode(input.accessToken) as FacebookIdTokenPayload | null;
+      if (!decoded || !decoded.sub) {
+        throw new UnauthorizedApplicationError(
+          'Facebook ID token không hợp lệ.',
+          ERROR_CODES.AUTH_FACEBOOK_TOKEN_INVALID,
+        );
+      }
+
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        throw new UnauthorizedApplicationError(
+          'Facebook token đã hết hạn.',
+          ERROR_CODES.AUTH_FACEBOOK_TOKEN_INVALID,
+        );
+      }
+
+      const email = decoded.email || `fb_${decoded.sub}@facebook.meyu.app`;
+      return {
+        email,
+        name: decoded.name || 'Người dùng Facebook',
+        avatar: decoded.picture,
+        facebookId: decoded.sub,
+      };
+    }
+
+    // 2. Hỗ trợ Classic OAuth Access Token (Graph API)
     const baseUrl =
       this.configService.get<string>(AUTH_ENV.facebookGraphApiUrl) ||
       'https://graph.facebook.com';
