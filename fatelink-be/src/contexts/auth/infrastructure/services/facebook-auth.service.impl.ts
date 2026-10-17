@@ -46,16 +46,18 @@ export class FacebookAuthServiceImpl implements FacebookAuthService {
 
     const profile = (await response.json()) as FacebookMeResponse;
 
-    if (!profile.id || !profile.email) {
+    if (!profile.id) {
       throw new BadRequestApplicationError(
-        'Tài khoản Facebook chưa cung cấp email hợp lệ.',
-        ERROR_CODES.AUTH_FACEBOOK_EMAIL_MISSING,
+        'Không thể lấy thông tin định danh từ tài khoản Facebook.',
+        ERROR_CODES.AUTH_FACEBOOK_TOKEN_INVALID,
       );
     }
 
+    const email = profile.email || `fb_${profile.id}@facebook.meyu.app`;
+
     return {
-      email: profile.email,
-      name: profile.name,
+      email,
+      name: profile.name || 'Người dùng Facebook',
       avatar: profile.picture?.data?.url,
       facebookId: profile.id,
     };
